@@ -1,3 +1,5 @@
+/* RECURRING_DISABLED — this entire file is part of the recurring tasks feature.
+   It is not rendered anywhere while recurring is disabled. Do not delete. */
 "use client";
 
 import { useState } from "react";

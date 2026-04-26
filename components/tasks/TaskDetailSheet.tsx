@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Calendar, RefreshCw, Target, Pencil, Check } from "lucide-react";
+import { X, Calendar, Target, Pencil, Check } from "lucide-react";
+// RECURRING_DISABLED: import { RefreshCw } from "lucide-react";
 import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
 import { Q_META, fmtDeadline } from "@/components/tasks/TaskCard";
 import type { GoalData } from "@/components/goals/GoalCard";
@@ -137,6 +138,7 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
                   }}>
                     {task.quadrant} · {m.label}
                   </span>
+                  {/* RECURRING_DISABLED — recurring badge
                   {task.kind === "instance" && (
                     <span style={{
                       fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "20px",
@@ -145,7 +147,7 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
                     }}>
                       <RefreshCw size={9} /> Recurring
                     </span>
-                  )}
+                  )} */}
                   <span style={{
                     fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "20px",
                     color: task.status === "complete" ? "#16A34A" : task.status === "incomplete" ? "#9CA3AF" : "#F97316",

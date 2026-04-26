@@ -1,17 +1,17 @@
 "use client";
 
-import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, TrendingUp } from "lucide-react";
-import { Q_META, daysUntil, type TaskData, type EisenhowerQ } from "@/components/tasks/TaskCard";
-import type { RecurringTemplate } from "@/components/tasks/TaskCard";
+import { CheckCircle2, XCircle, AlertTriangle, TrendingUp } from "lucide-react";
+// RECURRING_DISABLED: import { RefreshCw } from "lucide-react";
+import { Q_META, type TaskData, type EisenhowerQ } from "@/components/tasks/TaskCard";
+// RECURRING_DISABLED: import type { RecurringTemplate } from "@/components/tasks/TaskCard";
 
 interface Props {
-  tasks:     TaskData[];
-  templates: RecurringTemplate[];
+  tasks: TaskData[];
+  // RECURRING_DISABLED: templates: RecurringTemplate[];
 }
 
 function generateInsight(
   tasks: TaskData[],
-  templates: RecurringTemplate[],
   successRate: number,
   overdueCount: number,
 ): string {
@@ -27,33 +27,32 @@ function generateInsight(
     return "Completion rate is below 50%. Before adding more, review whether existing tasks are still worth doing.";
   if (q2Open > q1Open * 2 && q2Open >= 3)
     return `Strong Q2 focus — ${q2Open} proactive tasks underway. Protect deep-work blocks to keep this momentum.`;
-  if (templates.length >= 2 && successRate >= 80)
-    return "Excellent execution discipline. Your recurring systems are running smoothly — a great foundation for growth.";
   return "Review your Q3 and Q4 tasks. Delegate what you can, eliminate what you shouldn't have taken on, and free up bandwidth for Q2.";
 }
 
-export default function AnalyticsPanel({ tasks, templates }: Props) {
+export default function AnalyticsPanel({ tasks }: Props) {
   const today = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   })();
 
-  const open       = tasks.filter((t) => t.status === "open");
-  const closed     = tasks.filter((t) => t.status !== "open");
-  const complete   = tasks.filter((t) => t.status === "complete");
-  const overdue    = open.filter((t) => t.deadline < today);
+  const open     = tasks.filter((t) => t.status === "open");
+  const closed   = tasks.filter((t) => t.status !== "open");
+  const complete = tasks.filter((t) => t.status === "complete");
+  const overdue  = open.filter((t) => t.deadline < today);
+
+  /* RECURRING_DISABLED — recurring instance stats
   const instances  = tasks.filter((t) => t.kind === "instance");
   const closedInst = instances.filter((t) => t.status !== "open");
   const doneInst   = instances.filter((t) => t.status === "complete");
-
-  const successRate   = closed.length > 0 ? Math.round((complete.length / closed.length) * 100) : 0;
   const schedReliability = closedInst.length > 0
     ? Math.round((doneInst.length / closedInst.length) * 100) : null;
+  RECURRING_DISABLED */
 
-  const insight = generateInsight(tasks, templates, successRate, overdue.length);
+  const successRate = closed.length > 0 ? Math.round((complete.length / closed.length) * 100) : 0;
+  const insight     = generateInsight(tasks, successRate, overdue.length);
 
-  // Avg variance for completed tasks (positive = late, negative = early)
-  const variances = complete.filter((t) => t.variance !== undefined).map((t) => t.variance!);
+  const variances   = complete.filter((t) => t.variance !== undefined).map((t) => t.variance!);
   const avgVariance = variances.length > 0
     ? (variances.reduce((a, b) => a + b, 0) / variances.length).toFixed(1) : null;
 
@@ -81,10 +80,10 @@ export default function AnalyticsPanel({ tasks, templates }: Props) {
 
       {/* Summary stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
-        <StatCard label="Total tasks" value={tasks.length} color="#1C1917" />
+        <StatCard label="Total tasks"     value={tasks.length}    color="#1C1917" />
         <StatCard label="Completion rate" value={`${successRate}%`} color="#16A34A" />
-        <StatCard label="Overdue" value={overdue.length} color={overdue.length > 0 ? "#DC2626" : "#78716C"} />
-        <StatCard label="Open" value={open.length} color="#F97316" />
+        <StatCard label="Overdue"         value={overdue.length}  color={overdue.length > 0 ? "#DC2626" : "#78716C"} />
+        <StatCard label="Open"            value={open.length}     color="#F97316" />
       </div>
 
       {/* Two-column layout */}
@@ -98,16 +97,14 @@ export default function AnalyticsPanel({ tasks, templates }: Props) {
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {(["Q1","Q2","Q3","Q4"] as EisenhowerQ[]).map((q) => {
-              const m = Q_META[q];
+              const m     = Q_META[q];
               const count = open.filter((t) => t.quadrant === q).length;
-              const pct = open.length > 0 ? Math.round((count / open.length) * 100) : 0;
+              const pct   = open.length > 0 ? Math.round((count / open.length) * 100) : 0;
               return (
                 <div key={q}>
                   <div style={{ display: "flex", justifyContent: "space-between",
                     fontSize: "11px", marginBottom: "4px" }}>
-                    <span style={{ fontWeight: 600, color: m.color }}>
-                      {q} · {m.label}
-                    </span>
+                    <span style={{ fontWeight: 600, color: m.color }}>{q} · {m.label}</span>
                     <span style={{ color: "#78716C" }}>{count} ({pct}%)</span>
                   </div>
                   <div style={{ height: "6px", borderRadius: "3px", backgroundColor: "#F2EAE0" }}>
@@ -123,71 +120,33 @@ export default function AnalyticsPanel({ tasks, templates }: Props) {
           </div>
         </div>
 
-        {/* Completion breakdown + schedule reliability */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {/* Completion breakdown */}
-          <div style={{ padding: "16px", borderRadius: "12px",
-            border: "1px solid #EDE5D8", backgroundColor: "#FFFFFF", flex: 1 }}>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917", marginBottom: "12px" }}>
-              Task outcomes
+        {/* Task outcomes */}
+        <div style={{ padding: "16px", borderRadius: "12px",
+          border: "1px solid #EDE5D8", backgroundColor: "#FFFFFF" }}>
+          <p style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917", marginBottom: "12px" }}>
+            Task outcomes
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <OutcomeRow icon={<CheckCircle2 size={13} color="#16A34A" />}
+              label="Completed" count={complete.length} total={tasks.length} color="#16A34A" />
+            <OutcomeRow icon={<XCircle size={13} color="#6B7280" />}
+              label="Closed / missed" count={closed.length - complete.length}
+              total={tasks.length} color="#6B7280" />
+            <OutcomeRow icon={<AlertTriangle size={13} color="#DC2626" />}
+              label="Overdue open" count={overdue.length} total={tasks.length} color="#DC2626" />
+          </div>
+          {avgVariance !== null && (
+            <p style={{ fontSize: "10px", color: "#A8A29E", marginTop: "10px" }}>
+              Avg. close timing: <span style={{ fontWeight: 600,
+                color: Number(avgVariance) <= 0 ? "#16A34A" : "#DC2626" }}>
+                {Number(avgVariance) <= 0
+                  ? `${Math.abs(Number(avgVariance))} days early`
+                  : `${avgVariance} days late`}
+              </span>
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <OutcomeRow icon={<CheckCircle2 size={13} color="#16A34A" />}
-                label="Completed" count={complete.length} total={tasks.length} color="#16A34A" />
-              <OutcomeRow icon={<XCircle size={13} color="#6B7280" />}
-                label="Closed / missed" count={closed.length - complete.length}
-                total={tasks.length} color="#6B7280" />
-              <OutcomeRow icon={<AlertTriangle size={13} color="#DC2626" />}
-                label="Overdue open" count={overdue.length} total={tasks.length} color="#DC2626" />
-            </div>
-            {avgVariance !== null && (
-              <p style={{ fontSize: "10px", color: "#A8A29E", marginTop: "10px" }}>
-                Avg. close timing: <span style={{ fontWeight: 600,
-                  color: Number(avgVariance) <= 0 ? "#16A34A" : "#DC2626" }}>
-                  {Number(avgVariance) <= 0
-                    ? `${Math.abs(Number(avgVariance))} days early`
-                    : `${avgVariance} days late`}
-                </span>
-              </p>
-            )}
-          </div>
+          )}
 
-          {/* Schedule reliability */}
-          <div style={{ padding: "16px", borderRadius: "12px",
-            border: "1px solid #EDE5D8", backgroundColor: "#FFFFFF" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
-              <RefreshCw size={12} color="#78716C" />
-              <p style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917" }}>
-                Schedule reliability
-              </p>
-            </div>
-            {schedReliability !== null ? (
-              <>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "28px", fontWeight: 800,
-                    color: schedReliability >= 75 ? "#16A34A" : schedReliability >= 50 ? "#F97316" : "#DC2626" }}>
-                    {schedReliability}%
-                  </span>
-                  <span style={{ fontSize: "12px", color: "#78716C" }}>of recurring tasks done</span>
-                </div>
-                <div style={{ height: "6px", borderRadius: "3px", backgroundColor: "#F2EAE0" }}>
-                  <div style={{
-                    height: "100%", borderRadius: "3px", width: `${schedReliability}%`,
-                    backgroundColor: schedReliability >= 75 ? "#16A34A" : schedReliability >= 50 ? "#F97316" : "#DC2626",
-                    transition: "width 0.4s ease",
-                  }} />
-                </div>
-                <p style={{ fontSize: "10px", color: "#A8A29E", marginTop: "6px" }}>
-                  {doneInst.length} of {closedInst.length} closed instances completed
-                  · {templates.filter((t) => t.active).length} active template{templates.filter((t) => t.active).length !== 1 ? "s" : ""}
-                </p>
-              </>
-            ) : (
-              <p style={{ fontSize: "12px", color: "#A8A29E" }}>
-                No recurring tasks closed yet.
-              </p>
-            )}
-          </div>
+          {/* RECURRING_DISABLED — schedule reliability panel removed */}
         </div>
       </div>
     </div>

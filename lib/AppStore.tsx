@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"; // RECURRING_DISABLED: removed useCallback
 import type { GoalData, GoalNote } from "@/components/goals/GoalCard";
 import type { HabitData } from "@/components/habits/HabitCard";
 import type { TaskData, RecurringTemplate } from "@/components/tasks/TaskCard";
@@ -51,89 +51,10 @@ function makeMeasure(target: number, days: number): Record<string, number> {
   return out;
 }
 
-// ── Schedule helper (used for recurring instance spawning) ────────────────────
-function isScheduledDate(tpl: RecurringTemplate, dt: Date): boolean {
-  const startDt = new Date(tpl.startDate + "T00:00:00");
-  if (dt < startDt) return false;
-
-  const dow = dt.getDay();
-  const dom = dt.getDate();
-  const mon = dt.getMonth();
-
-  switch (tpl.scheduleType) {
-    case "daily": {
-      const diff = Math.round((dt.getTime() - startDt.getTime()) / 86_400_000);
-      return diff % tpl.every === 0;
-    }
-    case "weekly": {
-      if (!tpl.days.includes(dow)) return false;
-      const startSun = new Date(startDt);
-      startSun.setDate(startDt.getDate() - startDt.getDay());
-      startSun.setHours(0, 0, 0, 0);
-      const dtSun = new Date(dt);
-      dtSun.setDate(dt.getDate() - dow);
-      dtSun.setHours(0, 0, 0, 0);
-      const weeks = Math.round((dtSun.getTime() - startSun.getTime()) / (7 * 86_400_000));
-      return weeks >= 0 && weeks % tpl.every === 0;
-    }
-    case "monthly":
-      return dom === tpl.monthDay;
-    case "yearly":
-      return mon === tpl.month && dom === tpl.monthDay;
-  }
-}
-
-function computeNewInstances(
-  templates: RecurringTemplate[],
-  existing: TaskData[],
-  daysAhead: number,
-): TaskData[] {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  const existingKeys = new Set(
-    existing
-      .filter((t) => t.kind === "instance")
-      .map((t) => `${t.parentId}_${t.deadline}`),
-  );
-
-  const result: TaskData[] = [];
-
-  for (const tpl of templates) {
-    if (!tpl.active) continue;
-    const priorCount = existing.filter((t) => t.parentId === tpl.id).length;
-    let spawned = 0;
-
-    for (let d = 0; d <= daysAhead; d++) {
-      const dt = new Date(now);
-      dt.setDate(now.getDate() + d);
-      const dateStr = toTaskDate(dt);
-
-      if (tpl.endCondition === "on-date" && dateStr > tpl.endDate) break;
-      if (tpl.endCondition === "after-n" && priorCount + spawned >= tpl.endAfter) break;
-      if (!isScheduledDate(tpl, dt)) continue;
-
-      const key = `${tpl.id}_${dateStr}`;
-      if (existingKeys.has(key)) continue;
-
-      result.push({
-        id: `inst_${tpl.id}_${d}_${Date.now()}`,
-        kind: "instance",
-        parentId: tpl.id,
-        title: tpl.title,
-        description: tpl.description,
-        deadline: dateStr,
-        quadrant: tpl.quadrant,
-        status: "open",
-        createdAt: Date.now(),
-        linkedGoalId: tpl.linkedGoalId,
-      });
-      spawned++;
-    }
-  }
-
-  return result;
-}
+/* RECURRING_DISABLED — instance spawning engine
+function isScheduledDate(tpl: RecurringTemplate, dt: Date): boolean { ... }
+function computeNewInstances(templates, existing, daysAhead): TaskData[] { ... }
+RECURRING_DISABLED */
 
 // ── Seed goals ────────────────────────────────────────────────────────────────
 function seedGoals(): GoalData[] {
@@ -288,7 +209,7 @@ function seedTasks(): TaskData[] {
     { id: "t10", kind: "one-time", title: "Reorganize laptop files",
       description: "Clean up downloads, sort old projects", deadline: td(25),
       quadrant: "Q4", status: "open", createdAt: now - 15 * 86_400_000, linkedGoalId: "" },
-    // Pre-seeded recurring instances (from tpl1 — morning planning)
+    /* RECURRING_DISABLED — pre-seeded recurring instances (from tpl1 — morning planning)
     { id: "inst_tpl1_m3", kind: "instance", parentId: "tpl1",
       title: "Morning planning", description: "15-min daily planner review",
       deadline: td(-3), quadrant: "Q2", status: "complete",
@@ -301,10 +222,11 @@ function seedTasks(): TaskData[] {
       title: "Morning planning", description: "15-min daily planner review",
       deadline: td(-1), quadrant: "Q2", status: "incomplete",
       closedAt: now - 86_400_000, variance: 0, createdAt: now - 86_400_000, linkedGoalId: "" },
+    RECURRING_DISABLED */
   ];
 }
 
-// ── Seed templates ────────────────────────────────────────────────────────────
+/* RECURRING_DISABLED — seed templates function
 function seedTemplates(): RecurringTemplate[] {
   const now = Date.now();
   return [
@@ -324,6 +246,7 @@ function seedTemplates(): RecurringTemplate[] {
     },
   ];
 }
+RECURRING_DISABLED */
 
 // ── Seed weekly ───────────────────────────────────────────────────────────────
 function weekMonday(): string {
@@ -472,7 +395,7 @@ interface AppState {
   goals:       GoalData[];
   habits:      HabitData[];
   tasks:       TaskData[];
-  templates:   RecurringTemplate[];
+  // RECURRING_DISABLED: templates: RecurringTemplate[];
   eventGroups:        EventGroup[];
   weekEvents:         WeekEvent[];
   weekPlans:          WeekPlan[];
@@ -495,10 +418,10 @@ interface AppState {
   updateTask:     (t: TaskData) => void;
   closeTask:      (id: string, outcome: "complete" | "incomplete") => void;
   reopenTask:     (id: string) => void;
-  addTemplate:    (t: RecurringTemplate) => void;
-  updateTemplate: (t: RecurringTemplate) => void;
-  deleteTemplate: (id: string, mode: "stop" | "delete-future" | "delete-all") => void;
-  spawnInstances: (daysAhead?: number) => void;
+  // RECURRING_DISABLED: addTemplate: (t: RecurringTemplate) => void;
+  // RECURRING_DISABLED: updateTemplate: (t: RecurringTemplate) => void;
+  // RECURRING_DISABLED: deleteTemplate: (id: string, mode: "stop" | "delete-future" | "delete-all") => void;
+  // RECURRING_DISABLED: spawnInstances: (daysAhead?: number) => void;
   // Event group actions
   addEventGroup:    (g: EventGroup) => void;
   updateEventGroup: (g: EventGroup) => void;
@@ -531,8 +454,13 @@ const AppContext = createContext<AppState | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [goals,       setGoals]       = useState<GoalData[]>(()           => fromStorage("lbd_goals",     seedGoals));
   const [habits,      setHabits]      = useState<HabitData[]>(()          => fromStorage("lbd_habits",    seedHabits));
-  const [tasks,       setTasks]       = useState<TaskData[]>(()           => fromStorage("lbd_tasks",     seedTasks));
-  const [templates,   setTemplates]   = useState<RecurringTemplate[]>(()  => fromStorage("lbd_templates", seedTemplates));
+  const [tasks,       setTasks]       = useState<TaskData[]>(()           => {
+    // Strip any recurring instances that may have been persisted before the feature was disabled
+    const stored = fromStorage("lbd_tasks", seedTasks);
+    return stored.filter((t) => t.kind !== "instance");
+  });
+  // RECURRING_DISABLED: const [templates, setTemplates] = useState<RecurringTemplate[]>(() => fromStorage("lbd_templates", seedTemplates));
+  const templates: RecurringTemplate[] = [];
   const [weekEvents,         setWeekEvents]         = useState<WeekEvent[]>(()         => fromStorage("lbd_weekEvents",         seedWeekEvents));
   const [weekPlans,          setWeekPlans]          = useState<WeekPlan[]>(()          => fromStorage("lbd_weekPlans",          seedWeekPlans));
   const [dayIntentions,      setDayIntentions]      = useState<DayIntention[]>(()      => fromStorage("lbd_dayIntentions",      () => []));
@@ -549,11 +477,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return groups;
   });
 
+  // One-time cleanup: remove stale recurring data from localStorage
+  useEffect(() => {
+    localStorage.removeItem("lbd_templates");
+    setTasks((prev) => prev.filter((t) => t.kind !== "instance"));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Persist every slice to localStorage whenever it changes
   useEffect(() => { localStorage.setItem("lbd_goals",       JSON.stringify(goals));       }, [goals]);
   useEffect(() => { localStorage.setItem("lbd_habits",      JSON.stringify(habits));      }, [habits]);
   useEffect(() => { localStorage.setItem("lbd_tasks",       JSON.stringify(tasks));       }, [tasks]);
-  useEffect(() => { localStorage.setItem("lbd_templates",   JSON.stringify(templates));   }, [templates]);
+  // RECURRING_DISABLED: useEffect(() => { localStorage.setItem("lbd_templates", JSON.stringify(templates)); }, [templates]);
   useEffect(() => { localStorage.setItem("lbd_eventGroups", JSON.stringify(eventGroups)); }, [eventGroups]);
   useEffect(() => { localStorage.setItem("lbd_weekEvents",         JSON.stringify(weekEvents));         }, [weekEvents]);
   useEffect(() => { localStorage.setItem("lbd_weekPlans",          JSON.stringify(weekPlans));          }, [weekPlans]);
@@ -566,6 +500,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateHabitById = (id: string, fn: (h: HabitData) => HabitData) =>
     setHabits((prev) => prev.map((h) => h.id === id ? fn(h) : h));
 
+  /* RECURRING_DISABLED — instance spawner
   const spawnInstances = useCallback((daysAhead = 30) => {
     setTasks((prev) => {
       const newInstances = computeNewInstances(templates, prev, daysAhead);
@@ -573,6 +508,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templates]);
+  RECURRING_DISABLED */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const spawnInstances = (_daysAhead = 30) => { /* no-op */ };
 
   function upsertBy<T>(setter: (fn: (prev: T[]) => T[]) => void, key: keyof T, item: T) {
     setter((prev) => {
@@ -582,7 +520,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const ctx: AppState = {
-    goals, habits, tasks, templates, eventGroups, weekEvents, weekPlans,
+    goals, habits, tasks, /* RECURRING_DISABLED: templates, */ eventGroups, weekEvents, weekPlans,
     dayIntentions, eveningReflections, weeklyReviews, bucketEntries,
 
     addGoal:    (g) => setGoals((p) => [...p, g]),
@@ -633,27 +571,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { ...t, status: outcome, closedAt: Date.now(), variance };
       })),
 
+    /* RECURRING_DISABLED — template actions
     addTemplate: (t) => setTemplates((p) => [...p, t]),
-
     updateTemplate: (t) => setTemplates((p) => p.map((x) => x.id === t.id ? t : x)),
-
-    deleteTemplate: (id, mode) => {
-      setTemplates((p) => {
-        if (mode === "stop") return p.map((t) => t.id === id ? { ...t, active: false } : t);
-        return p.filter((t) => t.id !== id);
-      });
-      if (mode === "delete-future") {
-        const today = toTaskDate();
-        setTasks((p) => p.filter((t) =>
-          t.parentId !== id || t.status !== "open" || t.deadline < today
-        ));
-      }
-      if (mode === "delete-all") {
-        setTasks((p) => p.filter((t) => t.parentId !== id));
-      }
-    },
-
+    deleteTemplate: (id, mode) => { ... },
     spawnInstances,
+    RECURRING_DISABLED */
 
     addEventGroup:    (g) => setEventGroups((p) => [...p, g]),
     updateEventGroup: (g) => setEventGroups((p) => p.map((x) => x.id === g.id ? g : x)),

@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, XCircle, RefreshCw, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, Clock } from "lucide-react";
+// RECURRING_DISABLED: import { RefreshCw } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type EisenhowerQ  = "Q1" | "Q2" | "Q3" | "Q4";
@@ -9,30 +10,31 @@ export type TaskStatus   = "open" | "complete" | "incomplete";
 export interface TaskData {
   id:            string;
   kind:          "one-time" | "instance";
-  parentId?:     string;          // instance → template id
+  parentId?:     string;
   title:         string;
   description:   string;
   deadline:      string;          // YYYY-MM-DD
   quadrant:      EisenhowerQ;
   status:        TaskStatus;
   closedAt?:     number;
-  variance?:     number;          // days late (+) or early (-) at close
+  variance?:     number;
   createdAt:     number;
   linkedGoalId:  string;
 }
 
+/* RECURRING_DISABLED — RecurringTemplate feature removed from UI; type kept for data compatibility
 export interface RecurringTemplate {
   id:             string;
   title:          string;
   description:    string;
   quadrant:       EisenhowerQ;
   scheduleType:   "daily" | "weekly" | "monthly" | "yearly";
-  every:          number;         // interval (e.g. every 2 weeks)
-  days:           number[];       // weekly: [0-6] (0=Sun)
-  monthDay:       number;         // monthly/yearly: day of month (1-31)
-  month:          number;         // yearly: month index (0-11)
-  time:           string;         // "HH:MM" or ""
-  startDate:      string;         // YYYY-MM-DD
+  every:          number;
+  days:           number[];
+  monthDay:       number;
+  month:          number;
+  time:           string;
+  startDate:      string;
   endCondition:   "never" | "on-date" | "after-n";
   endDate:        string;
   endAfter:       number;
@@ -41,13 +43,23 @@ export interface RecurringTemplate {
   linkedGoalId:   string;
   createdAt:      number;
 }
+RECURRING_DISABLED */
+// Stub type kept so existing imports compile without changes
+export interface RecurringTemplate {
+  id: string; title: string; description: string; quadrant: EisenhowerQ;
+  scheduleType: "daily" | "weekly" | "monthly" | "yearly"; every: number;
+  days: number[]; monthDay: number; month: number; time: string;
+  startDate: string; endCondition: "never" | "on-date" | "after-n";
+  endDate: string; endAfter: number; occurrenceCount: number;
+  active: boolean; linkedGoalId: string; createdAt: number;
+}
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 export const Q_META: Record<EisenhowerQ, { label: string; sub: string; color: string; bg: string; border: string }> = {
-  Q1: { label: "Do",       sub: "Urgent + Important",      color: "#DC2626", bg: "#FEF2F2", border: "#FCA5A5" },
-  Q2: { label: "Schedule", sub: "Not Urgent + Important",  color: "#16A34A", bg: "#F0FDF4", border: "#86EFAC" },
-  Q3: { label: "Delegate", sub: "Urgent + Not Important",  color: "#D97706", bg: "#FFFBEB", border: "#FCD34D" },
-  Q4: { label: "Eliminate",sub: "Not Urgent + Not Important", color: "#6B7280", bg: "#F9FAFB", border: "#D1D5DB" },
+  Q1: { label: "Do It Now",  sub: "Urgent + Important",         color: "#DC2626", bg: "#FEF2F2", border: "#FCA5A5" },
+  Q2: { label: "Scheduled",  sub: "Not Urgent + Important",     color: "#16A34A", bg: "#F0FDF4", border: "#86EFAC" },
+  Q3: { label: "Delegated",  sub: "Urgent + Not Important",     color: "#D97706", bg: "#FFFBEB", border: "#FCD34D" },
+  Q4: { label: "Dropped",    sub: "Not Urgent + Not Important", color: "#6B7280", bg: "#F9FAFB", border: "#D1D5DB" },
 };
 
 export function toTaskDate(d: Date = new Date()): string {
@@ -77,94 +89,101 @@ export default function TaskCard({ task, onClick, onComplete, onMiss }: Props) {
   const overdue  = days < 0 && task.status === "open";
   const isClosed = task.status !== "open";
 
+  const deadlineText = overdue
+    ? `${Math.abs(days)}d overdue`
+    : days === 0  ? "Due today"
+    : days === 1  ? "Tomorrow"
+    : fmtDeadline(task.deadline);
+
   return (
     <div
       onClick={onClick}
       style={{
         backgroundColor: isClosed ? "#FAFAFA" : "#FFFFFF",
-        borderRadius: "10px",
+        borderRadius: "8px",
         border: `1px solid ${overdue ? "#FCA5A5" : "#EDE5D8"}`,
         borderLeft: `3px solid ${isClosed ? "#D1D5DB" : qMeta.color}`,
-        padding: "11px 12px",
+        padding: "5px 9px",
         cursor: onClick ? "pointer" : "default",
         opacity: isClosed ? 0.65 : 1,
+        display: "flex",
+        alignItems: "center",
+        gap: "7px",
+        minHeight: "34px",
         transition: "box-shadow 0.15s",
       }}
       onMouseEnter={(e) => {
-        if (onClick) (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(28,25,23,0.08)";
+        if (onClick) (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 8px rgba(28,25,23,0.08)";
       }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
     >
-      {/* Title row */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "6px", marginBottom: "4px" }}>
-        {task.kind === "instance" && (
-          <RefreshCw size={10} color="#A8A29E" style={{ marginTop: "3px", flexShrink: 0 }} />
-        )}
-        <p style={{
-          fontSize: "12px", fontWeight: 700, color: isClosed ? "#9CA3AF" : "#1C1917",
-          lineHeight: 1.35, margin: 0, flex: 1,
-          textDecoration: task.status === "complete" ? "line-through" : "none",
+      {/* RECURRING_DISABLED — recurring instance icon
+      {task.kind === "instance" && (
+        <RefreshCw size={9} color="#A8A29E" style={{ flexShrink: 0 }} />
+      )} */}
+
+      {/* Title — single line, truncated */}
+      <p style={{
+        flex: 1, minWidth: 0,
+        fontSize: "12px", fontWeight: 600,
+        color: isClosed ? "#9CA3AF" : "#1C1917",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        textDecoration: task.status === "complete" ? "line-through" : "none",
+        margin: 0,
+      }}>
+        {task.title}
+      </p>
+
+      {/* Right cluster */}
+      <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+        {/* Deadline badge */}
+        <span style={{
+          fontSize: "9px", fontWeight: 600, whiteSpace: "nowrap",
+          color: overdue ? "#DC2626" : "#78716C",
+          backgroundColor: overdue ? "#FEF2F2" : "#F5F5F4",
+          padding: "1px 5px", borderRadius: "4px",
         }}>
-          {task.title}
-        </p>
+          {deadlineText}
+        </span>
+
+        {/* Closed status badge */}
         {isClosed && (
           <span style={{
-            fontSize: "9px", fontWeight: 700, flexShrink: 0,
-            padding: "2px 6px", borderRadius: "20px",
+            fontSize: "9px", fontWeight: 700,
+            padding: "1px 5px", borderRadius: "4px",
             color: task.status === "complete" ? "#16A34A" : "#6B7280",
             backgroundColor: task.status === "complete" ? "#F0FDF4" : "#F3F4F6",
           }}>
             {task.status === "complete" ? "Done" : "Closed"}
           </span>
         )}
-      </div>
 
-      {/* Description */}
-      {task.description && (
-        <p style={{ fontSize: "11px", color: "#78716C", lineHeight: 1.4, margin: "0 0 6px",
-          display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-          {task.description}
-        </p>
-      )}
-
-      {/* Deadline row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-          <Clock size={10} color={overdue ? "#DC2626" : "#A8A29E"} />
-          <span style={{ fontSize: "10px", fontWeight: 500,
-            color: overdue ? "#DC2626" : "#78716C" }}>
-            {overdue
-              ? `${Math.abs(days)} days overdue`
-              : days === 0 ? "Due today"
-              : days === 1 ? "Due tomorrow"
-              : fmtDeadline(task.deadline)}
-          </span>
-        </div>
-
-        {/* Action buttons */}
+        {/* Action buttons (icon-only) */}
         {task.status === "open" && (
-          <div style={{ display: "flex", gap: "4px" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ display: "flex", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => onComplete(task.id)}
-              title="Mark complete"
+              title="Mark done"
               style={{
-                display: "flex", alignItems: "center", gap: "3px",
-                padding: "3px 8px", borderRadius: "6px", border: "none",
-                backgroundColor: "#F0FDF4", cursor: "pointer", fontSize: "10px",
-                fontWeight: 600, color: "#16A34A",
-              }}>
-              <CheckCircle2 size={11} /> Done
+                width: 22, height: 22, borderRadius: "5px", border: "none",
+                backgroundColor: "#F0FDF4", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <CheckCircle2 size={13} color="#16A34A" />
             </button>
             <button
               onClick={() => onMiss(task.id)}
-              title="Close as incomplete"
+              title="Mark missed"
               style={{
-                display: "flex", alignItems: "center", gap: "3px",
-                padding: "3px 8px", borderRadius: "6px", border: "none",
-                backgroundColor: "#F3F4F6", cursor: "pointer", fontSize: "10px",
-                fontWeight: 600, color: "#6B7280",
-              }}>
-              <XCircle size={11} /> Close
+                width: 22, height: 22, borderRadius: "5px", border: "none",
+                backgroundColor: "#F3F4F6", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <XCircle size={13} color="#6B7280" />
             </button>
           </div>
         )}

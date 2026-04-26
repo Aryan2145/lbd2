@@ -1,102 +1,97 @@
 "use client";
 
 import { useState } from "react";
-import { X, Clock, RefreshCw } from "lucide-react";
+import { X } from "lucide-react";
+// RECURRING_DISABLED: import { RefreshCw } from "lucide-react";
 import type { GoalData } from "@/components/goals/GoalCard";
 import {
   Q_META, toTaskDate,
   type EisenhowerQ, type TaskData, type RecurringTemplate,
 } from "@/components/tasks/TaskCard";
 
-const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
 interface Props {
-  open:             boolean;
-  onClose:          () => void;
-  onSaveTask:       (t: TaskData) => void;
-  onSaveTemplate:   (t: RecurringTemplate) => void;
-  goals:            GoalData[];
+  open:           boolean;
+  onClose:        () => void;
+  onSaveTask:     (t: TaskData) => void;
+  onSaveTemplate: (t: RecurringTemplate) => void;
+  goals:          GoalData[];
 }
 
-type TaskKind    = "one-time" | "recurring";
-type SchedType   = "daily" | "weekly" | "monthly" | "yearly";
-type EndCond     = "never" | "on-date" | "after-n";
+type TaskKind = "one-time"; // RECURRING_DISABLED: | "recurring"
 
 const DEFAULT_FORM = {
   title: "", description: "", quadrant: "Q2" as EisenhowerQ, linkedGoalId: "",
   kind: "one-time" as TaskKind,
-  // one-time
   deadline: toTaskDate(),
-  // recurring
-  scheduleType: "daily"  as SchedType,
-  every: 1,
-  days: [] as number[],
-  monthDay: 1,
-  month: 0,
-  time: "",
-  startDate: toTaskDate(),
-  endCondition: "never" as EndCond,
-  endDate: "",
-  endAfter: 10,
 };
 
-export default function TaskCreateSheet({ open, onClose, onSaveTask, onSaveTemplate, goals }: Props) {
-  const [f, setF] = useState({ ...DEFAULT_FORM });
+// Subheading-first labels for the priority selector (no Q# prefix)
+const Q_BUTTONS: Record<EisenhowerQ, { main: string; hint: string }> = {
+  Q1: { main: "Urgent + Important",       hint: "Do it today, no excuses." },
+  Q2: { main: "Important, Not Urgent",    hint: "Plan it and schedule it." },
+  Q3: { main: "Urgent, Not Important",    hint: "Hand it off to someone." },
+  Q4: { main: "Not Urgent, Not Important",hint: "Hmm… do you really need this?" },
+};
+
+export default function TaskCreateSheet({ open, onClose, onSaveTask, onSaveTemplate: _onSaveTemplate, goals }: Props) {
+  const [f,             setF]             = useState({ ...DEFAULT_FORM });
+  const [delegateTo,    setDelegateTo]    = useState("");
+  const [delegateNudge, setDelegateNudge] = useState(false);
+  const [q4Bang,        setQ4Bang]        = useState(false);
 
   if (!open) return null;
+
+  const today       = toTaskDate();
+  const q2TodayNudge = f.quadrant === "Q2" && f.deadline === today;
 
   const set = <K extends keyof typeof DEFAULT_FORM>(k: K, v: typeof DEFAULT_FORM[K]) =>
     setF((p) => ({ ...p, [k]: v }));
 
-  function handleSave() {
-    if (!f.title.trim()) return;
-    const now = Date.now();
-
-    if (f.kind === "one-time") {
-      onSaveTask({
-        id: crypto.randomUUID(),
-        kind: "one-time",
-        title: f.title.trim(),
-        description: f.description.trim(),
-        deadline: f.deadline,
-        quadrant: f.quadrant,
-        status: "open",
-        createdAt: now,
-        linkedGoalId: f.linkedGoalId,
-      });
-    } else {
-      onSaveTemplate({
-        id: crypto.randomUUID(),
-        title: f.title.trim(),
-        description: f.description.trim(),
-        quadrant: f.quadrant,
-        scheduleType: f.scheduleType,
-        every: Math.max(1, f.every),
-        days: f.days,
-        monthDay: f.monthDay,
-        month: f.month,
-        time: f.time,
-        startDate: f.startDate,
-        endCondition: f.endCondition,
-        endDate: f.endDate,
-        endAfter: Math.max(1, f.endAfter),
-        occurrenceCount: 0,
-        active: true,
-        linkedGoalId: f.linkedGoalId,
-        createdAt: now,
-      });
+  function selectQuadrant(q: EisenhowerQ) {
+    if (q === "Q4") {
+      setQ4Bang(true);
+      setTimeout(() => {
+        setF({ ...DEFAULT_FORM });
+        setDelegateTo("");
+        setQ4Bang(false);
+        onClose();
+      }, 2400);
+      return;
     }
-
-    setF({ ...DEFAULT_FORM });
-    onClose();
+    // Q1 always locks to today
+    setF((p) => ({ ...p, quadrant: q, deadline: q === "Q1" ? today : p.deadline }));
+    setDelegateNudge(false);
   }
 
-  function toggleDay(d: number) {
-    setF((p) => ({
-      ...p,
-      days: p.days.includes(d) ? p.days.filter((x) => x !== d) : [...p.days, d],
-    }));
+  function handleSave() {
+    if (!f.title.trim()) return;
+
+    if (f.quadrant === "Q3" && !delegateTo.trim()) {
+      setDelegateNudge(true);
+      return;
+    }
+
+    const description =
+      f.quadrant === "Q3" && delegateTo.trim()
+        ? `Delegated to: ${delegateTo.trim()}${f.description.trim() ? "\n" + f.description.trim() : ""}`
+        : f.description.trim();
+
+    onSaveTask({
+      id: crypto.randomUUID(),
+      kind: "one-time",
+      title: f.title.trim(),
+      description,
+      deadline: f.deadline,
+      quadrant: f.quadrant,
+      status: "open",
+      createdAt: Date.now(),
+      linkedGoalId: f.linkedGoalId,
+    });
+
+    setF({ ...DEFAULT_FORM });
+    setDelegateTo("");
+    setDelegateNudge(false);
+    onClose();
   }
 
   return (
@@ -116,12 +111,39 @@ export default function TaskCreateSheet({ open, onClose, onSaveTask, onSaveTempl
         width: "440px", backgroundColor: "#FFFFFF",
         zIndex: 401, display: "flex", flexDirection: "column",
         boxShadow: "-8px 0 40px rgba(28,25,23,0.12)",
+        overflow: "hidden",
       }}>
+
+        {/* ── Q4 bang overlay — covers the entire panel ── */}
+        {q4Bang && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 20,
+            backgroundColor: "#F9FAFB",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            gap: "18px", padding: "48px",
+            textAlign: "center",
+          }}>
+            <span style={{ fontSize: "60px", lineHeight: 1 }}>🗑️</span>
+            <p style={{ fontSize: "21px", fontWeight: 800, color: "#1C1917", margin: 0, lineHeight: 1.3 }}>
+              Not urgent AND<br />not important?
+            </p>
+            <p style={{ fontSize: "14px", color: "#57534E", lineHeight: 1.7, margin: 0 }}>
+              Seriously, just forget about it.<br />
+              Not everything deserves space on your list.
+            </p>
+            <p style={{ fontSize: "11px", color: "#A8A29E", margin: 0 }}>
+              Closing in a moment... ✌️
+            </p>
+          </div>
+        )}
+
         {/* Header */}
         <div style={{
           padding: "18px 20px", borderBottom: "1px solid #EDE5D8",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)",
+          flexShrink: 0,
         }}>
           <div>
             <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
@@ -143,33 +165,6 @@ export default function TaskCreateSheet({ open, onClose, onSaveTask, onSaveTempl
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-
-          {/* Task kind selector */}
-          <div style={{ marginBottom: "18px" }}>
-            <Label>Task type</Label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              {([["one-time", Clock, "One-time"], ["recurring", RefreshCw, "Recurring"]] as const).map(
-                ([val, Icon, label]) => (
-                  <button
-                    key={val}
-                    onClick={() => set("kind", val)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "8px",
-                      padding: "10px 14px", borderRadius: "10px",
-                      border: `2px solid ${f.kind === val ? "#F97316" : "#E8DDD0"}`,
-                      backgroundColor: f.kind === val ? "#FFF7ED" : "#FAFAF9",
-                      cursor: "pointer",
-                    }}>
-                    <Icon size={14} color={f.kind === val ? "#F97316" : "#A8A29E"} />
-                    <span style={{ fontSize: "12px", fontWeight: 600,
-                      color: f.kind === val ? "#F97316" : "#78716C" }}>
-                      {label}
-                    </span>
-                  </button>
-                )
-              )}
-            </div>
-          </div>
 
           {/* Title */}
           <div style={{ marginBottom: "14px" }}>
@@ -194,32 +189,64 @@ export default function TaskCreateSheet({ open, onClose, onSaveTask, onSaveTempl
             />
           </div>
 
-          {/* Quadrant */}
+          {/* Priority selector (subheading-first, no Q# prefix) */}
           <div style={{ marginBottom: "14px" }}>
-            <Label>Eisenhower quadrant</Label>
+            <Label>Priority</Label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
               {(["Q1","Q2","Q3","Q4"] as EisenhowerQ[]).map((q) => {
-                const m = Q_META[q];
+                const m      = Q_META[q];
+                const ql     = Q_BUTTONS[q];
                 const active = f.quadrant === q;
+                const isQ4   = q === "Q4";
                 return (
-                  <button key={q} onClick={() => set("quadrant", q)} style={{
-                    padding: "8px 10px", borderRadius: "8px", cursor: "pointer", textAlign: "left",
-                    border: `2px solid ${active ? m.color : "#E8DDD0"}`,
-                    backgroundColor: active ? m.bg : "#FAFAF9",
+                  <button key={q} onClick={() => selectQuadrant(q)} style={{
+                    padding: "9px 11px", borderRadius: "8px",
+                    cursor: "pointer", textAlign: "left",
+                    border: `2px solid ${active ? m.color : isQ4 ? "#D1D5DB" : "#E8DDD0"}`,
+                    backgroundColor: active ? m.bg : isQ4 ? "#F9FAFB" : "#FAFAF9",
+                    opacity: isQ4 && !active ? 0.7 : 1,
+                    transition: "border-color 0.15s, background-color 0.15s",
                   }}>
-                    <p style={{ fontSize: "11px", fontWeight: 700,
-                      color: active ? m.color : "#78716C", margin: 0 }}>
-                      {q} · {m.label}
+                    <p style={{
+                      fontSize: "11px", fontWeight: 700, margin: 0,
+                      color: active ? m.color : isQ4 ? "#9CA3AF" : "#78716C",
+                    }}>
+                      {ql.main}
                     </p>
-                    <p style={{ fontSize: "10px", color: active ? m.color : "#A8A29E",
-                      margin: "2px 0 0", opacity: 0.85 }}>
-                      {m.sub}
+                    <p style={{
+                      fontSize: "10px", margin: "2px 0 0",
+                      color: active ? m.color : isQ4 ? "#9CA3AF" : "#A8A29E",
+                      opacity: 0.85,
+                    }}>
+                      {ql.hint}
                     </p>
                   </button>
                 );
               })}
             </div>
           </div>
+
+          {/* Delegate to — required when Q3 */}
+          {f.quadrant === "Q3" && (
+            <div style={{ marginBottom: "14px" }}>
+              <Label>Delegate to *</Label>
+              <input
+                value={delegateTo}
+                onChange={(e) => { setDelegateTo(e.target.value); if (delegateNudge) setDelegateNudge(false); }}
+                placeholder="Who will handle this?"
+                style={{
+                  ...inputStyle,
+                  borderColor: delegateNudge ? "#DC2626" : "#E8DDD0",
+                  backgroundColor: delegateNudge ? "#FEF2F2" : "#FFFFFF",
+                }}
+              />
+              {delegateNudge && (
+                <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
+                  👆 You're delegating — someone has to own this!
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Goal link */}
           {goals.length > 0 && (
@@ -235,154 +262,43 @@ export default function TaskCreateSheet({ open, onClose, onSaveTask, onSaveTempl
             </div>
           )}
 
-          {/* ── One-time: deadline ── */}
-          {f.kind === "one-time" && (
-            <div style={{ marginBottom: "14px" }}>
-              <Label>Deadline</Label>
-              <input type="date" value={f.deadline}
-                onChange={(e) => set("deadline", e.target.value)}
-                style={inputStyle} />
-            </div>
-          )}
-
-          {/* ── Recurring: schedule builder ── */}
-          {f.kind === "recurring" && (
-            <div style={{
-              padding: "14px", borderRadius: "10px",
-              backgroundColor: "#FAF5EE", border: "1px solid #EDE5D8",
-            }}>
-              <p style={{ fontSize: "11px", fontWeight: 700, color: "#78716C",
-                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>
-                Schedule
+          {/* Deadline */}
+          <div style={{ marginBottom: "14px" }}>
+            <Label>
+              {f.quadrant === "Q1" ? "Deadline — locked to today 🔒" : "Deadline"}
+            </Label>
+            <input
+              type="date"
+              value={f.deadline}
+              disabled={f.quadrant === "Q1"}
+              onChange={(e) => {
+                if (f.quadrant === "Q1") return;
+                set("deadline", e.target.value);
+              }}
+              style={{
+                ...inputStyle,
+                opacity: f.quadrant === "Q1" ? 0.6 : 1,
+                cursor: f.quadrant === "Q1" ? "not-allowed" : "default",
+                backgroundColor: f.quadrant === "Q1" ? "#FEF2F2" : "#FFFFFF",
+              }}
+            />
+            {f.quadrant === "Q1" && (
+              <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
+                🔥 It's urgent — this one's happening today, no rescheduling!
               </p>
-
-              {/* Schedule type pills */}
-              <div style={{ display: "flex", gap: "6px", marginBottom: "12px", flexWrap: "wrap" }}>
-                {(["daily","weekly","monthly","yearly"] as SchedType[]).map((s) => (
-                  <button key={s} onClick={() => set("scheduleType", s)} style={{
-                    padding: "4px 12px", borderRadius: "20px", border: "none", cursor: "pointer",
-                    fontSize: "11px", fontWeight: 600,
-                    backgroundColor: f.scheduleType === s ? "#F97316" : "#EDE5D8",
-                    color: f.scheduleType === s ? "#FFFFFF" : "#78716C",
-                  }}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              {/* Every N */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                <span style={{ fontSize: "12px", color: "#78716C", whiteSpace: "nowrap" }}>Every</span>
-                <input
-                  type="number" min={1} max={99} value={f.every}
-                  onChange={(e) => set("every", Number(e.target.value))}
-                  style={{ ...inputStyle, width: "60px", textAlign: "center", padding: "6px 8px" }}
-                />
-                <span style={{ fontSize: "12px", color: "#78716C" }}>
-                  {f.scheduleType === "daily" ? "day(s)" :
-                   f.scheduleType === "weekly" ? "week(s)" :
-                   f.scheduleType === "monthly" ? "month(s)" : "year(s)"}
-                </span>
-              </div>
-
-              {/* Weekly: day checkboxes */}
-              {f.scheduleType === "weekly" && (
-                <div style={{ marginBottom: "12px" }}>
-                  <p style={{ fontSize: "11px", color: "#A8A29E", marginBottom: "6px" }}>On days</p>
-                  <div style={{ display: "flex", gap: "5px" }}>
-                    {DAYS_SHORT.map((d, i) => (
-                      <button key={i} onClick={() => toggleDay(i)} style={{
-                        width: "34px", height: "34px", borderRadius: "8px", border: "none",
-                        cursor: "pointer", fontSize: "10px", fontWeight: 700,
-                        backgroundColor: f.days.includes(i) ? "#F97316" : "#EDE5D8",
-                        color: f.days.includes(i) ? "#FFFFFF" : "#78716C",
-                      }}>
-                        {d.charAt(0)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Monthly/Yearly: day of month */}
-              {(f.scheduleType === "monthly" || f.scheduleType === "yearly") && (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                  <span style={{ fontSize: "12px", color: "#78716C" }}>On day</span>
-                  <input
-                    type="number" min={1} max={31} value={f.monthDay}
-                    onChange={(e) => set("monthDay", Number(e.target.value))}
-                    style={{ ...inputStyle, width: "60px", textAlign: "center", padding: "6px 8px" }}
-                  />
-                  {f.scheduleType === "yearly" && (
-                    <>
-                      <span style={{ fontSize: "12px", color: "#78716C" }}>of</span>
-                      <select value={f.month} onChange={(e) => set("month", Number(e.target.value))}
-                        style={{ ...inputStyle, width: "90px", padding: "6px 8px" }}>
-                        {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
-                      </select>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Time (optional) */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                <span style={{ fontSize: "12px", color: "#78716C", whiteSpace: "nowrap" }}>At time</span>
-                <input type="time" value={f.time}
-                  onChange={(e) => set("time", e.target.value)}
-                  style={{ ...inputStyle, width: "120px", padding: "6px 8px" }}
-                />
-                <span style={{ fontSize: "10px", color: "#A8A29E" }}>(optional)</span>
-              </div>
-
-              {/* Start date */}
-              <div style={{ marginBottom: "12px" }}>
-                <p style={{ fontSize: "11px", color: "#A8A29E", marginBottom: "4px" }}>Start date</p>
-                <input type="date" value={f.startDate}
-                  onChange={(e) => set("startDate", e.target.value)}
-                  style={inputStyle} />
-              </div>
-
-              {/* End condition */}
-              <div>
-                <p style={{ fontSize: "11px", color: "#A8A29E", marginBottom: "6px" }}>Ends</p>
-                <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-                  {([["never","Never"],["on-date","On date"],["after-n","After N"]] as [EndCond, string][]).map(
-                    ([val, label]) => (
-                      <button key={val} onClick={() => set("endCondition", val)} style={{
-                        padding: "4px 12px", borderRadius: "20px", border: "none", cursor: "pointer",
-                        fontSize: "11px", fontWeight: 600,
-                        backgroundColor: f.endCondition === val ? "#F97316" : "#EDE5D8",
-                        color: f.endCondition === val ? "#FFFFFF" : "#78716C",
-                      }}>
-                        {label}
-                      </button>
-                    )
-                  )}
-                </div>
-                {f.endCondition === "on-date" && (
-                  <input type="date" value={f.endDate}
-                    onChange={(e) => set("endDate", e.target.value)}
-                    style={inputStyle} />
-                )}
-                {f.endCondition === "after-n" && (
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <input type="number" min={1} max={999} value={f.endAfter}
-                      onChange={(e) => set("endAfter", Number(e.target.value))}
-                      style={{ ...inputStyle, width: "70px", textAlign: "center", padding: "6px 8px" }}
-                    />
-                    <span style={{ fontSize: "12px", color: "#78716C" }}>occurrences</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+            )}
+            {q2TodayNudge && (
+              <p style={{ fontSize: "11px", color: "#D97706", fontWeight: 500, marginTop: "5px" }}>
+                ⚡ Scheduling something for today? If it's truly urgent, move it to "Urgent + Important" instead!
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
         <div style={{
           padding: "14px 20px", borderTop: "1px solid #EDE5D8",
-          display: "flex", gap: "8px",
+          display: "flex", gap: "8px", flexShrink: 0,
         }}>
           <button onClick={onClose} style={{
             flex: 1, padding: "10px", borderRadius: "10px",
@@ -397,7 +313,7 @@ export default function TaskCreateSheet({ open, onClose, onSaveTask, onSaveTempl
             fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
             boxShadow: "0 2px 8px rgba(249,115,22,0.3)",
           }}>
-            {f.kind === "recurring" ? "Create recurring task" : "Add task"}
+            Add Task
           </button>
         </div>
       </div>

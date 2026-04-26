@@ -2,49 +2,61 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  Plus, LayoutGrid, Calendar, BarChart2, CheckSquare,
-  Archive, RefreshCw, Search, X,
+  Plus, LayoutGrid, Calendar, BarChart2,
+  Archive, Search, X,
+  // RECURRING_DISABLED: RefreshCw, CheckSquare,
 } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import EisenhowerMatrix from "@/components/tasks/EisenhowerMatrix";
 import ScheduleView     from "@/components/tasks/ScheduleView";
 import CalendarView     from "@/components/tasks/CalendarView";
 import ClosedView       from "@/components/tasks/ClosedView";
-import TemplatesView    from "@/components/tasks/TemplatesView";
+// RECURRING_DISABLED: import TemplatesView from "@/components/tasks/TemplatesView";
 import AnalyticsPanel   from "@/components/tasks/AnalyticsPanel";
 import TaskCreateSheet  from "@/components/tasks/TaskCreateSheet";
+import TaskDetailSheet  from "@/components/tasks/TaskDetailSheet";
 import TaskCard, { toTaskDate } from "@/components/tasks/TaskCard";
-import type { RecurringTemplate } from "@/components/tasks/TaskCard";
+import type { TaskData } from "@/components/tasks/TaskCard";
+// RECURRING_DISABLED: import type { RecurringTemplate } from "@/components/tasks/TaskCard";
 
-type View = "matrix" | "schedule" | "calendar" | "closed" | "templates" | "analytics";
+type View = "matrix" | "schedule" | "calendar" | "closed" | "analytics"; // RECURRING_DISABLED: | "templates"
 
 const VIEWS: { value: View; icon: React.ElementType; label: string }[] = [
   { value: "matrix",    icon: LayoutGrid,  label: "Matrix"    },
   { value: "schedule",  icon: Calendar,    label: "Schedule"  },
   { value: "calendar",  icon: Calendar,    label: "Calendar"  },
   { value: "closed",    icon: Archive,     label: "Closed"    },
-  { value: "templates", icon: RefreshCw,   label: "Templates" },
+  // RECURRING_DISABLED: { value: "templates", icon: RefreshCw, label: "Templates" },
   { value: "analytics", icon: BarChart2,   label: "Analytics" },
 ];
 
 export default function TasksPage() {
   const {
-    goals, tasks, templates,
-    addTask, closeTask, reopenTask,
-    addTemplate, updateTemplate, deleteTemplate, spawnInstances,
+    goals, tasks,
+    // RECURRING_DISABLED: templates, addTemplate, updateTemplate, deleteTemplate, spawnInstances,
+    addTask, updateTask, closeTask, reopenTask,
   } = useAppStore();
 
-  const [view,        setView]        = useState<View>("matrix");
-  const [createOpen,  setCreateOpen]  = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchOpen,  setSearchOpen]  = useState(false);
+  const [view,         setView]         = useState<View>("matrix");
+  const [createOpen,   setCreateOpen]   = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
+  const [searchQuery,  setSearchQuery]  = useState("");
+  const [searchOpen,   setSearchOpen]   = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { spawnInstances(30); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // RECURRING_DISABLED: useEffect(() => { spawnInstances(30); }, []);
 
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
   }, [searchOpen]);
+
+  // Keep selectedTask in sync with store updates
+  useEffect(() => {
+    if (!selectedTask) return;
+    const updated = tasks.find((t) => t.id === selectedTask.id);
+    if (updated) setSelectedTask(updated);
+    else setSelectedTask(null);
+  }, [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const today       = toTaskDate();
   const open        = tasks.filter((t) => t.status === "open");
@@ -55,7 +67,6 @@ export default function TasksPage() {
   const successRate = closed.length > 0
     ? Math.round((complete.length / closed.length) * 100) : 0;
 
-  // Search results
   const q = searchQuery.trim().toLowerCase();
   const searchResults = q
     ? tasks.filter((t) =>
@@ -64,14 +75,12 @@ export default function TasksPage() {
       )
     : [];
 
+  /* RECURRING_DISABLED — template save handler
   function handleSaveTemplate(tpl: RecurringTemplate) {
     addTemplate(tpl);
     spawnInstances(30);
   }
-
-  function openRecurringCreate() {
-    setCreateOpen(true);
-  }
+  RECURRING_DISABLED */
 
   function clearSearch() {
     setSearchQuery("");
@@ -81,7 +90,6 @@ export default function TasksPage() {
   const showSearch = q.length > 0;
 
   return (
-    // height: 100% → constrained by AppShell's flex-1 main, enabling internal scroll in all views
     <div style={{ height: "100%", backgroundColor: "#FAF5EE",
       display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
@@ -116,15 +124,13 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Toolbar: view tabs + search */}
+      {/* Toolbar */}
       <div style={{ padding: "10px 28px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", gap: "6px", flexShrink: 0, flexWrap: "nowrap" }}>
 
-        {/* View tabs */}
         {!searchOpen && VIEWS.map(({ value, icon: Icon, label }) => {
-          const badge =
-            value === "closed"    ? closed.length :
-            value === "templates" ? templates.length : null;
+          // RECURRING_DISABLED: const badge = value === "closed" ? closed.length : value === "templates" ? templates.length : null;
+          const badge = value === "closed" ? closed.length : null;
           return (
             <button key={value} onClick={() => setView(value)} style={{
               display: "flex", alignItems: "center", gap: "5px",
@@ -150,7 +156,6 @@ export default function TasksPage() {
           );
         })}
 
-        {/* Overdue badge */}
         {!searchOpen && overdue.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: "5px",
             padding: "4px 10px", borderRadius: "20px",
@@ -165,7 +170,6 @@ export default function TasksPage() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Search */}
         {searchOpen ? (
           <div style={{ display: "flex", alignItems: "center", gap: "6px",
             flex: 1, maxWidth: "360px" }}>
@@ -210,10 +214,10 @@ export default function TasksPage() {
         display: "flex", flexDirection: "column" }}>
 
         {showSearch ? (
-          // Search results
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <p style={{ fontSize: "12px", color: "#78716C", marginBottom: "12px", flexShrink: 0 }}>
-              <span style={{ fontWeight: 700, color: "#1C1917" }}>{searchResults.length}</span> result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchQuery}&rdquo;
+              <span style={{ fontWeight: 700, color: "#1C1917" }}>{searchResults.length}</span>{" "}
+              result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchQuery}&rdquo;
             </p>
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
               {searchResults.length === 0 ? (
@@ -223,6 +227,7 @@ export default function TasksPage() {
               ) : (
                 searchResults.map((t) => (
                   <TaskCard key={t.id} task={t}
+                    onClick={() => setSelectedTask(t)}
                     onComplete={(id) => closeTask(id, "complete")}
                     onMiss={(id) => closeTask(id, "incomplete")}
                   />
@@ -235,6 +240,7 @@ export default function TasksPage() {
             tasks={tasks}
             onComplete={(id) => closeTask(id, "complete")}
             onMiss={(id) => closeTask(id, "incomplete")}
+            onSelect={(t) => setSelectedTask(t)}
           />
         ) : view === "schedule" ? (
           <ScheduleView tasks={tasks}
@@ -249,16 +255,8 @@ export default function TasksPage() {
           />
         ) : view === "closed" ? (
           <ClosedView tasks={tasks} onReopen={reopenTask} />
-        ) : view === "templates" ? (
-          <TemplatesView
-            templates={templates}
-            tasks={tasks}
-            onUpdate={updateTemplate}
-            onDelete={deleteTemplate}
-            onAddRecurring={openRecurringCreate}
-          />
-        ) : (
-          <AnalyticsPanel tasks={tasks} templates={templates} />
+        ) : /* RECURRING_DISABLED: view === "templates" — TemplatesView removed */ (
+          <AnalyticsPanel tasks={tasks} />
         )}
       </div>
 
@@ -266,8 +264,18 @@ export default function TasksPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSaveTask={addTask}
-        onSaveTemplate={handleSaveTemplate}
+        onSaveTemplate={() => { /* RECURRING_DISABLED */ }}
         goals={goals}
+      />
+
+      <TaskDetailSheet
+        task={selectedTask}
+        goals={goals}
+        onClose={() => setSelectedTask(null)}
+        onComplete={(id) => closeTask(id, "complete")}
+        onMiss={(id) => closeTask(id, "incomplete")}
+        onReopen={reopenTask}
+        onUpdate={updateTask}
       />
     </div>
   );
