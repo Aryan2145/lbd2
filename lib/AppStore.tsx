@@ -7,6 +7,9 @@ import type { TaskData, RecurringTemplate } from "@/components/tasks/TaskCard";
 import { toTaskDate } from "@/components/tasks/TaskCard";
 import type { EventGroup, WeekEvent, WeekPlan } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
+import type { DayIntention, EveningReflection, WeeklyReview } from "@/lib/dayTypes";
+import type { BucketEntry } from "@/lib/bucketTypes";
+import type { SupportTicket } from "@/lib/ticketTypes";
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 function fromStorage<T>(key: string, fallback: () => T): T {
@@ -379,15 +382,103 @@ function seedWeekPlans(): WeekPlan[] {
   }];
 }
 
+// ── Seed bucket list ──────────────────────────────────────────────────────────
+function seedBucketEntries(): BucketEntry[] {
+  const now = Date.now();
+  return [
+    {
+      id: "bl1",
+      title: "Witness the Northern Lights in Iceland",
+      description: "Standing beneath an electric sky — greens, purples, and whites dancing overhead. A winter trip to Reykjavik with my partner. This represents wonder and the vast beauty of life beyond the office.",
+      lifeArea: "Personal", imageUrl: "", targetDate: "2027",
+      status: "dreaming", createdAt: now - 30 * 86_400_000,
+    },
+    {
+      id: "bl2",
+      title: "Trek to Everest Base Camp",
+      description: "54 km through the Himalayas to 5,364 m altitude. With 4 close friends who share the same love for the edge of comfort. This represents what my body and mind are capable of when I stop negotiating.",
+      lifeArea: "Health", imageUrl: "", targetDate: "2026 Q4",
+      status: "planning", createdAt: now - 45 * 86_400_000,
+    },
+    {
+      id: "bl3",
+      title: "Publish a business book",
+      description: "A practical guide to building profitable businesses in India — from raw idea to sustainable scale. The book I would have wanted when I was starting out. With the RGB team's stories woven in.",
+      lifeArea: "Work", imageUrl: "", targetDate: "2027",
+      status: "planning", createdAt: now - 20 * 86_400_000,
+    },
+    {
+      id: "bl4",
+      title: "Build a school in a rural village",
+      description: "Partner with a trusted NGO to fund and construct a primary school. Something the RGB team builds together — proof that business can be a force for lasting good.",
+      lifeArea: "Spiritual", imageUrl: "", targetDate: "2028",
+      status: "dreaming", createdAt: now - 15 * 86_400_000,
+    },
+    {
+      id: "bl5",
+      title: "Live abroad for 6 months",
+      description: "Pick a city — Lisbon, Tokyo, or Buenos Aires — and live like a local. Work remotely, learn the language basics, understand how another culture sees the world. With full family in tow.",
+      lifeArea: "Family", imageUrl: "", targetDate: "2028",
+      status: "dreaming", createdAt: now - 10 * 86_400_000,
+    },
+    {
+      id: "bl6",
+      title: "Start my own business",
+      description: "Leave a stable salary and build something from scratch — a company that solves real problems and creates meaningful livelihoods for a team I'm proud of.",
+      lifeArea: "Work", imageUrl: "", targetDate: "2022",
+      status: "achieved", createdAt: now - 3 * 365 * 86_400_000,
+      achievedAt: now - 730 * 86_400_000,
+      memoryPhotoUrl: "",
+      changeReflection: "It taught me that the gap between dreaming and doing is just one decision. I discovered parts of myself I didn't know existed — a builder, a leader, someone who could hold people's livelihoods with care. Nothing has been the same since, and I wouldn't change a single hard day.",
+    },
+  ];
+}
+
+function seedTickets(): SupportTicket[] {
+  const n = Date.now();
+  return [
+    {
+      id: "LEG-00001",
+      title: "Habit toggle unresponsive on mobile",
+      category: "bug",
+      priority: "high",
+      status: "resolved",
+      messages: [
+        { id: "tm1", authorType: "user", body: "When I tap a habit in the Daily view on my phone the toggle doesn't respond. Works fine on desktop.", createdAt: n - 5 * 86_400_000 },
+        { id: "tm2", authorType: "admin", body: "Thanks for reporting! This was a touch event issue in HabitToggle. Fixed — please refresh and let us know.", createdAt: n - 4 * 86_400_000 },
+        { id: "tm3", authorType: "user", body: "Works perfectly now, thank you!", createdAt: n - 3 * 86_400_000 },
+      ],
+      createdAt: n - 5 * 86_400_000,
+      updatedAt: n - 3 * 86_400_000,
+      resolvedAt: n - 3 * 86_400_000,
+    },
+    {
+      id: "LEG-00002",
+      title: "Export weekly review to PDF",
+      category: "feature",
+      priority: "medium",
+      status: "open",
+      messages: [
+        { id: "tm4", authorType: "user", body: "It would be great to export my weekly review as a PDF to print or share. Is this on the roadmap?", createdAt: n - 2 * 86_400_000 },
+      ],
+      createdAt: n - 2 * 86_400_000,
+      updatedAt: n - 2 * 86_400_000,
+    },
+  ];
+}
+
 // ── Context ───────────────────────────────────────────────────────────────────
 interface AppState {
   goals:       GoalData[];
   habits:      HabitData[];
   tasks:       TaskData[];
   templates:   RecurringTemplate[];
-  eventGroups: EventGroup[];
-  weekEvents:  WeekEvent[];
-  weekPlans:   WeekPlan[];
+  eventGroups:        EventGroup[];
+  weekEvents:         WeekEvent[];
+  weekPlans:          WeekPlan[];
+  dayIntentions:      DayIntention[];
+  eveningReflections: EveningReflection[];
+  weeklyReviews:      WeeklyReview[];
   // Goal actions
   addGoal:    (g: GoalData) => void;
   updateGoal: (g: GoalData) => void;
@@ -401,6 +492,7 @@ interface AppState {
   stepHabitToday:      (id: string, delta: number) => void;
   // Task actions
   addTask:        (t: TaskData) => void;
+  updateTask:     (t: TaskData) => void;
   closeTask:      (id: string, outcome: "complete" | "incomplete") => void;
   reopenTask:     (id: string) => void;
   addTemplate:    (t: RecurringTemplate) => void;
@@ -416,7 +508,22 @@ interface AppState {
   updateWeekEvent:  (e: WeekEvent)  => void;
   deleteWeekEvent:  (id: string)    => void;
   // Week plan
-  upsertWeekPlan:   (p: WeekPlan)   => void;
+  upsertWeekPlan:          (p: WeekPlan)          => void;
+  // Day module
+  upsertDayIntention:      (d: DayIntention)      => void;
+  upsertEveningReflection: (r: EveningReflection) => void;
+  // Weekly review
+  upsertWeeklyReview:      (r: WeeklyReview)      => void;
+  // Bucket list
+  bucketEntries:     BucketEntry[];
+  addBucketEntry:    (e: BucketEntry) => void;
+  updateBucketEntry: (e: BucketEntry) => void;
+  deleteBucketEntry: (id: string)     => void;
+  // Support tickets
+  tickets:       SupportTicket[];
+  addTicket:     (t: SupportTicket) => void;
+  updateTicket:  (t: SupportTicket) => void;
+  deleteTicket:  (id: string)       => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -426,8 +533,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [habits,      setHabits]      = useState<HabitData[]>(()          => fromStorage("lbd_habits",    seedHabits));
   const [tasks,       setTasks]       = useState<TaskData[]>(()           => fromStorage("lbd_tasks",     seedTasks));
   const [templates,   setTemplates]   = useState<RecurringTemplate[]>(()  => fromStorage("lbd_templates", seedTemplates));
-  const [weekEvents,  setWeekEvents]  = useState<WeekEvent[]>(()          => fromStorage("lbd_weekEvents",seedWeekEvents));
-  const [weekPlans,   setWeekPlans]   = useState<WeekPlan[]>(()           => fromStorage("lbd_weekPlans", seedWeekPlans));
+  const [weekEvents,         setWeekEvents]         = useState<WeekEvent[]>(()         => fromStorage("lbd_weekEvents",         seedWeekEvents));
+  const [weekPlans,          setWeekPlans]          = useState<WeekPlan[]>(()          => fromStorage("lbd_weekPlans",          seedWeekPlans));
+  const [dayIntentions,      setDayIntentions]      = useState<DayIntention[]>(()      => fromStorage("lbd_dayIntentions",      () => []));
+  const [eveningReflections, setEveningReflections] = useState<EveningReflection[]>(() => fromStorage("lbd_eveningReflections", () => []));
+  const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>(()      => fromStorage("lbd_weeklyReviews",      () => []));
+  const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>(()       => fromStorage("lbd_bucketEntries",      seedBucketEntries));
+  const [tickets,            setTickets]            = useState<SupportTicket[]>(()     => fromStorage("lbd_tickets",            seedTickets));
   const [eventGroups, setEventGroups] = useState<EventGroup[]>(() => {
     const groups = fromStorage("lbd_eventGroups", seedEventGroups);
     // Always ensure the system General group exists
@@ -443,8 +555,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => { localStorage.setItem("lbd_tasks",       JSON.stringify(tasks));       }, [tasks]);
   useEffect(() => { localStorage.setItem("lbd_templates",   JSON.stringify(templates));   }, [templates]);
   useEffect(() => { localStorage.setItem("lbd_eventGroups", JSON.stringify(eventGroups)); }, [eventGroups]);
-  useEffect(() => { localStorage.setItem("lbd_weekEvents",  JSON.stringify(weekEvents));  }, [weekEvents]);
-  useEffect(() => { localStorage.setItem("lbd_weekPlans",   JSON.stringify(weekPlans));   }, [weekPlans]);
+  useEffect(() => { localStorage.setItem("lbd_weekEvents",         JSON.stringify(weekEvents));         }, [weekEvents]);
+  useEffect(() => { localStorage.setItem("lbd_weekPlans",          JSON.stringify(weekPlans));          }, [weekPlans]);
+  useEffect(() => { localStorage.setItem("lbd_dayIntentions",      JSON.stringify(dayIntentions));      }, [dayIntentions]);
+  useEffect(() => { localStorage.setItem("lbd_eveningReflections", JSON.stringify(eveningReflections)); }, [eveningReflections]);
+  useEffect(() => { localStorage.setItem("lbd_weeklyReviews",      JSON.stringify(weeklyReviews));      }, [weeklyReviews]);
+  useEffect(() => { localStorage.setItem("lbd_bucketEntries",      JSON.stringify(bucketEntries));      }, [bucketEntries]);
+  useEffect(() => { localStorage.setItem("lbd_tickets",            JSON.stringify(tickets));            }, [tickets]);
 
   const updateHabitById = (id: string, fn: (h: HabitData) => HabitData) =>
     setHabits((prev) => prev.map((h) => h.id === id ? fn(h) : h));
@@ -457,8 +574,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templates]);
 
+  function upsertBy<T>(setter: (fn: (prev: T[]) => T[]) => void, key: keyof T, item: T) {
+    setter((prev) => {
+      const idx = prev.findIndex((x) => x[key] === item[key]);
+      return idx >= 0 ? prev.map((x, i) => (i === idx ? item : x)) : [...prev, item];
+    });
+  }
+
   const ctx: AppState = {
     goals, habits, tasks, templates, eventGroups, weekEvents, weekPlans,
+    dayIntentions, eveningReflections, weeklyReviews, bucketEntries,
 
     addGoal:    (g) => setGoals((p) => [...p, g]),
     updateGoal: (g) => setGoals((p) => p.map((x) => x.id === g.id ? g : x)),
@@ -491,7 +616,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
     },
 
-    addTask: (t) => setTasks((p) => [...p, t]),
+    addTask:    (t) => setTasks((p) => [...p, t]),
+    updateTask: (t) => setTasks((p) => p.map((x) => x.id === t.id ? t : x)),
 
     reopenTask: (id) =>
       setTasks((prev) => prev.map((t) =>
@@ -541,6 +667,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const idx = prev.findIndex((p) => p.weekStart === plan.weekStart);
       return idx >= 0 ? prev.map((p, i) => i === idx ? plan : p) : [...prev, plan];
     }),
+
+    upsertDayIntention:      (d) => upsertBy(setDayIntentions,      "date",      d),
+    upsertEveningReflection: (r) => upsertBy(setEveningReflections, "date",      r),
+    upsertWeeklyReview:      (r) => upsertBy(setWeeklyReviews,      "weekStart", r),
+
+    addBucketEntry:    (e) => setBucketEntries((p) => [...p, e]),
+    updateBucketEntry: (e) => setBucketEntries((p) => p.map((x) => x.id === e.id ? e : x)),
+    deleteBucketEntry: (id) => setBucketEntries((p) => p.filter((x) => x.id !== id)),
+
+    tickets,
+    addTicket:    (t) => setTickets((p) => [...p, t]),
+    updateTicket: (t) => setTickets((p) => p.map((x) => x.id === t.id ? t : x)),
+    deleteTicket: (id) => setTickets((p) => p.filter((x) => x.id !== id)),
   };
 
   return <AppContext.Provider value={ctx}>{children}</AppContext.Provider>;

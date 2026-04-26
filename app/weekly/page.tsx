@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, LayoutGrid, AlignJustify } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
-import WeekSidebar      from "@/components/weekly/WeekSidebar";
-import WeeklyGrid       from "@/components/weekly/WeeklyGrid";
-import AgendaView       from "@/components/weekly/AgendaView";
-import EventCreateSheet from "@/components/weekly/EventCreateSheet";
-import TaskDetailSheet  from "@/components/tasks/TaskDetailSheet";
+import WeekSidebar        from "@/components/weekly/WeekSidebar";
+import WeeklyGrid         from "@/components/weekly/WeeklyGrid";
+import AgendaView         from "@/components/weekly/AgendaView";
+import EventCreateSheet   from "@/components/weekly/EventCreateSheet";
+import WeeklyReviewSheet  from "@/components/weekly/WeeklyReviewSheet";
+import TaskDetailSheet    from "@/components/tasks/TaskDetailSheet";
 import type { WeekEvent } from "@/lib/weeklyTypes";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import { toTaskDate } from "@/components/tasks/TaskCard";
@@ -50,9 +51,10 @@ export default function WeeklyPage() {
   const {
     goals, tasks, habits,
     eventGroups, weekEvents, weekPlans,
+    weeklyReviews,
     addEventGroup, updateEventGroup, deleteEventGroup,
     addWeekEvent, updateWeekEvent, deleteWeekEvent,
-    upsertWeekPlan, closeTask, reopenTask,
+    upsertWeekPlan, upsertWeeklyReview, closeTask, reopenTask,
   } = useAppStore();
 
   const [weekStart,    setWeekStart]    = useState(() => getWeekStart());
@@ -62,6 +64,7 @@ export default function WeeklyPage() {
   const [newEventDate, setNewEventDate] = useState("");
   const [newEventTime, setNewEventTime] = useState("");
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
+  const [reviewOpen,   setReviewOpen]   = useState(false);
 
   const weekNum   = getISOWeekNum(weekStart);
   const dateRange = formatDateRange(weekStart);
@@ -99,7 +102,8 @@ export default function WeeklyPage() {
     setNewEventTime("");
   }
 
-  const isCurrentWeek = weekStart === getWeekStart();
+  const isCurrentWeek  = weekStart === getWeekStart();
+  const currentReview  = weeklyReviews.find((r) => r.weekStart === weekStart) ?? null;
 
   return (
     <div style={{
@@ -174,6 +178,8 @@ export default function WeeklyPage() {
           onAddGroup={addEventGroup}
           onUpdateGroup={updateEventGroup}
           onDeleteGroup={deleteEventGroup}
+          hasReview={currentReview !== null}
+          onOpenReview={() => setReviewOpen(true)}
         />
 
         {weekView === "grid" ? (
@@ -222,6 +228,17 @@ export default function WeeklyPage() {
         onComplete={(id) => { closeTask(id, "complete"); }}
         onMiss={(id) => { closeTask(id, "incomplete"); }}
         onReopen={reopenTask}
+      />
+
+      <WeeklyReviewSheet
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        weekStart={weekStart}
+        review={currentReview}
+        onSave={upsertWeeklyReview}
+        weekEvents={thisWeekEvents}
+        tasks={tasks}
+        habits={habits}
       />
     </div>
   );

@@ -66,7 +66,9 @@ export default function EventCreateSheet({
   const newStart = toMins(startTime);
   const newEnd   = toMins(endTime);
 
-  const conflicts: WeekEvent[] = date
+  const timeInvalid = newStart >= newEnd;
+
+  const conflicts: WeekEvent[] = date && !timeInvalid
     ? existingEvents.filter((e) => {
         if (e.date !== date) return false;
         if (e.id === editEvent?.id) return false;
@@ -77,7 +79,7 @@ export default function EventCreateSheet({
     : [];
 
   // Back-to-back: preceding event ends within 14 min of new start (no overlap)
-  const backToBack: WeekEvent | null = conflicts.length === 0 && date
+  const backToBack: WeekEvent | null = conflicts.length === 0 && !timeInvalid && date
     ? existingEvents.find((e) => {
         if (e.date !== date) return false;
         if (e.id === editEvent?.id) return false;
@@ -86,7 +88,7 @@ export default function EventCreateSheet({
       }) ?? null
     : null;
 
-  const canSave = title.trim().length > 0 && date.length > 0 && conflicts.length === 0;
+  const canSave = title.trim().length > 0 && date.length > 0 && !timeInvalid && conflicts.length === 0;
 
   function handleSave() {
     if (!canSave) return;
@@ -155,6 +157,20 @@ export default function EventCreateSheet({
             <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inp} />
           </div>
         </div>
+
+        {/* ── Time order error (hard block) ── */}
+        {timeInvalid && (
+          <div style={{
+            marginBottom: "14px", padding: "10px 14px", borderRadius: "10px",
+            backgroundColor: "#FEF2F2", border: "1.5px solid #FCA5A5",
+            display: "flex", gap: "9px", alignItems: "center",
+          }}>
+            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: "12px", fontWeight: 700, color: "#DC2626", margin: 0 }}>
+              End time must be after start time.
+            </p>
+          </div>
+        )}
 
         {/* ── Conflict warning (hard block) ── */}
         {conflicts.length > 0 && (
@@ -288,9 +304,9 @@ export default function EventCreateSheet({
             )}
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            {conflicts.length > 0 && (
+            {(timeInvalid || conflicts.length > 0) && (
               <span style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600 }}>
-                Resolve conflict to continue
+                {timeInvalid ? "Fix time order to continue" : "Resolve conflict to continue"}
               </span>
             )}
             <button onClick={onClose} style={{

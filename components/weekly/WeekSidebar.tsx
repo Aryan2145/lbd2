@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Plus, X, Check, Pencil, Trash2, AlertTriangle, Calendar } from "lucide-react";
 import type { WeekPlan, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
+import { ClipboardList } from "lucide-react";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import { fmtDeadline } from "@/components/tasks/TaskCard";
 
@@ -16,6 +17,8 @@ interface Props {
   onAddGroup:      (g: EventGroup) => void;
   onUpdateGroup:   (g: EventGroup) => void;
   onDeleteGroup:   (id: string)    => void;
+  hasReview:       boolean;
+  onOpenReview:    () => void;
 }
 
 const GROUP_COLORS = [
@@ -42,6 +45,7 @@ function weekLabel(weekStart: string): { num: number; range: string } {
 export default function WeekSidebar({
   weekStart, plan, eventGroups, overdueTasks,
   onUpdatePlan, onAddGroup, onUpdateGroup, onDeleteGroup,
+  hasReview, onOpenReview,
 }: Props) {
   const { num, range } = weekLabel(weekStart);
 
@@ -337,8 +341,30 @@ export default function WeekSidebar({
           </section>
         )}
 
-        {/* Google Calendar placeholder */}
+        {/* Weekly Review */}
         <section style={{ marginTop: "auto" }}>
+          <button onClick={onOpenReview} style={{
+            width: "100%", padding: "9px 12px", borderRadius: "10px",
+            border: `1.5px solid ${hasReview ? "#BBF7D0" : "#FED7AA"}`,
+            backgroundColor: hasReview ? "#F0FDF4" : "#FFF7ED",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            fontSize: "11px", fontWeight: 700,
+            color: hasReview ? "#15803D" : "#F97316",
+            cursor: "pointer", marginBottom: "8px",
+          }}>
+            <ClipboardList size={12} />
+            {hasReview ? "✓ Review Done · Edit" : "Write Week Review"}
+            {!hasReview && (
+              <span style={{
+                width: 6, height: 6, borderRadius: "50%",
+                backgroundColor: "#F97316", flexShrink: 0,
+              }} />
+            )}
+          </button>
+        </section>
+
+        {/* Google Calendar placeholder */}
+        <section>
           <button style={{
             width: "100%", padding: "9px 12px", borderRadius: "10px",
             border: "1.5px dashed #E8DDD0", backgroundColor: "#FAFAFA",

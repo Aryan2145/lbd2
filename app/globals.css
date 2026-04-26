@@ -128,3 +128,34 @@ body {
 .sparkle {
   animation: sparkleFloat 1.2s ease-out forwards;
 }
+
+/* ── Bucket List – Legacy Moment card flip ── */
+@keyframes legacyGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3); }
+  50%       { box-shadow: 0 0 40px 8px rgba(249, 115, 22, 0.15); }
+}
+
+.bucket-flip-scene { perspective: 1400px; }
+
+.bucket-flip-card {
+  position: relative;
+  min-height: 520px;
+  transform-style: preserve-3d;
+  transition: transform 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bucket-flip-card.is-flipped { transform: rotateY(180deg); }
+
+.bucket-flip-front,
+.bucket-flip-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  overflow-y: auto;
+}
+
+.bucket-flip-back { transform: rotateY(180deg); }
+
+.legacy-glow { animation: legacyGlow 2.5s ease-in-out infinite; }
