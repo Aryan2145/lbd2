@@ -1,0 +1,147 @@
+"use client";
+
+import { X, Calendar, RefreshCw, Target } from "lucide-react";
+import type { TaskData } from "@/components/tasks/TaskCard";
+import { Q_META, fmtDeadline } from "@/components/tasks/TaskCard";
+import type { GoalData } from "@/components/goals/GoalCard";
+
+interface Props {
+  task:       TaskData | null;
+  goals:      GoalData[];
+  onClose:    () => void;
+  onComplete: (id: string) => void;
+  onMiss:     (id: string) => void;
+  onReopen?:  (id: string) => void;
+}
+
+export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMiss, onReopen }: Props) {
+  if (!task) return null;
+
+  const m          = Q_META[task.quadrant];
+  const linkedGoal = goals.find((g) => g.id === task.linkedGoalId);
+  const isOpen     = task.status === "open";
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 60,
+      }} />
+
+      <div style={{
+        position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
+        width: "100%", maxWidth: "520px",
+        backgroundColor: "#FFFFFF", borderRadius: "20px 20px 0 0",
+        padding: "28px", zIndex: 61,
+        boxShadow: "0 -8px 40px rgba(0,0,0,0.2)",
+      }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "20px" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
+              <span style={{
+                fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "20px",
+                color: m.color, backgroundColor: m.bg, border: `1px solid ${m.border}`,
+              }}>
+                {task.quadrant} · {m.label}
+              </span>
+              {task.kind === "instance" && (
+                <span style={{
+                  fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "20px",
+                  color: "#78716C", backgroundColor: "#F3F4F6",
+                  display: "flex", alignItems: "center", gap: "4px",
+                }}>
+                  <RefreshCw size={9} /> Recurring
+                </span>
+              )}
+              <span style={{
+                fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "20px",
+                color: task.status === "complete" ? "#16A34A" : task.status === "incomplete" ? "#9CA3AF" : "#F97316",
+                backgroundColor: task.status === "complete" ? "#F0FDF4" : task.status === "incomplete" ? "#F9FAFB" : "#FFF7ED",
+              }}>
+                {task.status === "complete" ? "Completed" : task.status === "incomplete" ? "Missed" : "Open"}
+              </span>
+            </div>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#1C1917", margin: 0, lineHeight: 1.3 }}>
+              {task.title}
+            </h2>
+          </div>
+          <button onClick={onClose} style={{
+            width: 30, height: 30, borderRadius: 8, border: "1px solid #EDE5D8",
+            backgroundColor: "#FAFAFA", display: "flex", alignItems: "center",
+            justifyContent: "center", cursor: "pointer", flexShrink: 0,
+          }}>
+            <X size={14} color="#78716C" />
+          </button>
+        </div>
+
+        {/* Description */}
+        {task.description && (
+          <p style={{ fontSize: "13px", color: "#57534E", lineHeight: 1.65, marginBottom: "16px" }}>
+            {task.description}
+          </p>
+        )}
+
+        {/* Due date */}
+        <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "20px" }}>
+          <Calendar size={13} color="#A8A29E" />
+          <span style={{ fontSize: "12px", color: "#57534E", fontWeight: 500 }}>
+            Due {fmtDeadline(task.deadline)}
+          </span>
+        </div>
+
+        {/* Linked goal */}
+        {linkedGoal && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: "10px",
+            padding: "10px 14px", borderRadius: "10px",
+            backgroundColor: "#FFF7ED", border: "1px solid #FED7AA",
+            marginBottom: "20px",
+          }}>
+            <Target size={14} color="#F97316" />
+            <div>
+              <p style={{ fontSize: "9px", fontWeight: 700, color: "#F97316",
+                textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>
+                Linked Goal
+              </p>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", margin: 0 }}>
+                {linkedGoal.outcome}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: "8px" }}>
+          {isOpen ? (
+            <>
+              <button onClick={() => { onComplete(task.id); onClose(); }} style={{
+                flex: 1, padding: "11px", borderRadius: "10px", border: "none",
+                background: "linear-gradient(135deg, #16A34A, #15803D)",
+                fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
+              }}>
+                Mark Done ✓
+              </button>
+              <button onClick={() => { onMiss(task.id); onClose(); }} style={{
+                flex: 1, padding: "11px", borderRadius: "10px",
+                border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+                fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer",
+              }}>
+                Mark Missed
+              </button>
+            </>
+          ) : (
+            onReopen && (
+              <button onClick={() => { onReopen(task.id); onClose(); }} style={{
+                flex: 1, padding: "11px", borderRadius: "10px",
+                border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+                fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer",
+              }}>
+                Reopen Task
+              </button>
+            )
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
