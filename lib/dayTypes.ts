@@ -58,22 +58,60 @@ export const MOODS: { emoji: MoodEmoji; label: string; color: string }[] = [
   { emoji: "😤", label: "Rough",   color: "#EF4444" },
 ];
 
+export interface StuckEntry {
+  id:        string;
+  text:      string;
+  resolved:  boolean;
+  createdAt: number;
+}
+
 export interface EveningReflection {
   date:         string;                    // YYYY-MM-DD
   energyLevel:  number;                    // 1–10
   mood:         MoodEmoji | "";
   highlights:   string;
   keyLearnings: string;
-  wins:         [string, string, string];
+  wins:         string[];
   notes:        string;
+  stuck:        StuckEntry[];
+}
+
+export interface LifeLessonEntry {
+  id:       string;
+  text:     string;
+  lifeArea: LifeArea;
+}
+
+export interface CoreValueEntry {
+  id:    string;
+  value: string;
+  note:  string;
+}
+
+export interface JournalSection {
+  id:      string;
+  heading: string;
+  body:    string;
 }
 
 export interface WeeklyReview {
-  weekStart:     string;                   // Monday YYYY-MM-DD
-  overallRating: number;                   // 1–10
-  highlights:    string;
-  keyLearnings:  string;
-  wins:          [string, string, string];
-  improvements:  string;
-  nextWeekFocus: string;
+  weekStart:       string;          // Monday YYYY-MM-DD
+  // Section 1: Top Wins (each win is linked to a day of the week)
+  topWins:         { id: string; date: string; text: string }[];
+  // Section 2: Outcome Review
+  outcomeNotes:    string;
+  outcomeChecked:  boolean[];
+  // Section 3: Task Review
+  taskReflection:  string;
+  // Section 4: Habits Review
+  habitReflection: string;
+  overallRating:   number;          // 1–10
+  // Section 5: Weekly Journal
+  journalDate:     string;          // YYYY-MM-DD within the week
+  journalText:     string;
+  journalSections: JournalSection[];
+  // Section 6: Life Lessons
+  lifeLessons:     LifeLessonEntry[];
+  // Section 7: Core Values Lived
+  coreValuesLived: CoreValueEntry[];
 }

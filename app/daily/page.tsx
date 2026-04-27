@@ -70,6 +70,7 @@ export default function DailyPage() {
     date: viewDate, energyLevel: 5, mood: "",
     highlights: "", keyLearnings: "",
     wins: ["", "", ""], notes: "",
+    stuck: [],
   };
   const reflection = eveningReflections.find((r) => r.date === viewDate) ?? defaultReflection;
 

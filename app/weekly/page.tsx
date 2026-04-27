@@ -51,10 +51,10 @@ export default function WeeklyPage() {
   const {
     goals, tasks, habits,
     eventGroups, weekEvents, weekPlans,
-    weeklyReviews,
+    weeklyReviews, eveningReflections,
     addEventGroup, updateEventGroup, deleteEventGroup,
     addWeekEvent, updateWeekEvent, deleteWeekEvent,
-    upsertWeekPlan, upsertWeeklyReview, closeTask, reopenTask,
+    upsertWeekPlan, upsertWeeklyReview, closeTask, reopenTask, toggleHabitDay,
   } = useAppStore();
 
   const [weekStart,    setWeekStart]    = useState(() => getWeekStart());
@@ -236,9 +236,13 @@ export default function WeeklyPage() {
         weekStart={weekStart}
         review={currentReview}
         onSave={upsertWeeklyReview}
-        weekEvents={thisWeekEvents}
         tasks={tasks}
         habits={habits}
+        eveningReflections={eveningReflections}
+        weekPlanOutcomes={plan.outcomes ?? []}
+        onCompleteTask={(id) => closeTask(id, "complete")}
+        onReopenTask={reopenTask}
+        onToggleHabit={toggleHabitDay}
       />
     </div>
   );

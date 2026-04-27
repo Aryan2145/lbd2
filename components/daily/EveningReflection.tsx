@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Zap, Smile, Minus, CloudRain, Flame, X, CheckCircle2, Circle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { EveningReflection, MoodEmoji, DayPlan, DecisionEntry } from "@/lib/dayTypes";
+import type { EveningReflection, MoodEmoji, DayPlan, DecisionEntry, StuckEntry } from "@/lib/dayTypes";
 import type { HabitData } from "@/components/habits/HabitCard";
-import { AREA_META, isHabitDoneOnDate } from "@/components/habits/HabitCard";
+import { AREA_META, isHabitDoneOnDate, calcStreak } from "@/components/habits/HabitCard";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import type { WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 
@@ -49,6 +49,7 @@ const A = {
   wins:       "#5DCAA5",
   highlights: "#EF9F27",
   decisions:  "#85B7EB",
+  stuck:      "#F87171",
   action:     "#6C5DD3",
 } as const;
 
@@ -63,8 +64,33 @@ const B = {
   label:     "#7C75B5",
 } as const;
 
-// All 6 big cards share this height
 const CARD_H = "260px";
+
+// ── Arc gauge constants (square 200×200 viewBox) ──────────────────────────────
+
+const CX = 100, CY = 100, ARC_R = 82;
+const ARC_START = 225;
+const ARC_SWEEP = 270;
+
+function arcPt(deg: number, r = ARC_R): [number, number] {
+  const rad = deg * Math.PI / 180;
+  return [CX + r * Math.sin(rad), CY - r * Math.cos(rad)];
+}
+
+function buildArc(startDeg: number, sweepDeg: number): string {
+  if (sweepDeg < 0.3) return "";
+  const endNorm = ((startDeg + sweepDeg) % 360 + 360) % 360;
+  const [x1, y1] = arcPt(startDeg);
+  const [x2, y2] = arcPt(endNorm);
+  const large = sweepDeg > 180 ? 1 : 0;
+  return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${ARC_R} ${ARC_R} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+
+function compassToEnergy(compassDeg: number): number {
+  let rel = ((compassDeg - ARC_START) + 360) % 360;
+  if (rel > ARC_SWEEP) rel = rel > ARC_SWEEP + (360 - ARC_SWEEP) / 2 ? 0 : ARC_SWEEP;
+  return Math.round(Math.max(1, Math.min(10, 1 + (rel / ARC_SWEEP) * 9)));
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -76,13 +102,24 @@ export default function EveningReflectionComponent({
   events, eventGroups,
 }: Props) {
   const [newDecision, setNewDecision] = useState("");
-  const [evIdx, setEvIdx] = useState(0);
+  const [evIdx,       setEvIdx]       = useState(0);
+  const arcDragging = useRef(false);
 
+  // ── Win helpers ──
   function updateWin(idx: number, val: string) {
-    const wins = [...reflection.wins] as [string, string, string];
+    const wins = [...reflection.wins];
     wins[idx] = val;
     onUpdate({ ...reflection, wins });
   }
+  function addWin() {
+    onUpdate({ ...reflection, wins: [...reflection.wins, ""] });
+  }
+  function deleteWin(idx: number) {
+    if (reflection.wins.length <= 1) return;
+    onUpdate({ ...reflection, wins: reflection.wins.filter((_, i) => i !== idx) });
+  }
+
+  // ── Decision helpers ──
   function addDecision() {
     const text = newDecision.trim();
     if (!text) return;
@@ -97,99 +134,97 @@ export default function EveningReflectionComponent({
     onUpdatePlan({ ...plan, decisions: plan.decisions.filter((d) => d.id !== id) });
   }
 
+  // ── Stuck helpers ──
+  function addStuck() {
+    const entry: StuckEntry = { id: crypto.randomUUID(), text: "", resolved: false, createdAt: Date.now() };
+    onUpdate({ ...reflection, stuck: [...(reflection.stuck ?? []), entry] });
+  }
+  function updateStuck(id: string, text: string) {
+    onUpdate({ ...reflection, stuck: (reflection.stuck ?? []).map((s) => s.id === id ? { ...s, text } : s) });
+  }
+  function deleteStuck(id: string) {
+    onUpdate({ ...reflection, stuck: (reflection.stuck ?? []).filter((s) => s.id !== id) });
+  }
+
+  // ── Arc pointer handler ──
+  function handleArcPtr(e: React.PointerEvent<SVGSVGElement>) {
+    const svg = e.currentTarget;
+    const pt  = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM()!.inverse());
+    const mathDeg = Math.atan2(-(p.y - CY), p.x - CX) * 180 / Math.PI;
+    onUpdate({ ...reflection, energyLevel: compassToEnergy(((90 - mathDeg) + 360) % 360) });
+  }
+
+  // ── Derived values ──
   const { color: energyCol, label: energyLbl } = getEnergyAccent(reflection.energyLevel);
-  const energyPct  = ((reflection.energyLevel - 1) / 9) * 100;
-  const moodAccent = MOOD_CONFIG.find((m) => m.emoji === reflection.mood)?.color ?? B.label;
-  const doneCount  = habits.filter((h) => isHabitDoneOnDate(h, date)).length;
-  const habitPct   = habits.length > 0 ? (doneCount / habits.length) * 100 : 0;
-  const doneTasks  = tasks.filter((t) => t.status !== "open").length;
+  const doneCount = habits.filter((h) => isHabitDoneOnDate(h, date)).length;
+  const habitPct  = habits.length > 0 ? (doneCount / habits.length) * 100 : 0;
+  const doneTasks = tasks.filter((t) => t.status !== "open").length;
+
+  const energySweep      = ((reflection.energyLevel - 1) / 9) * ARC_SWEEP;
+  const trackPath        = buildArc(ARC_START, ARC_SWEEP);
+  const filledPath       = buildArc(ARC_START, energySweep);
+  const thumbDeg         = ((ARC_START + energySweep) % 360 + 360) % 360;
+  const [thumbX, thumbY] = arcPt(thumbDeg);
+  const [lx, ly]         = arcPt(ARC_START, ARC_R + 14);
+  const [rx, ry]         = arcPt(((ARC_START + ARC_SWEEP) % 360 + 360) % 360, ARC_R + 14);
+
+  const stuckList = reflection.stuck ?? [];
+  const wins      = reflection.wins.length > 0 ? reflection.wins : [""];
 
   return (
     <>
       <style>{`
-        .ev-slider {
-          -webkit-appearance: none; appearance: none;
-          height: 6px; border-radius: 3px;
-          outline: none; cursor: pointer; width: 100%; border: none; display: block;
-        }
-        .ev-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 16px; height: 16px; border-radius: 50%;
-          background: var(--ec); border: 2px solid #0F0E1A; cursor: pointer; margin-top: -5px;
-        }
-        .ev-slider::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; }
-        .ev-slider::-moz-range-thumb {
-          width: 16px; height: 16px; border-radius: 50%;
-          background: var(--ec); border: 2px solid #0F0E1A; cursor: pointer;
-        }
-        .ev-ta::placeholder  { color: #5A5577; font-size: 14px; line-height: 1.6; }
-        .ev-ta:focus  { outline: none; }
-        .ev-in::placeholder  { color: #5A5577; }
-        .ev-in:focus  { outline: none; }
+        .ev-ta::placeholder { color: #5A5577; font-size: 14px; line-height: 1.6; }
+        .ev-ta:focus        { outline: none; }
+        .ev-in::placeholder { color: #5A5577; }
+        .ev-in:focus        { outline: none; }
         .ev-dec::placeholder { color: #5A5577; }
-        .ev-dec:focus { outline: none; }
+        .ev-dec:focus        { outline: none; }
       `}</style>
 
       <div style={{ flex: 1, overflowY: "auto", backgroundColor: B.pageBg }}>
-        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "14px", boxSizing: "border-box" }}>
+        <div style={{ padding: "16px", boxSizing: "border-box" }}>
 
-          {/* ════════ TOP ROW: Energy + Mood ════════ */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-
-            {/* Energy Level */}
-            <div style={card(energyCol)}>
-              <CardHeader color={energyCol} label="Energy Level" />
-              <div style={{ backgroundColor: B.fieldBg, borderRadius: "10px", padding: "14px", marginBottom: "14px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{ width: 52, height: 52, borderRadius: "50%", flexShrink: 0, border: `2px solid ${energyCol}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: "18px", fontWeight: 500, color: "#F5F4FB", lineHeight: 1 }}>{reflection.energyLevel}</span>
-                    <span style={{ fontSize: "8px", color: "#7C75B5", lineHeight: 1.4 }}>/10</span>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: "16px", fontWeight: 500, color: energyCol, margin: 0 }}>{energyLbl}</p>
-                    <p style={{ fontSize: "12px", color: "#7C75B5", margin: "3px 0 0" }}>Mid-day energy</p>
-                  </div>
-                </div>
-              </div>
-              <input
-                type="range" min={1} max={10}
-                value={reflection.energyLevel}
-                onChange={(e) => onUpdate({ ...reflection, energyLevel: Number(e.target.value) })}
-                className="ev-slider"
-                style={{ "--ec": energyCol, background: `linear-gradient(to right, ${energyCol} ${energyPct}%, ${B.fieldBg} ${energyPct}%)` } as React.CSSProperties}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px" }}>
-                <span style={{ fontSize: "10px", color: B.muted }}>1 — Exhausted</span>
-                <span style={{ fontSize: "10px", color: B.muted }}>10 — Peak</span>
-              </div>
-            </div>
-
-            {/* Mood */}
-            <div style={card(moodAccent)}>
-              <CardHeader color={moodAccent} label="Mood" />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px" }}>
-                {MOOD_CONFIG.map((m) => {
-                  const selected = reflection.mood === m.emoji;
-                  return (
-                    <button key={m.emoji} onClick={() => onUpdate({ ...reflection, mood: selected ? "" : m.emoji })} style={{
-                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                      gap: "5px", padding: "10px 4px", borderRadius: "8px",
-                      border: `${selected ? "1px" : "0.5px"} solid ${selected ? m.color : B.border}`,
-                      backgroundColor: selected ? m.tint : B.fieldBg, cursor: "pointer",
-                    }}>
-                      <m.Icon size={16} color={selected ? m.color : B.label} />
-                      <span style={{ fontSize: "10px", fontWeight: selected ? 500 : 400, color: selected ? m.color : B.label, lineHeight: 1 }}>{m.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* ════════ 3×2 GRID: 6 equal cards ════════ */}
+          {/* ════════ SINGLE 3-col grid — all 8 cards ════════ */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
 
-            {/* Row 1 — Grateful · Highlights · Tasks */}
+            {/* ── Row 1 ── */}
+
+            {/* Three Wins Today */}
+            <div style={{ ...card(A.wins), height: CARD_H }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.wins }} />
+                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.wins }}>Three Wins Today</span>
+                </div>
+                <button onClick={addWin} style={plusBtn(A.wins)}>+</button>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+                {wins.map((win, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "10px", backgroundColor: B.fieldBg, borderRadius: "8px", padding: "8px 10px", border: `0.5px solid ${B.border}`, flexShrink: 0 }}>
+                    <span style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, backgroundColor: "#0F2E25", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 600, color: A.wins, marginTop: "2px" }}>
+                      {idx + 1}
+                    </span>
+                    <textarea
+                      value={win}
+                      onChange={(e) => updateWin(idx, e.target.value)}
+                      onInput={(e) => { const t = e.currentTarget; t.style.height = ""; t.style.height = t.scrollHeight + "px"; }}
+                      placeholder={`Win ${idx + 1}…`}
+                      rows={1}
+                      className="ev-in"
+                      style={{ flex: 1, background: "none", border: "none", fontSize: "13px", color: B.text, fontFamily: "inherit", resize: "none", overflow: "hidden", lineHeight: 1.5, padding: 0, minHeight: "20px", display: "block" }}
+                    />
+                    {wins.length > 1 && (
+                      <button onClick={() => deleteWin(idx)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: "3px" }}>
+                        <X size={10} color={B.muted} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* I Am Grateful For */}
             <div style={{ ...card(A.grateful), height: CARD_H }}>
@@ -206,19 +241,13 @@ export default function EveningReflectionComponent({
             {/* Highlights of the Day */}
             <div style={{ ...card(A.highlights), height: CARD_H }}>
               <CardHeader color={A.highlights} label="Highlights of the Day" />
-
-              {/* Event navigator */}
               {(() => {
                 const clamp = Math.max(0, Math.min(evIdx, events.length - 1));
-                const ev    = events[clamp];
+                const ev = events[clamp];
                 const grpColor = ev ? (eventGroups.find((g) => g.id === ev.groupId)?.color ?? B.label) : B.label;
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: B.fieldBg, borderRadius: "10px", padding: "8px 10px", marginBottom: "10px", flexShrink: 0 }}>
-                    <button
-                      onClick={() => setEvIdx((i) => Math.max(0, i - 1))}
-                      disabled={events.length === 0 || clamp === 0}
-                      style={{ ...evNavBtn, opacity: (events.length === 0 || clamp === 0) ? 0.3 : 1 }}
-                    >‹</button>
+                    <button onClick={() => setEvIdx((i) => Math.max(0, i - 1))} disabled={events.length === 0 || clamp === 0} style={{ ...evNavBtn, opacity: (events.length === 0 || clamp === 0) ? 0.3 : 1 }}>‹</button>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {ev ? (
                         <>
@@ -232,18 +261,11 @@ export default function EveningReflectionComponent({
                         <span style={{ fontSize: "12px", color: B.muted, fontStyle: "italic" }}>No events today</span>
                       )}
                     </div>
-                    {events.length > 0 && (
-                      <span style={{ fontSize: "10px", color: B.muted, flexShrink: 0 }}>{clamp + 1}/{events.length}</span>
-                    )}
-                    <button
-                      onClick={() => setEvIdx((i) => Math.min(events.length - 1, i + 1))}
-                      disabled={events.length === 0 || clamp === events.length - 1}
-                      style={{ ...evNavBtn, opacity: (events.length === 0 || clamp === events.length - 1) ? 0.3 : 1 }}
-                    >›</button>
+                    {events.length > 0 && <span style={{ fontSize: "10px", color: B.muted, flexShrink: 0 }}>{clamp + 1}/{events.length}</span>}
+                    <button onClick={() => setEvIdx((i) => Math.min(events.length - 1, i + 1))} disabled={events.length === 0 || clamp === events.length - 1} style={{ ...evNavBtn, opacity: (events.length === 0 || clamp === events.length - 1) ? 0.3 : 1 }}>›</button>
                   </div>
                 );
               })()}
-
               <textarea
                 value={reflection.highlights}
                 onChange={(e) => onUpdate({ ...reflection, highlights: e.target.value })}
@@ -252,6 +274,8 @@ export default function EveningReflectionComponent({
                 style={taStyle}
               />
             </div>
+
+            {/* ── Row 2 ── */}
 
             {/* Today's Tasks */}
             <div style={{ ...card(A.tasks), height: CARD_H }}>
@@ -282,8 +306,6 @@ export default function EveningReflectionComponent({
               </div>
             </div>
 
-            {/* Row 2 — Habits · Wins · Decisions */}
-
             {/* Today's Habits */}
             <div style={{ ...card(A.habits), height: CARD_H }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px", flexShrink: 0 }}>
@@ -291,9 +313,7 @@ export default function EveningReflectionComponent({
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.habits }} />
                   <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.habits }}>Today&apos;s Habits</span>
                 </div>
-                <span style={{ fontSize: "11px", fontWeight: 500, color: A.habits, backgroundColor: "#1F2E15", borderRadius: "10px", padding: "3px 8px" }}>
-                  {doneCount}/{habits.length}
-                </span>
+                <span style={{ fontSize: "11px", fontWeight: 500, color: A.habits, backgroundColor: "#1F2E15", borderRadius: "10px", padding: "3px 8px" }}>{doneCount}/{habits.length}</span>
               </div>
               <div style={{ height: 4, backgroundColor: B.fieldBg, borderRadius: "2px", overflow: "hidden", marginBottom: "10px", flexShrink: 0 }}>
                 <div style={{ height: "100%", width: `${habitPct}%`, backgroundColor: A.habits, borderRadius: "2px", transition: "width 0.3s" }} />
@@ -304,6 +324,13 @@ export default function EveningReflectionComponent({
                   : habits.map((h) => {
                       const done   = isHabitDoneOnDate(h, date);
                       const aColor = AREA_META[h.area]?.color ?? A.habits;
+                      const streak = calcStreak(h);
+                      const streakEl = (
+                        <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
+                          <span style={{ fontSize: "10px", fontWeight: 600, color: streak > 0 ? "#F97316" : B.muted }}>{streak}</span>
+                          <Flame size={11} color={streak > 0 ? "#F97316" : B.muted} />
+                        </div>
+                      );
                       if (h.type === "measurable") {
                         const current = h.measurements[date] ?? 0;
                         const pct     = Math.min(1, h.target > 0 ? current / h.target : 0);
@@ -311,10 +338,11 @@ export default function EveningReflectionComponent({
                           <div key={h.id} style={{ padding: "9px 11px", borderRadius: "9px", border: `0.5px solid ${done ? aColor + "50" : B.border}`, backgroundColor: done ? aColor + "15" : B.fieldBg, flexShrink: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                               <span style={{ fontSize: "12px", fontWeight: 600, color: done ? B.text : B.secondary, flex: 1, marginRight: "8px" }}>{h.name}</span>
-                              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                 <button onClick={() => onStepHabit(h.id, -1)} style={stepBtn}>−</button>
                                 <span style={{ fontSize: "11px", fontWeight: 700, color: done ? B.text : B.secondary, minWidth: "44px", textAlign: "center" }}>{current}/{h.target}{h.unit ? ` ${h.unit}` : ""}</span>
                                 <button onClick={() => onStepHabit(h.id, +1)} style={stepBtn}>+</button>
+                                {streakEl}
                               </div>
                             </div>
                             <div style={{ height: 3, borderRadius: "2px", backgroundColor: B.border, overflow: "hidden" }}>
@@ -326,32 +354,12 @@ export default function EveningReflectionComponent({
                       return (
                         <button key={h.id} onClick={() => onToggleHabit(h.id)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 11px", borderRadius: "9px", border: `0.5px solid ${done ? aColor + "50" : B.border}`, backgroundColor: done ? aColor + "18" : B.fieldBg, cursor: "pointer", textAlign: "left", flexShrink: 0 }}>
                           {done ? <CheckCircle2 size={15} color={aColor} style={{ flexShrink: 0 }} /> : <Circle size={15} color={B.secondary} style={{ flexShrink: 0 }} />}
-                          <span style={{ fontSize: "12px", fontWeight: 600, color: done ? B.text : B.secondary }}>{h.name}</span>
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: done ? B.text : B.secondary, flex: 1 }}>{h.name}</span>
+                          {streakEl}
                         </button>
                       );
                     })
                 }
-              </div>
-            </div>
-
-            {/* Three Wins Today */}
-            <div style={{ ...card(A.wins), height: CARD_H }}>
-              <CardHeader color={A.wins} label="Three Wins Today" />
-              <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: "8px", justifyContent: "center" }}>
-                {([0, 1, 2] as const).map((idx) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: "12px", backgroundColor: B.fieldBg, borderRadius: "8px", padding: "10px 12px", border: `0.5px solid ${B.border}`, flexShrink: 0 }}>
-                    <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, backgroundColor: "#0F2E25", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 500, color: "#5DCAA5" }}>
-                      {idx + 1}
-                    </span>
-                    <input
-                      value={reflection.wins[idx]}
-                      onChange={(e) => updateWin(idx, e.target.value)}
-                      placeholder={`Win ${idx + 1}…`}
-                      className="ev-in"
-                      style={{ flex: 1, background: "none", border: "none", fontSize: "13px", color: B.text, outline: "none", fontFamily: "inherit" }}
-                    />
-                  </div>
-                ))}
               </div>
             </div>
 
@@ -365,9 +373,9 @@ export default function EveningReflectionComponent({
                   onKeyDown={(e) => { if (e.key === "Enter") addDecision(); }}
                   placeholder="Add a decision…"
                   className="ev-dec"
-                  style={{ flex: 1, padding: "10px 12px", borderRadius: "8px", border: `0.5px solid ${B.border}`, backgroundColor: B.fieldBg, fontSize: "13px", color: B.text, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: `0.5px solid ${B.border}`, backgroundColor: B.fieldBg, fontSize: "13px", color: B.text, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
                 />
-                <button onClick={addDecision} style={{ width: 36, height: 36, borderRadius: "8px", border: "none", backgroundColor: A.action, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", fontWeight: 500, color: "#FFFFFF", lineHeight: 1 }}>+</button>
+                <button onClick={addDecision} style={{ width: 34, height: 34, borderRadius: "8px", border: "none", backgroundColor: A.action, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", color: "#FFFFFF", lineHeight: 1 }}>+</button>
               </div>
               <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: "5px" }}>
                 {plan.decisions.length === 0
@@ -386,6 +394,90 @@ export default function EveningReflectionComponent({
                 }
               </div>
             </div>
+
+            {/* ── Row 3 ── */}
+
+            {/* Energy & Mood */}
+            <div style={{ ...card(energyCol), height: CARD_H }}>
+              <CardHeader color={energyCol} label="Energy & Mood" />
+
+              {/* Square arc container — prevents letterboxing */}
+              <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ aspectRatio: "1 / 1", height: "100%", position: "relative" }}>
+                  <svg
+                    viewBox="0 0 200 200"
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "pointer", userSelect: "none", touchAction: "none" }}
+                    onPointerDown={(e) => { arcDragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); handleArcPtr(e); }}
+                    onPointerMove={(e) => { if (arcDragging.current) handleArcPtr(e); }}
+                    onPointerUp={() => { arcDragging.current = false; }}
+                    onPointerLeave={() => { arcDragging.current = false; }}
+                  >
+                    <path d={trackPath} fill="none" stroke="#2A2740" strokeWidth="13" strokeLinecap="round" />
+                    {filledPath && <path d={filledPath} fill="none" stroke={energyCol} strokeWidth="13" strokeLinecap="round" />}
+                    <circle cx={thumbX.toFixed(1)} cy={thumbY.toFixed(1)} r="9" fill={energyCol} stroke="#0F0E1A" strokeWidth="2.5" />
+                    <text x={CX} y="92" textAnchor="middle" fontSize="32" fontWeight="700" fill={energyCol} fontFamily="inherit">{reflection.energyLevel}</text>
+                    <text x={CX} y="116" textAnchor="middle" fontSize="12" fill="#7C75B5" fontFamily="inherit">{energyLbl}</text>
+                    <text x={lx.toFixed(0)} y={(ly + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#5A5577" fontFamily="inherit">1</text>
+                    <text x={rx.toFixed(0)} y={(ry + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#5A5577" fontFamily="inherit">10</text>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Compact mood tiles */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "4px", flexShrink: 0, marginTop: "8px" }}>
+                {MOOD_CONFIG.map((m) => {
+                  const selected = reflection.mood === m.emoji;
+                  return (
+                    <button key={m.emoji} onClick={() => onUpdate({ ...reflection, mood: selected ? "" : m.emoji })} style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                      gap: "3px", padding: "6px 3px", borderRadius: "7px",
+                      border: `${selected ? "1px" : "0.5px"} solid ${selected ? m.color : B.border}`,
+                      backgroundColor: selected ? m.tint : B.fieldBg, cursor: "pointer",
+                    }}>
+                      <m.Icon size={13} color={selected ? m.color : B.label} />
+                      <span style={{ fontSize: "9px", fontWeight: selected ? 500 : 400, color: selected ? m.color : B.label, lineHeight: 1 }}>{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Where I Was Stuck — same style as Three Wins Today */}
+            <div style={{ ...card(A.stuck), height: CARD_H }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.stuck }} />
+                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.stuck }}>Where I Was Stuck</span>
+                </div>
+                <button onClick={addStuck} style={plusBtn(A.stuck)}>+</button>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+                {stuckList.length === 0
+                  ? <p style={{ fontSize: "12px", color: B.muted, margin: 0, fontStyle: "italic" }}>Nothing blocked you today…</p>
+                  : stuckList.map((s, idx) => (
+                      <div key={s.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", backgroundColor: B.fieldBg, borderRadius: "8px", padding: "8px 10px", border: `0.5px solid ${B.border}`, flexShrink: 0 }}>
+                        <span style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, backgroundColor: "#3A1818", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 600, color: A.stuck, marginTop: "2px" }}>
+                          {idx + 1}
+                        </span>
+                        <textarea
+                          value={s.text}
+                          onChange={(e) => updateStuck(s.id, e.target.value)}
+                          onInput={(e) => { const t = e.currentTarget; t.style.height = ""; t.style.height = t.scrollHeight + "px"; }}
+                          placeholder={`Blocker ${idx + 1}…`}
+                          rows={1}
+                          className="ev-in"
+                          style={{ flex: 1, background: "none", border: "none", fontSize: "13px", color: B.text, fontFamily: "inherit", resize: "none", overflow: "hidden", lineHeight: 1.5, padding: 0, minHeight: "20px", display: "block" }}
+                        />
+                        <button onClick={() => deleteStuck(s.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: "3px" }}>
+                          <X size={10} color={B.muted} />
+                        </button>
+                      </div>
+                    ))
+                }
+              </div>
+            </div>
+
+            {/* 3rd slot in row 3 — intentionally empty */}
 
           </div>
         </div>
@@ -420,20 +512,21 @@ function card(accentColor: string): React.CSSProperties {
   };
 }
 
+function plusBtn(color: string): React.CSSProperties {
+  return {
+    width: 22, height: 22, borderRadius: "6px", border: "none",
+    backgroundColor: color + "28", color, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: "16px", lineHeight: 1, flexShrink: 0,
+  };
+}
+
 const taStyle: React.CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  width: "100%",
-  backgroundColor: "#1A1830",
-  borderRadius: "10px",
-  padding: "14px",
-  border: "0.5px solid #2A2740",
-  fontSize: "14px",
-  color: "#F5F4FB",
-  lineHeight: 1.6,
-  resize: "none",
-  fontFamily: "inherit",
-  outline: "none",
+  flex: 1, minHeight: 0, width: "100%",
+  backgroundColor: "#1A1830", borderRadius: "10px",
+  padding: "14px", border: "0.5px solid #2A2740",
+  fontSize: "14px", color: "#F5F4FB", lineHeight: 1.6,
+  resize: "none", fontFamily: "inherit", outline: "none",
   boxSizing: "border-box",
 };
 
