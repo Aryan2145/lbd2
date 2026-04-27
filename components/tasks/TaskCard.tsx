@@ -78,14 +78,15 @@ export function fmtDeadline(iso: string): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props {
-  task:       TaskData;
-  onClick?:   () => void;
-  onComplete: (id: string) => void;
-  onMiss:     (id: string) => void;
+  task:             TaskData;
+  onClick?:         () => void;
+  onComplete:       (id: string) => void;
+  onMiss:           (id: string) => void;
+  displayQuadrant?: EisenhowerQ;
 }
 
-export default function TaskCard({ task, onClick, onComplete, onMiss }: Props) {
-  const qMeta    = Q_META[task.quadrant];
+export default function TaskCard({ task, onClick, onComplete, onMiss, displayQuadrant }: Props) {
+  const qMeta    = Q_META[displayQuadrant ?? task.quadrant];
   const days     = daysUntil(task.deadline);
   const overdue  = days < 0 && task.status === "open";
   const isClosed = task.status !== "open";
