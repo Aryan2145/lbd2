@@ -41,7 +41,7 @@ export interface DecisionEntry {
   createdAt: number;
 }
 
-export interface DayIntention {
+export interface DayPlan {
   date:       string;           // YYYY-MM-DD
   priorities: DailyPriority[];  // up to 3
   gratitude:  string;

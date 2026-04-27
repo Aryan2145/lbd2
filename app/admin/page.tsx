@@ -112,7 +112,7 @@ function OverviewTab() {
     { icon: <CheckSquare  size={16} />, label: "Closed Tasks",      value: closedTaskCount,                color: "#10B981" },
     { icon: <Calendar     size={16} />, label: "Week Events",       value: store.weekEvents.length,        color: "#EC4899" },
     { icon: <ShoppingBag  size={16} />, label: "Bucket Items",      value: store.bucketEntries.length,     color: "#8B5CF6" },
-    { icon: <BookOpen     size={16} />, label: "Daily Intentions",  value: store.dayIntentions.length,     color: "#06B6D4" },
+    { icon: <BookOpen     size={16} />, label: "Daily Plans",        value: store.dayPlans.length,          color: "#06B6D4" },
     { icon: <Star         size={16} />, label: "Weekly Reviews",    value: store.weeklyReviews.length,     color: "#F59E0B" },
     { icon: <Activity     size={16} />, label: "Evening Reflections", value: store.eveningReflections.length, color: "#EF4444" },
     { icon: <Ticket       size={16} />, label: "Open Tickets",      value: openTickets,                    color: "#F97316" },
@@ -435,7 +435,7 @@ function DataTab() {
     bucketEntries:      { label: "Bucket Entries",     data: store.bucketEntries      },
     tickets:            { label: "Support Tickets",    data: store.tickets            },
     weeklyReviews:      { label: "Weekly Reviews",     data: store.weeklyReviews      },
-    dayIntentions:      { label: "Day Intentions",     data: store.dayIntentions      },
+    dayIntentions:      { label: "Daily Plans",         data: store.dayPlans           },
     eveningReflections: { label: "Evening Reflections",data: store.eveningReflections },
   };
 

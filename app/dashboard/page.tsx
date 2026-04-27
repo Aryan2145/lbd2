@@ -271,8 +271,8 @@ const DAILY_QUOTES = [
 export default function DashboardPage() {
   const {
     goals, tasks, habits, eventGroups, weekEvents, weekPlans,
-    dayIntentions, eveningReflections, bucketEntries,
-    upsertDayIntention, toggleHabitDay, closeTask,
+    dayPlans, eveningReflections, bucketEntries,
+    upsertDayPlan, toggleHabitDay, closeTask,
   } = useAppStore();
 
   const today    = toTaskDate();
@@ -320,21 +320,21 @@ export default function DashboardPage() {
   const { current: currentEvent, upcoming: upcomingEvents } = getNextEvents(todayEvents);
   const groupMap = Object.fromEntries(eventGroups.map((g) => [g.id, g]));
 
-  const intention   = dayIntentions.find((d) => d.date === today);
+  const plan        = dayPlans.find((d) => d.date === today);
   const priorities  = [
-    intention?.priorities[0] ?? null,
-    intention?.priorities[1] ?? null,
-    intention?.priorities[2] ?? null,
+    plan?.priorities[0] ?? null,
+    plan?.priorities[1] ?? null,
+    plan?.priorities[2] ?? null,
   ];
-  const decisions   = intention?.decisions ?? [];
+  const decisions   = plan?.decisions ?? [];
 
   const eveningRefl = eveningReflections.find((r) => r.date === today);
   const yestRefl    = eveningReflections.find((r) => r.date === yest);
-  const morningDone = priorities.some((p) => p?.text.trim());
+  const planDone    = priorities.some((p) => p?.text.trim());
   const eveningDone = !!eveningRefl?.highlights;
   const isEvening   = nowHour >= 16;
 
-  const showMorningNudge = !isEvening && !morningDone;
+  const showMorningNudge = !isEvening && !planDone;
   const showEveningNudge = isEvening && !eveningDone;
 
   // Bucket featured: prefer most recent achievement, then a planning entry
@@ -367,26 +367,26 @@ export default function DashboardPage() {
 
   // ── Handlers ──
   function togglePriority(idx: number) {
-    if (!intention) return;
-    const updated = [...intention.priorities];
+    if (!plan) return;
+    const updated = [...plan.priorities];
     if (updated[idx]) updated[idx] = { ...updated[idx], completed: !updated[idx].completed };
-    upsertDayIntention({ ...intention, priorities: updated });
+    upsertDayPlan({ ...plan, priorities: updated });
   }
 
   function addDecision() {
     const text = decisionInput.trim();
     if (!text) return;
     const entry: DecisionEntry = { id: `dec_${Date.now()}`, text, made: false, createdAt: Date.now() };
-    const base = intention ?? { date: today, priorities: [], gratitude: "", decisions: [] };
-    upsertDayIntention({ ...base, decisions: [...base.decisions, entry] });
+    const base = plan ?? { date: today, priorities: [], gratitude: "", decisions: [] };
+    upsertDayPlan({ ...base, decisions: [...base.decisions, entry] });
     setDecisionInput("");
   }
 
   function toggleDecision(id: string) {
-    if (!intention) return;
-    upsertDayIntention({
-      ...intention,
-      decisions: intention.decisions.map((d) => d.id === id ? { ...d, made: !d.made } : d),
+    if (!plan) return;
+    upsertDayPlan({
+      ...plan,
+      decisions: plan.decisions.map((d) => d.id === id ? { ...d, made: !d.made } : d),
     });
   }
 
@@ -493,12 +493,12 @@ export default function DashboardPage() {
               <div>
                 <p style={{ fontSize: 12, fontWeight: 700,
                   color: showEveningNudge ? "#4F46E5" : "#EA580C", margin: 0 }}>
-                  {showEveningNudge ? "Evening reflection not yet logged" : "Morning intention not set yet"}
+                  {showEveningNudge ? "Evening reflection not yet logged" : "Daily plan not set yet"}
                 </p>
                 <p style={{ fontSize: 11, color: "#78716C", margin: "2px 0 0" }}>
                   {showEveningNudge
                     ? "Take 5 minutes to capture today before it slips away →"
-                    : "Set your Top 3 for today and start with intention →"}
+                    : "Set your Top 3 for today in the daily plan →"}
                 </p>
               </div>
             </div>
@@ -692,7 +692,7 @@ export default function DashboardPage() {
 
           {/* Today's Big 3 */}
           <Section title="Today's Big 3"
-            linkHref="/daily" linkLabel={morningDone ? "Open Daily" : "Set priorities"}>
+            linkHref="/daily" linkLabel={planDone ? "Open Daily" : "Set priorities"}>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {priorities.map((p, idx) => (
                 <div key={idx} className="dash-card" style={{

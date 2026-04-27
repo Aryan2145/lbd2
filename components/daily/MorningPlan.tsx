@@ -1,16 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
-import { Plus, X, Check, Clock, CheckSquare, AlertTriangle, Lightbulb, ArrowRight, Pencil, Trash2 } from "lucide-react";
-import type { DayIntention, DailyPriority, DecisionEntry, LifeArea } from "@/lib/dayTypes";
+import { Plus, X, Check, Clock, Lightbulb, Pencil, Trash2 } from "lucide-react";
+import type { DayPlan, DailyPriority, LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import type { WeekPlan, WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
 import { Q_META } from "@/components/tasks/TaskCard";
-import type { HabitData } from "@/components/habits/HabitCard";
-import { isScheduledDay } from "@/components/habits/HabitCard";
 
 const DAILY_QUOTES = [
   { text: "Do the hard thing first. The rest of the day gets easier.", author: "Brian Tracy" },
@@ -122,15 +119,12 @@ function ColorSelect({
 
 interface Props {
   date:           string;
-  intention:      DayIntention;
-  onUpdate:       (d: DayIntention) => void;
+  plan:           DayPlan;
+  onUpdate:       (d: DayPlan) => void;
   weekPlan:       WeekPlan | null;
   todayEvents:    WeekEvent[];
   eventGroups:    EventGroup[];
   tasks:          TaskData[];
-  habits:         HabitData[];
-  onToggleHabit:  (id: string) => void;
-  onStepHabit:    (id: string, delta: number) => void;
   onTaskClick?:   (t: TaskData) => void;
   onAddEvent?:    (e: WeekEvent) => void;
   onUpdateEvent?: (e: WeekEvent) => void;
@@ -140,15 +134,14 @@ interface Props {
   onUpdateTask?:  (t: TaskData)  => void;
 }
 
-export default function MorningIntention({
-  date, intention, onUpdate, weekPlan,
-  todayEvents, eventGroups, tasks, habits,
-  onToggleHabit, onStepHabit, onTaskClick,
+export default function MorningPlan({
+  date, plan, onUpdate, weekPlan,
+  todayEvents, eventGroups, tasks,
+  onTaskClick,
   onAddEvent, onUpdateEvent, onDeleteEvent,
-  onAddTask, onCompleteTask, onUpdateTask,
+  onAddTask, onCompleteTask,
 }: Props) {
   const [scheduleView,  setScheduleView]  = useState<"time" | "group">("time");
-  const [selectedHabit, setSelectedHabit] = useState<HabitData | null>(null);
   const [taskFilter,    setTaskFilter]    = useState<"overdue" | "today" | "soon">("today");
 
   // ── Add event ──────────────────────────────────────────────────────────────
@@ -174,42 +167,32 @@ export default function MorningIntention({
   // ── Undo-delete for priorities ─────────────────────────────────────────────
   const [pendingDeletePriIdx, setPendingDeletePriIdx] = useState<number | null>(null);
   const priDeleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const intentionRef   = useRef(intention);
+  const planRef        = useRef(plan);
   const prisRef        = useRef<DailyPriority[]>([]);
-  useEffect(() => { intentionRef.current = intention; }, [intention]);
-
-  // ── Undo-delete for decisions ──────────────────────────────────────────────
-  const [pendingDeleteDecId, setPendingDeleteDecId] = useState<string | null>(null);
-  const decDeleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const decisionsRef   = useRef<DecisionEntry[]>([]);
+  useEffect(() => { planRef.current = plan; }, [plan]);
 
   const quote    = getDailyQuote();
   const groupMap = Object.fromEntries(eventGroups.map((g) => [g.id, g]));
 
-  // Dynamic priority list
-  const pris: DailyPriority[] = intention.priorities.length > 0
-    ? intention.priorities
-    : [EMPTY_PRI()];
-  prisRef.current   = pris;
-  decisionsRef.current = intention.decisions;
+  const pris: DailyPriority[] = plan.priorities.length > 0 ? plan.priorities : [EMPTY_PRI()];
+  prisRef.current = pris;
 
   function updatePri(idx: number, patch: Partial<DailyPriority>) {
     const updated = pris.map((p, i) => i === idx ? { ...p, ...patch } : p);
-    onUpdate({ ...intention, priorities: updated });
+    onUpdate({ ...plan, priorities: updated });
   }
 
   function addPriority() {
-    onUpdate({ ...intention, priorities: [...pris, EMPTY_PRI()] });
+    onUpdate({ ...plan, priorities: [...pris, EMPTY_PRI()] });
   }
 
-  // ── Priority undo-delete ───────────────────────────────────────────────────
   function requestDeletePri(idx: number) {
     if (priDeleteTimer.current) clearTimeout(priDeleteTimer.current);
     setPendingDeletePriIdx(idx);
     priDeleteTimer.current = setTimeout(() => {
       const cur = prisRef.current;
       const updated = cur.filter((_, i) => i !== idx);
-      onUpdate({ ...intentionRef.current, priorities: updated.length ? updated : [] });
+      onUpdate({ ...planRef.current, priorities: updated.length ? updated : [] });
       setPendingDeletePriIdx(null);
       priDeleteTimer.current = null;
     }, 3000);
@@ -218,35 +201,6 @@ export default function MorningIntention({
     if (priDeleteTimer.current) clearTimeout(priDeleteTimer.current);
     priDeleteTimer.current = null;
     setPendingDeletePriIdx(null);
-  }
-
-  // ── Decision helpers ───────────────────────────────────────────────────────
-  function updateDecision(id: string, patch: Partial<DecisionEntry>) {
-    onUpdate({
-      ...intention,
-      decisions: intention.decisions.map((d) => d.id === id ? { ...d, ...patch } : d),
-    });
-  }
-
-  function addDecision() {
-    const entry: DecisionEntry = { id: `dec_${Date.now()}`, text: "", made: false, createdAt: Date.now() };
-    onUpdate({ ...intention, decisions: [...intention.decisions, entry] });
-  }
-
-  function requestDeleteDec(id: string) {
-    if (decDeleteTimer.current) clearTimeout(decDeleteTimer.current);
-    setPendingDeleteDecId(id);
-    decDeleteTimer.current = setTimeout(() => {
-      const cur = decisionsRef.current;
-      onUpdate({ ...intentionRef.current, decisions: cur.filter((d) => d.id !== id) });
-      setPendingDeleteDecId(null);
-      decDeleteTimer.current = null;
-    }, 3000);
-  }
-  function undoDeleteDec() {
-    if (decDeleteTimer.current) clearTimeout(decDeleteTimer.current);
-    decDeleteTimer.current = null;
-    setPendingDeleteDecId(null);
   }
 
   // ── Event save/edit ────────────────────────────────────────────────────────
@@ -328,10 +282,6 @@ export default function MorningIntention({
     })
     .slice(0, 3);
 
-  // ── Habits ────────────────────────────────────────────────────────────────
-  const dow        = new Date(date + "T00:00:00").getDay();
-  const todayHabits = habits.filter((h) => isScheduledDay(h.frequency, h.customDays, dow));
-
   // ── Add-event live validation ─────────────────────────────────────────────
   const evStartMins   = newEvStart ? toMins(newEvStart) : -1;
   const evEndMins     = newEvEnd   ? toMins(newEvEnd)   : -1;
@@ -379,7 +329,7 @@ export default function MorningIntention({
 
       {/* ── Left context panel ── */}
       <div style={{
-        width: 272, flexShrink: 0, overflow: "hidden",
+        width: 252, flexShrink: 0, overflowY: "auto",
         borderRight: "1px solid #EDE5D8", backgroundColor: "#FFFFFF",
         padding: "20px 16px", display: "flex", flexDirection: "column", gap: "20px",
       }}>
@@ -387,7 +337,7 @@ export default function MorningIntention({
         {weekPlan && weekPlan.priorities.length > 0 && (
           <section>
             <p style={sectionTitle}>This Week&apos;s Focus</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "8px" }}>
               {weekPlan.priorities.map((pri, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "7px" }}>
                   <span style={{
@@ -412,10 +362,10 @@ export default function MorningIntention({
             border: "1px solid #FED7AA",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px" }}>
-              <Lightbulb size={11} color="#F97316" />
+              <span>💡</span>
               <span style={{ fontSize: "9px", fontWeight: 700, color: "#F97316",
                 textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                Daily Reflection
+                Thought for the day
               </span>
             </div>
             <p style={{ fontSize: "12px", color: "#78350F", lineHeight: 1.5, margin: 0, fontStyle: "italic" }}>
@@ -428,125 +378,17 @@ export default function MorningIntention({
             )}
           </div>
         </section>
-
-        {todayHabits.length > 0 ? (
-          <section style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-            <p style={{ ...sectionTitle, marginBottom: "8px" }}>Today&apos;s Habits</p>
-            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px" }}>
-              {todayHabits.map((h) => {
-                const current = h.type === "binary" ? 0 : (h.measurements[date] ?? 0);
-                const done    = h.type === "binary"
-                  ? h.completions.includes(date)
-                  : current >= h.target;
-
-                function handleCheck() {
-                  if (h.type === "binary") {
-                    onToggleHabit(h.id);
-                  } else {
-                    onStepHabit(h.id, done ? -current : h.target - current);
-                  }
-                }
-
-                return (
-                  <div key={h.id} style={{
-                    display: "flex", alignItems: "center", gap: "7px",
-                    padding: "0 8px", borderRadius: "8px", height: "36px",
-                    backgroundColor: done ? "#F0FDF4" : "#FAFAFA",
-                    border: `1px solid ${done ? "#BBF7D0" : "#E8DDD0"}`,
-                    flexShrink: 0,
-                  }}>
-                    <button onClick={handleCheck} style={{
-                      width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
-                      border: `2px solid ${done ? "#16A34A" : "#C8BFB5"}`,
-                      backgroundColor: done ? "#16A34A" : "#FFFFFF",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      cursor: "pointer",
-                    }}>
-                      {done && <Check size={10} color="#FFFFFF" strokeWidth={3} />}
-                    </button>
-                    <button
-                      onClick={() => setSelectedHabit(h)}
-                      style={{
-                        flex: 1, minWidth: 0, background: "none", border: "none",
-                        padding: 0, cursor: "pointer", textAlign: "left",
-                        display: "flex", alignItems: "center", gap: "5px", overflow: "hidden",
-                      }}
-                    >
-                      <span style={{
-                        fontSize: "11px", fontWeight: 600,
-                        color: done ? "#15803D" : "#1C1917",
-                        textDecoration: done ? "line-through" : "none",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        flex: 1,
-                      }}>
-                        {h.name}
-                      </span>
-                      {h.type === "measurable" && (
-                        <span style={{
-                          fontSize: "9px", fontWeight: 700, flexShrink: 0,
-                          color: done ? "#16A34A" : "#A8A29E",
-                        }}>
-                          {current}/{h.target}{h.unit ? ` ${h.unit}` : ""}
-                        </span>
-                      )}
-                    </button>
-                    {h.type === "measurable" && (
-                      <div style={{ display: "flex", alignItems: "center", gap: "2px", flexShrink: 0 }}>
-                        <button onClick={() => onStepHabit(h.id, -1)} style={stepBtn}>−</button>
-                        <button onClick={() => onStepHabit(h.id, +1)} style={stepBtn}>+</button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ) : (
-          <section style={{ flex: 1, minHeight: 0 }}>
-            <p style={{ ...sectionTitle, marginBottom: "8px" }}>Today&apos;s Habits</p>
-            <p style={{ fontSize: "11px", color: "#C4B5A8", fontStyle: "italic" }}>No habits scheduled for today.</p>
-          </section>
-        )}
       </div>
 
       {/* ── Main planning panel ── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 24px", display: "flex", flexDirection: "column", gap: "14px" }}>
-
-        {/* ── Gratitude — ABOVE grid ── */}
-        <div style={{
-          flexShrink: 0, backgroundColor: "#FFFFFF",
-          border: "1px solid #E8DDD0", borderRadius: "14px",
-          padding: "12px 16px",
-          maxWidth: "1020px", width: "100%", margin: "0 auto",
-          boxSizing: "border-box",
-        }}>
-          <label style={{ ...sectionTitle, display: "block", marginBottom: "8px" }}>
-            I am grateful for…
-          </label>
-          <textarea
-            value={intention.gratitude}
-            onChange={(e) => onUpdate({ ...intention, gratitude: e.target.value })}
-            placeholder="What are you grateful for today?"
-            rows={2}
-            className="weekly-textarea"
-            style={{
-              width: "100%", padding: "8px 10px", borderRadius: "8px",
-              border: "1.5px solid #E8DDD0", backgroundColor: "#FAFAFA",
-              fontSize: "13px", color: "#1C1917", outline: "none",
-              boxSizing: "border-box", resize: "none", fontFamily: "inherit",
-            }}
-          />
-        </div>
-
-        {/* ── 2×2 grid ── */}
+      <div style={{ flex: 1, overflow: "hidden", padding: "16px 20px", display: "flex" }}>
         <div style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gridTemplateRows: "260px 260px",
+          gridTemplateRows: "1fr 1fr",
           gap: "14px",
-          maxWidth: "1020px",
-          width: "100%",
-          margin: "0 auto",
+          flex: 1,
+          minHeight: 0,
         }}>
 
           {/* ── Top-left: Today's Priorities ── */}
@@ -572,7 +414,6 @@ export default function MorningIntention({
               <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
                 {pris.map((pri, idx) => (
                   pendingDeletePriIdx === idx ? (
-                    // ── Undo delete row ──
                     <div key={idx} style={{
                       padding: "8px 10px", borderRadius: "10px",
                       border: "1.5px solid #FED7AA", backgroundColor: "#FFF7ED",
@@ -596,7 +437,6 @@ export default function MorningIntention({
                       }} />
                     </div>
                   ) : (
-                    // ── Normal priority row ──
                     <div key={idx} style={{
                       display: "flex", alignItems: "flex-start", gap: "8px",
                       padding: "8px 10px", borderRadius: "10px",
@@ -685,7 +525,6 @@ export default function MorningIntention({
             </div>
             <div style={boxContent}>
 
-              {/* Add event form */}
               {showAddEvent && (
                 <div style={{
                   marginBottom: "10px", padding: "10px 12px", borderRadius: "10px",
@@ -731,14 +570,15 @@ export default function MorningIntention({
                     </p>
                   )}
                   {evNudge && (
-                    <p style={{ fontSize: "10px", color: "#92400E", fontWeight: 600, margin: 0 }}>
-                      💡 &ldquo;{evNudge.title}&rdquo; ends at {evNudge.endTime} — consider a 15-min buffer.
+                    <p style={{ fontSize: "10px", color: "#92400E", fontWeight: 600, margin: 0,
+                      display: "flex", alignItems: "center", gap: "4px" }}>
+                      <Lightbulb size={10} color="#92400E" />
+                      &ldquo;{evNudge.title}&rdquo; ends at {evNudge.endTime} — consider a 15-min buffer.
                     </p>
                   )}
                 </div>
               )}
 
-              {/* Edit event form */}
               {editingEventId && (
                 <div style={{
                   marginBottom: "10px", padding: "10px 12px", borderRadius: "10px",
@@ -876,8 +716,8 @@ export default function MorningIntention({
             </div>
           </div>
 
-          {/* ── Bottom-left: Tasks ── */}
-          <div style={boxStyle}>
+          {/* ── Bottom: Tasks (full width) ── */}
+          <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
             <div style={boxHeader}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <p style={sectionTitle}>Tasks</p>
@@ -974,222 +814,6 @@ export default function MorningIntention({
             </div>
           </div>
 
-          {/* ── Bottom-right: Decision Log ── */}
-          <div style={boxStyle}>
-            <div style={boxHeader}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <p style={sectionTitle}>Decision Log</p>
-                {intention.decisions.length > 0 && (
-                  <span style={{
-                    fontSize: "10px", fontWeight: 700, color: "#78716C",
-                    backgroundColor: "#F5F5F4", border: "1px solid #E7E5E4",
-                    padding: "1px 8px", borderRadius: "20px",
-                  }}>
-                    {intention.decisions.filter((d) => d.made).length}/{intention.decisions.length}
-                  </span>
-                )}
-              </div>
-              <button onClick={addDecision} style={iconBtn} title="Add decision">
-                <Plus size={13} color="#F97316" />
-              </button>
-            </div>
-            <div style={boxContent}>
-              {intention.decisions.length === 0 ? (
-                <p style={emptyText}>No decisions logged yet. Press + to add one.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-                  {intention.decisions.map((dec) => (
-                    pendingDeleteDecId === dec.id ? (
-                      // ── Undo delete row ──
-                      <div key={dec.id} style={{
-                        padding: "8px 10px", borderRadius: "10px",
-                        border: "1.5px solid #FED7AA", backgroundColor: "#FFF7ED",
-                        position: "relative", overflow: "hidden",
-                      }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: "12px", color: "#A8A29E", fontStyle: "italic" }}>
-                            {dec.text || "Decision"}
-                          </span>
-                          <button onClick={undoDeleteDec} style={{
-                            fontSize: "11px", fontWeight: 700, color: "#F97316",
-                            background: "none", border: "none", cursor: "pointer", padding: "0 4px",
-                          }}>
-                            Undo
-                          </button>
-                        </div>
-                        <div style={{
-                          position: "absolute", bottom: 0, left: 0, height: "2px",
-                          backgroundColor: "#F97316",
-                          animation: "drainBar 3s linear forwards",
-                        }} />
-                      </div>
-                    ) : (
-                      // ── Normal decision row (styled like priority) ──
-                      <div key={dec.id} style={{
-                        display: "flex", alignItems: "flex-start", gap: "8px",
-                        padding: "8px 10px", borderRadius: "10px",
-                        backgroundColor: dec.made ? "#F0FDF4" : "#FAFAFA",
-                        border: `1.5px solid ${dec.made ? "#BBF7D0" : "#E8DDD0"}`,
-                      }}>
-                        <button
-                          onClick={() => updateDecision(dec.id, { made: !dec.made })}
-                          style={{
-                            width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-                            border: `2px solid ${dec.made ? "#16A34A" : "#C8BFB5"}`,
-                            backgroundColor: dec.made ? "#16A34A" : "#FFFFFF",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {dec.made && <Check size={10} color="#FFFFFF" strokeWidth={3} />}
-                        </button>
-                        <textarea
-                          ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }}
-                          value={dec.text}
-                          onChange={(e) => {
-                            updateDecision(dec.id, { text: e.target.value });
-                            e.target.style.height = "auto";
-                            e.target.style.height = `${e.target.scrollHeight}px`;
-                          }}
-                          placeholder="Decision or open question…"
-                          rows={1}
-                          style={{
-                            flex: 1, minWidth: 0, border: "none", outline: "none",
-                            backgroundColor: "transparent", padding: 0, resize: "none",
-                            overflow: "hidden", lineHeight: "1.45", fontFamily: "inherit",
-                            fontSize: "13px", fontWeight: 600,
-                            color: dec.made ? "#78716C" : "#1C1917",
-                            textDecoration: dec.made ? "line-through" : "none",
-                          }}
-                        />
-                        <button onClick={() => requestDeleteDec(dec.id)} style={{ ...ghostBtn, marginTop: 1 }}>
-                          <X size={11} color="#C4B5A8" />
-                        </button>
-                      </div>
-                    )
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-        </div>{/* end grid */}
-      </div>
-
-      {selectedHabit && (
-        <HabitDetailPop
-          habit={selectedHabit}
-          date={date}
-          onClose={() => setSelectedHabit(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function HabitDetailPop({ habit, date, onClose }: { habit: HabitData; date: string; onClose: () => void }) {
-  const current = habit.type === "binary" ? 0 : (habit.measurements[date] ?? 0);
-  const done    = habit.type === "binary"
-    ? habit.completions.includes(date)
-    : current >= habit.target;
-
-  const FREQ_LABEL: Record<string, string> = {
-    daily: "Every day", weekdays: "Weekdays", weekends: "Weekends", custom: "Custom days",
-  };
-
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 100,
-        backgroundColor: "rgba(28,25,23,0.45)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "20px",
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "300px", backgroundColor: "#FFFFFF",
-          borderRadius: "16px", overflow: "hidden",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
-          border: "1px solid #E8DDD0",
-        }}
-      >
-        <div style={{ padding: "16px 18px 14px", borderBottom: "1px solid #F0EAE3" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 0, paddingRight: "10px" }}>
-              <p style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", margin: "0 0 3px", lineHeight: 1.3 }}>
-                {habit.name}
-              </p>
-              <p style={{ fontSize: "11px", color: "#78716C", margin: 0 }}>
-                {habit.area} · {FREQ_LABEL[habit.frequency] ?? habit.frequency}
-              </p>
-            </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, flexShrink: 0 }}>
-              <X size={15} color="#A8A29E" />
-            </button>
-          </div>
-        </div>
-
-        <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          {habit.description && (
-            <p style={{ fontSize: "12px", color: "#57534E", lineHeight: 1.55, margin: 0 }}>
-              {habit.description}
-            </p>
-          )}
-
-          <div style={{
-            padding: "10px 12px", borderRadius: "10px",
-            backgroundColor: done ? "#F0FDF4" : "#FAF5EE",
-            border: `1px solid ${done ? "#BBF7D0" : "#E8DDD0"}`,
-          }}>
-            <p style={{ fontSize: "9px", fontWeight: 700, color: "#78716C",
-              textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 4px" }}>
-              Today
-            </p>
-            {habit.type === "binary" ? (
-              <p style={{ fontSize: "13px", fontWeight: 700, color: done ? "#16A34A" : "#78716C", margin: 0 }}>
-                {done ? "✓ Completed" : "Not yet done"}
-              </p>
-            ) : (
-              <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "18px", fontWeight: 800, color: done ? "#16A34A" : "#1C1917" }}>
-                  {current}
-                </span>
-                <span style={{ fontSize: "11px", color: "#A8A29E" }}>/ {habit.target} {habit.unit}</span>
-                {done && <span style={{ fontSize: "11px", fontWeight: 700, color: "#16A34A" }}>✓</span>}
-              </div>
-            )}
-          </div>
-
-          {(habit.cue || habit.reward) && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-              {habit.cue && (
-                <p style={{ fontSize: "11px", color: "#78716C", margin: 0 }}>
-                  <span style={{ fontWeight: 700 }}>Cue:</span> {habit.cue}
-                </p>
-              )}
-              {habit.reward && (
-                <p style={{ fontSize: "11px", color: "#78716C", margin: 0 }}>
-                  <span style={{ fontWeight: 700 }}>Reward:</span> {habit.reward}
-                </p>
-              )}
-            </div>
-          )}
-
-          <Link
-            href="/habits"
-            onClick={onClose}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-              padding: "9px", borderRadius: "10px",
-              border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA",
-              fontSize: "12px", fontWeight: 600, color: "#78716C", textDecoration: "none",
-            }}
-          >
-            Open in Habits <ArrowRight size={12} />
-          </Link>
         </div>
       </div>
     </div>
@@ -1219,7 +843,6 @@ function TaskRow({
       }}
       onClick={() => !done && onClick?.(task)}
     >
-      {/* Checkbox */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -1246,7 +869,7 @@ function TaskRow({
       </span>
       <span style={{
         fontSize: "9px", fontWeight: 700,
-        color: done ? "#16A34A" : m.color, opacity: done ? 1 : 0.7,
+        color: done ? "#16A34A" : m.color,
         backgroundColor: done ? "#F0FDF4" : m.bg, padding: "1px 5px", borderRadius: "4px",
       }}>
         {done ? "Done" : m.label}
@@ -1306,11 +929,4 @@ const ghostBtn: React.CSSProperties = {
   width: 22, height: 22, borderRadius: 5, border: "none",
   backgroundColor: "transparent", display: "flex", alignItems: "center",
   justifyContent: "center", cursor: "pointer", padding: 0, flexShrink: 0,
-};
-
-const stepBtn: React.CSSProperties = {
-  width: 18, height: 18, borderRadius: 4, border: "1px solid #E8DDD0",
-  backgroundColor: "#FFFFFF", fontSize: "13px", fontWeight: 700,
-  color: "#57534E", cursor: "pointer", display: "flex", alignItems: "center",
-  justifyContent: "center", lineHeight: 1, padding: 0,
 };

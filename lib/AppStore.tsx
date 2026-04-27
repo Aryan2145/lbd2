@@ -7,7 +7,7 @@ import type { TaskData, RecurringTemplate } from "@/components/tasks/TaskCard";
 import { toTaskDate } from "@/components/tasks/TaskCard";
 import type { EventGroup, WeekEvent, WeekPlan } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
-import type { DayIntention, EveningReflection, WeeklyReview } from "@/lib/dayTypes";
+import type { DayPlan, EveningReflection, WeeklyReview } from "@/lib/dayTypes";
 import type { BucketEntry } from "@/lib/bucketTypes";
 import type { SupportTicket } from "@/lib/ticketTypes";
 
@@ -420,7 +420,7 @@ interface AppState {
   eventGroups:        EventGroup[];
   weekEvents:         WeekEvent[];
   weekPlans:          WeekPlan[];
-  dayIntentions:      DayIntention[];
+  dayPlans:           DayPlan[];
   eveningReflections: EveningReflection[];
   weeklyReviews:      WeeklyReview[];
   // Goal actions
@@ -454,7 +454,7 @@ interface AppState {
   // Week plan
   upsertWeekPlan:          (p: WeekPlan)          => void;
   // Day module
-  upsertDayIntention:      (d: DayIntention)      => void;
+  upsertDayPlan:           (d: DayPlan)           => void;
   upsertEveningReflection: (r: EveningReflection) => void;
   // Weekly review
   upsertWeeklyReview:      (r: WeeklyReview)      => void;
@@ -484,7 +484,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const templates: RecurringTemplate[] = [];
   const [weekEvents,         setWeekEvents]         = useState<WeekEvent[]>(()         => fromStorage("lbd_weekEvents",         seedWeekEvents));
   const [weekPlans,          setWeekPlans]          = useState<WeekPlan[]>(()          => fromStorage("lbd_weekPlans",          seedWeekPlans));
-  const [dayIntentions,      setDayIntentions]      = useState<DayIntention[]>(()      => fromStorage("lbd_dayIntentions",      () => []));
+  const [dayPlans,           setDayPlans]           = useState<DayPlan[]>(()           => fromStorage("lbd_dayIntentions",     () => []));
   const [eveningReflections, setEveningReflections] = useState<EveningReflection[]>(() => fromStorage("lbd_eveningReflections", () => []));
   const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>(()      => fromStorage("lbd_weeklyReviews",      () => []));
   const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>(()       => migrateBucketEntries(fromStorage("lbd_bucketEntries", seedBucketEntries)));
@@ -512,7 +512,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => { localStorage.setItem("lbd_eventGroups", JSON.stringify(eventGroups)); }, [eventGroups]);
   useEffect(() => { localStorage.setItem("lbd_weekEvents",         JSON.stringify(weekEvents));         }, [weekEvents]);
   useEffect(() => { localStorage.setItem("lbd_weekPlans",          JSON.stringify(weekPlans));          }, [weekPlans]);
-  useEffect(() => { localStorage.setItem("lbd_dayIntentions",      JSON.stringify(dayIntentions));      }, [dayIntentions]);
+  useEffect(() => { localStorage.setItem("lbd_dayIntentions",      JSON.stringify(dayPlans));           }, [dayPlans]);
   useEffect(() => { localStorage.setItem("lbd_eveningReflections", JSON.stringify(eveningReflections)); }, [eveningReflections]);
   useEffect(() => { localStorage.setItem("lbd_weeklyReviews",      JSON.stringify(weeklyReviews));      }, [weeklyReviews]);
   useEffect(() => { localStorage.setItem("lbd_bucketEntries",      JSON.stringify(bucketEntries));      }, [bucketEntries]);
@@ -542,7 +542,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const ctx: AppState = {
     goals, habits, tasks, /* RECURRING_DISABLED: templates, */ eventGroups, weekEvents, weekPlans,
-    dayIntentions, eveningReflections, weeklyReviews, bucketEntries,
+    dayPlans, eveningReflections, weeklyReviews, bucketEntries,
 
     addGoal:    (g) => setGoals((p) => [...p, g]),
     updateGoal: (g) => setGoals((p) => p.map((x) => x.id === g.id ? g : x)),
@@ -612,7 +612,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return idx >= 0 ? prev.map((p, i) => i === idx ? plan : p) : [...prev, plan];
     }),
 
-    upsertDayIntention:      (d) => upsertBy(setDayIntentions,      "date",      d),
+    upsertDayPlan:           (d) => upsertBy(setDayPlans,           "date",      d),
     upsertEveningReflection: (r) => upsertBy(setEveningReflections, "date",      r),
     upsertWeeklyReview:      (r) => upsertBy(setWeeklyReviews,      "weekStart", r),
 
