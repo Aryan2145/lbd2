@@ -16,6 +16,7 @@ interface PolaroidCardProps {
   onClick:     () => void;
   isEmpty?:    boolean;
   accentColor?: string;
+  accentBg?:   string;
 }
 
 export default function PolaroidCard({
@@ -24,6 +25,7 @@ export default function PolaroidCard({
   onClick,
   isEmpty,
   accentColor = "#F97316",
+  accentBg    = "#FFF7ED",
 }: PolaroidCardProps) {
   const hasContent = area.text.trim().length > 0;
 
@@ -53,7 +55,7 @@ export default function PolaroidCard({
     >
       <div
         style={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: accentBg,
           padding: "9px 9px 12px",
           borderRadius: "3px",
           borderTop: `3px solid ${accentColor}`,

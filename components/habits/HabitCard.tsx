@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Circle, Flame, Link2 } from "lucide-react";
+import { CheckCircle2, Circle, Flame, Link2, Pencil } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type LifeArea =
@@ -150,13 +150,13 @@ export default function HabitCard({ habit, onClick, onToggleToday, onStep, onTog
     <div
       onClick={onClick}
       style={{
-        backgroundColor: "#FFFFFF", borderRadius: "12px",
-        border: "1px solid #EDE5D8", borderLeft: `3px solid ${area.color}`,
+        backgroundColor: area.bg, borderRadius: "12px",
+        border: `1px solid ${area.color}30`, borderLeft: `3px solid ${area.color}`,
         padding: "14px 16px", cursor: "pointer",
         transition: "box-shadow 0.2s, transform 0.2s",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(28,25,23,0.08)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${area.color}20`;
         (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)";
       }}
       onMouseLeave={(e) => {
@@ -169,12 +169,13 @@ export default function HabitCard({ habit, onClick, onToggleToday, onStep, onTog
         <div style={{ flex: 1, minWidth: 0 }}>
           <span style={{
             fontSize: "9px", fontWeight: 700, letterSpacing: "0.06em",
-            textTransform: "uppercase", color: area.color, backgroundColor: area.bg,
+            textTransform: "uppercase", color: area.color,
+            backgroundColor: "#FFFFFF", border: `1px solid ${area.color}40`,
             padding: "2px 7px", borderRadius: "20px", display: "inline-block", marginBottom: "5px",
           }}>
             {area.label}
           </span>
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917",
+          <p style={{ fontSize: "13px", fontWeight: 700, color: area.color,
             lineHeight: 1.3, margin: 0, whiteSpace: "nowrap",
             overflow: "hidden", textOverflow: "ellipsis" }}>
             {habit.name}
@@ -198,7 +199,7 @@ export default function HabitCard({ habit, onClick, onToggleToday, onStep, onTog
               </button>
               <div style={{ textAlign: "center", minWidth: "28px" }}>
                 <span style={{ fontSize: "17px", fontWeight: 800,
-                  color: doneToday ? "#16A34A" : "#F97316" }}>
+                  color: doneToday ? "#16A34A" : area.color }}>
                   {todayVal}
                 </span>
                 <span style={{ fontSize: "10px", color: "#A8A29E" }}>/{habit.target}</span>
@@ -288,22 +289,36 @@ export default function HabitCard({ habit, onClick, onToggleToday, onStep, onTog
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <Flame size={13} color={streak > 0 ? "#F97316" : "#D5C9BC"} />
+            <Flame size={13} color={streak > 0 ? "#F97316" : "#C4B8AC"} />
             <span style={{ fontSize: "11px", fontWeight: 700,
-              color: streak > 0 ? "#F97316" : "#A8A29E" }}>
+              color: streak > 0 ? "#F97316" : "#78716C" }}>
               {streak > 0 ? `${streak} day streak` : "Start your streak"}
             </span>
           </div>
           {habit.linkedGoalId && (
-            <Link2 size={11} color="#A8A29E" />
+            <Link2 size={11} color="#78716C" />
           )}
         </div>
-        <span style={{
-          fontSize: "9px", fontWeight: 600, color: "#A8A29E",
-          backgroundColor: "#F5F0EB", padding: "2px 7px", borderRadius: "20px",
-        }}>
-          {FREQ_LABEL[habit.frequency]}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{
+            fontSize: "9px", fontWeight: 600, color: area.color,
+            backgroundColor: "#FFFFFF", border: `1px solid ${area.color}35`,
+            padding: "2px 7px", borderRadius: "20px",
+          }}>
+            {FREQ_LABEL[habit.frequency]}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            title="Edit habit"
+            style={{
+              width: 24, height: 24, borderRadius: 6, border: `1px solid ${area.color}40`,
+              backgroundColor: "#FFFFFF", display: "flex", alignItems: "center",
+              justifyContent: "center", cursor: "pointer", flexShrink: 0,
+            }}
+          >
+            <Pencil size={10} color={area.color} />
+          </button>
+        </div>
       </div>
     </div>
   );

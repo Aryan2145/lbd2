@@ -306,6 +306,26 @@ function seedWeekPlans(): WeekPlan[] {
   }];
 }
 
+// ── Bucket entry migration — normalises old/wrong lifeArea values ─────────────
+const AREA_MIGRATION: Record<string, string> = {
+  Personal: "personal", personal: "personal",
+  Health: "health", health: "health",
+  Work: "professional", Professional: "professional", professional: "professional",
+  Spiritual: "spiritual", spiritual: "spiritual",
+  Family: "relationships", Relationships: "relationships", relationships: "relationships",
+  Finance: "wealth", Wealth: "wealth", wealth: "wealth",
+  Learning: "personal",
+  Contribution: "contribution", contribution: "contribution",
+  Other: "personal",
+};
+
+function migrateBucketEntries(entries: BucketEntry[]): BucketEntry[] {
+  return entries.map((e) => ({
+    ...e,
+    lifeArea: (AREA_MIGRATION[e.lifeArea] ?? "personal") as BucketEntry["lifeArea"],
+  }));
+}
+
 // ── Seed bucket list ──────────────────────────────────────────────────────────
 function seedBucketEntries(): BucketEntry[] {
   const now = Date.now();
@@ -467,7 +487,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [dayIntentions,      setDayIntentions]      = useState<DayIntention[]>(()      => fromStorage("lbd_dayIntentions",      () => []));
   const [eveningReflections, setEveningReflections] = useState<EveningReflection[]>(() => fromStorage("lbd_eveningReflections", () => []));
   const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>(()      => fromStorage("lbd_weeklyReviews",      () => []));
-  const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>(()       => fromStorage("lbd_bucketEntries",      seedBucketEntries));
+  const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>(()       => migrateBucketEntries(fromStorage("lbd_bucketEntries", seedBucketEntries)));
   const [tickets,            setTickets]            = useState<SupportTicket[]>(()     => fromStorage("lbd_tickets",            seedTickets));
   const [eventGroups, setEventGroups] = useState<EventGroup[]>(() => {
     const groups = fromStorage("lbd_eventGroups", seedEventGroups);

@@ -118,14 +118,14 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
         onClick();
       }}
       style={{
-        backgroundColor: "#FFFFFF", borderRadius: "12px",
-        border: `1px solid ${stale ? "#FED7AA" : "#EDE5D8"}`,
+        backgroundColor: area.bg, borderRadius: "12px",
+        border: `1px solid ${stale ? "#FED7AA" : area.color + "35"}`,
         padding: "18px 18px 14px", cursor: "pointer",
         transition: "box-shadow 0.2s, transform 0.2s",
         position: "relative", overflow: "hidden",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 6px 24px rgba(28,25,23,0.09)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 6px 24px ${area.color}20`;
         (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
@@ -141,7 +141,9 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
       {/* Top row */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "10px" }}>
         <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.04em",
-          color: area.color, backgroundColor: area.bg, padding: "3px 8px", borderRadius: "20px" }}>
+          color: area.color, backgroundColor: "#FFFFFF",
+          border: `1px solid ${area.color}40`,
+          padding: "3px 8px", borderRadius: "20px" }}>
           {area.label}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -157,7 +159,7 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
       </div>
 
       {/* Statement */}
-      <p style={{ fontSize: "13px", fontWeight: 600, color: "#1C1917",
+      <p style={{ fontSize: "13px", fontWeight: 600, color: area.color,
         lineHeight: 1.45, marginBottom: "10px",
         display: "-webkit-box", WebkitLineClamp: 2,
         WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -168,7 +170,7 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
       <div style={{ marginBottom: "10px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
           <span style={{ fontSize: "10px", color: "#A8A29E", fontWeight: 500 }}>Progress</span>
-          <span style={{ fontSize: "12px", fontWeight: 700, color: "#F97316" }}>{goal.progress}%</span>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: area.color }}>{goal.progress}%</span>
         </div>
         {/* Expanded hit area so the 6px bar is easy to grab */}
         <div
@@ -177,21 +179,21 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
         >
           <div
             ref={barRef}
-            style={{ height: "6px", borderRadius: "3px", backgroundColor: "#F2EAE0", position: "relative" }}
+            style={{ height: "6px", borderRadius: "3px", backgroundColor: `${area.color}20`, position: "relative" }}
           >
             <div style={{
               height: "100%", borderRadius: "3px", width: `${goal.progress}%`,
               background: goal.progress >= 80
-                ? "linear-gradient(90deg, #C9A84C, #F59E0B)"
-                : "linear-gradient(90deg, #F97316, #EA580C)",
+                ? `linear-gradient(90deg, ${area.color}CC, ${area.color})`
+                : `linear-gradient(90deg, ${area.color}99, ${area.color})`,
               position: "relative",
             }}>
               <div style={{
                 position: "absolute", right: -7, top: "50%", transform: "translateY(-50%)",
                 width: 14, height: 14, borderRadius: "50%",
-                backgroundColor: goal.progress >= 80 ? "#F59E0B" : "#F97316",
+                backgroundColor: area.color,
                 border: "2.5px solid #FFFFFF",
-                boxShadow: "0 1px 6px rgba(249,115,22,0.55)",
+                boxShadow: `0 1px 6px ${area.color}80`,
                 cursor: "grab",
               }} />
             </div>
@@ -209,7 +211,7 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
 
       {/* Milestones section */}
       {milestones.length > 0 && (
-        <div style={{ borderTop: "1px solid #F2EAE0", paddingTop: "8px",
+        <div style={{ borderTop: `1px solid ${area.color}20`, paddingTop: "8px",
           marginBottom: linkedHabits.length > 0 ? "10px" : "0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px" }}>
             <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.06em",
@@ -290,7 +292,7 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
 
       {/* Linked habits */}
       {linkedHabits.length > 0 && (
-        <div style={{ borderTop: "1px solid #F2EAE0", paddingTop: "10px",
+        <div style={{ borderTop: `1px solid ${area.color}20`, paddingTop: "10px",
           display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
           {linkedHabits.slice(0, 5).map((h) => {
             const hMeta   = HABIT_AREA_META[h.area];

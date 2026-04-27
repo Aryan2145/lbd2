@@ -7,7 +7,8 @@ import BucketEntrySheet   from "@/components/bucket/BucketEntrySheet";
 import AchievedTransition from "@/components/bucket/AchievedTransition";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import { COLUMN_META, formatTargetDate } from "@/lib/bucketTypes";
-import { LIFE_AREA_COLORS } from "@/lib/dayTypes";
+import { LIFE_AREA_LABELS } from "@/lib/dayTypes";
+import { AREA_META } from "@/components/habits/HabitCard";
 
 const COLUMN_ORDER: BucketStatus[] = ["dreaming", "planning", "achieved"];
 
@@ -241,21 +242,22 @@ interface CardProps {
 }
 
 function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveForward, onMoveBack }: CardProps) {
-  const meta      = COLUMN_META[entry.status];
-  const areaColor = LIFE_AREA_COLORS[entry.lifeArea];
+  const meta     = COLUMN_META[entry.status];
+  const areaMeta = AREA_META[entry.lifeArea] ?? AREA_META.personal;
 
   return (
     <div
       draggable
+      onClick={onEdit}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
       onDragEnd={onDragEnd}
       style={{
-        backgroundColor: "#FFFFFF",
+        backgroundColor: areaMeta.bg,
         borderRadius: "12px",
-        border: "1px solid #EDE5D8",
-        borderLeft: `3px solid ${meta.accent}`,
+        border: `1px solid ${areaMeta.color}35`,
+        borderLeft: `3px solid ${areaMeta.color}`,
         padding: "12px 14px",
-        cursor: isDragging ? "grabbing" : "grab",
+        cursor: isDragging ? "grabbing" : "pointer",
         opacity: isDragging ? 0.4 : 1,
         boxShadow: isDragging ? "none" : "0 1px 4px rgba(28,25,23,0.06)",
         transition: "box-shadow 0.2s, opacity 0.15s",
@@ -263,7 +265,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
       }}
       onMouseEnter={(e) => {
         if (!isDragging)
-          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(28,25,23,0.1)";
+          (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 16px ${areaMeta.color}25`;
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLDivElement).style.boxShadow =
@@ -274,15 +276,16 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
         <span style={{
           fontSize: "9px", fontWeight: 700, letterSpacing: "0.06em",
-          textTransform: "uppercase", color: areaColor,
-          backgroundColor: areaColor + "18", padding: "2px 7px", borderRadius: "20px",
+          textTransform: "uppercase", color: areaMeta.color,
+          backgroundColor: "#FFFFFF", border: `1px solid ${areaMeta.color}40`,
+          padding: "2px 7px", borderRadius: "20px",
         }}>
-          {entry.lifeArea}
+          {LIFE_AREA_LABELS[entry.lifeArea]}
         </span>
         {entry.targetDate && (
           <span style={{ display: "flex", alignItems: "center", gap: "3px",
-            fontSize: "9px", color: "#A8A29E", fontWeight: 500 }}>
-            <Calendar size={9} color="#A8A29E" />
+            fontSize: "9px", color: "#78716C", fontWeight: 500 }}>
+            <Calendar size={9} color="#78716C" />
             {formatTargetDate(entry.targetDate)}
           </span>
         )}
@@ -290,7 +293,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
 
       {/* Title */}
       <p style={{
-        fontSize: "13px", fontWeight: 700, color: "#1C1917",
+        fontSize: "13px", fontWeight: 700, color: areaMeta.color,
         lineHeight: 1.35, margin: "0 0 5px",
         display: "-webkit-box", WebkitLineClamp: 2,
         WebkitBoxOrient: "vertical" as const, overflow: "hidden",
@@ -303,7 +306,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
         ? entry.changeReflection
         : entry.description) && (
         <p style={{
-          fontSize: "11px", color: "#78716C", lineHeight: 1.5,
+          fontSize: "11px", color: "#57534E", lineHeight: 1.5,
           margin: "0 0 6px",
           display: "-webkit-box", WebkitLineClamp: 2,
           WebkitBoxOrient: "vertical" as const, overflow: "hidden",
@@ -324,19 +327,27 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
       {/* Footer */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        paddingTop: "8px", borderTop: "1px solid #F5F0EB",
+        paddingTop: "8px", borderTop: `1px solid ${areaMeta.color}20`,
       }}>
         <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={actionBtn}>
-            <Pencil size={11} color="#78716C" />
+          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{
+            ...actionBtn,
+            border: `1px solid ${areaMeta.color}40`,
+            backgroundColor: "#FFFFFF",
+          }}>
+            <Pencil size={11} color={areaMeta.color} />
           </button>
           {entry.status === "planning" && (
             <button
               onClick={(e) => { e.stopPropagation(); onMoveBack(); }}
               title="Move back to Dreaming"
-              style={actionBtn}
+              style={{
+                ...actionBtn,
+                border: `1px solid ${areaMeta.color}40`,
+                backgroundColor: "#FFFFFF",
+              }}
             >
-              <ArrowLeft size={11} color="#78716C" />
+              <ArrowLeft size={11} color={areaMeta.color} />
             </button>
           )}
         </div>
@@ -356,7 +367,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
               {entry.status === "dreaming" ? "Plan It" : "Mark Achieved"}
             </button>
           )}
-          <GripVertical size={13} color="#C4BFBB" />
+          <GripVertical size={13} color={`${areaMeta.color}50`} />
         </div>
       </div>
     </div>

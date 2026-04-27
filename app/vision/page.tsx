@@ -276,6 +276,7 @@ export default function VisionPage() {
                 rotation={meta.rotation}
                 onClick={() => {}}
                 accentColor={AREA_META[meta.id as LifeArea]?.color ?? "#F97316"}
+                accentBg={AREA_META[meta.id as LifeArea]?.bg ?? "#FFF7ED"}
               />
             </div>
           );
