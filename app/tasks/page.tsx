@@ -199,8 +199,8 @@ export default function TasksPage() {
           </div>
         ) : (
           <button onClick={() => setSearchOpen(true)} style={{
-            display: "flex", alignItems: "center", gap: "5px",
-            padding: "5px 12px", borderRadius: "8px",
+            display: "flex", alignItems: "center", gap: "6px", maxWidth: "360px",
+            padding: "5px 100px", borderRadius: "8px",
             border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
             fontSize: "11px", color: "#78716C", cursor: "pointer",
           }}>

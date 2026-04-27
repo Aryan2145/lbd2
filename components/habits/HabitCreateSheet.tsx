@@ -1,48 +1,85 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { X, AlertTriangle, ChevronDown, Check } from "lucide-react";
 import { AREA_META, FREQ_LABEL, type HabitData, type HabitFrequency, type HabitType, type LifeArea } from "./HabitCard";
-import type { GoalData } from "@/components/goals/GoalCard";
+import type { GoalData, Milestone } from "@/components/goals/GoalCard";
 
 const AREAS = Object.keys(AREA_META) as LifeArea[];
 const FREQS = Object.keys(FREQ_LABEL) as HabitFrequency[];
 const DAYS  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-interface Props {
-  open:    boolean;
-  onClose: () => void;
-  onSave:  (h: HabitData) => void;
-  goals:   GoalData[];
+const GOAL_AREA_META: Record<string, { label: string; color: string; bg: string }> = {
+  professional:  { label: "Professional",   color: "#2563EB", bg: "#EFF6FF" },
+  contribution:  { label: "Contribution",   color: "#7C3AED", bg: "#F5F3FF" },
+  wealth:        { label: "Wealth",         color: "#C9A84C", bg: "#FEFCE8" },
+  spiritual:     { label: "Spiritual",      color: "#059669", bg: "#ECFDF5" },
+  personal:      { label: "Personal Growth",color: "#DB2777", bg: "#FDF2F8" },
+  relationships: { label: "Relationships",  color: "#EA580C", bg: "#FFF7ED" },
+  health:        { label: "Health",         color: "#DC2626", bg: "#FEF2F2" },
+};
+
+function fmtMilestoneDate(iso: string) {
+  if (!iso) return "";
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US",
+    { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function HabitCreateSheet({ open, onClose, onSave, goals }: Props) {
-  const [name,        setName]        = useState("");
-  const [desc,        setDesc]        = useState("");
-  const [area,        setArea]        = useState<LifeArea>("health");
-  const [frequency,   setFrequency]   = useState<HabitFrequency>("daily");
-  const [customDays,  setCustomDays]  = useState<number[]>([1, 2, 3, 4, 5]);
-  const [type,        setType]        = useState<HabitType>("binary");
-  const [target,      setTarget]      = useState(1);
-  const [unit,        setUnit]        = useState("");
-  const [cue,         setCue]         = useState("");
-  const [reward,      setReward]      = useState("");
-  const [linkedGoalId, setLinkedGoalId] = useState("");
+interface Props {
+  open:                boolean;
+  onClose:             () => void;
+  onSave:              (h: HabitData) => void;
+  goals:               GoalData[];
+  initialGoalId?:      string;
+  initialMilestoneId?: string;
+}
+
+export default function HabitCreateSheet({ open, onClose, onSave, goals, initialGoalId, initialMilestoneId }: Props) {
+  const [name,              setName]             = useState("");
+  const [desc,              setDesc]             = useState("");
+  const [area,              setArea]             = useState<LifeArea>("health");
+  const [frequency,         setFrequency]        = useState<HabitFrequency>("daily");
+  const [customDays,        setCustomDays]       = useState<number[]>([1, 2, 3, 4, 5]);
+  const [type,              setType]             = useState<HabitType>("binary");
+  const [target,            setTarget]           = useState(1);
+  const [unit,              setUnit]             = useState("");
+  const [cue,               setCue]              = useState("");
+  const [reward,            setReward]           = useState("");
+  const [linkedGoalId,      setLinkedGoalId]     = useState("");
+  const [linkedMilestoneId, setLinkedMilestoneId] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setName(""); setDesc(""); setArea("health"); setFrequency("daily");
       setCustomDays([1, 2, 3, 4, 5]); setType("binary"); setTarget(1); setUnit("");
-      setCue(""); setReward(""); setLinkedGoalId("");
+      setCue(""); setReward("");
+      setLinkedGoalId(initialGoalId ?? "");
+      setLinkedMilestoneId(initialMilestoneId ?? "");
       setTimeout(() => nameRef.current?.focus(), 80);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const toggleDay = (d: number) =>
     setCustomDays((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort());
 
-  const canSave = name.trim().length > 0 && (type === "binary" || target >= 1);
+  const selectedGoal   = goals.find((g) => g.id === linkedGoalId);
+  const goalMilestones = [...(selectedGoal?.milestones ?? [])].sort((a, b) => a.deadline.localeCompare(b.deadline));
+  const goalHasNoMilestones = !!linkedGoalId && goalMilestones.length === 0;
+  const milestoneRequired   = !!linkedGoalId && goalMilestones.length > 0 && !linkedMilestoneId;
+
+  const canSave = (
+    name.trim().length > 0 &&
+    (type === "binary" || target >= 1) &&
+    !goalHasNoMilestones &&
+    !milestoneRequired
+  );
+
+  const handleGoalChange = (gId: string) => {
+    setLinkedGoalId(gId);
+    setLinkedMilestoneId("");
+  };
 
   const handleSave = () => {
     if (!canSave) return;
@@ -51,7 +88,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals }: Props
       area, frequency, customDays: frequency === "custom" ? customDays : [],
       cue: cue.trim(), reward: reward.trim(),
       type, target: type === "binary" ? 1 : target, unit: type === "binary" ? "" : unit.trim(),
-      completions: [], measurements: {}, linkedGoalId,
+      completions: [], measurements: {}, linkedGoalId, linkedMilestoneId,
       createdAt: Date.now(),
     });
     onClose();
@@ -66,7 +103,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals }: Props
         {/* Header */}
         <div style={header}>
           <div>
-            <p style={label}>New Habit</p>
+            <p style={labelStyle}>New Habit</p>
             <h2 style={{ fontSize: "17px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
               Build a new habit
             </h2>
@@ -99,11 +136,10 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals }: Props
                 <button key={t} onClick={() => setType(t)} style={{
                   padding: "10px 12px", borderRadius: "10px", textAlign: "left",
                   border: `1.5px solid ${type === t ? "#F97316" : "#E8DDD0"}`,
-                  backgroundColor: type === t ? "#FFF7ED" : "#FFFFFF",
-                  cursor: "pointer",
+                  backgroundColor: type === t ? "#FFF7ED" : "#FFFFFF", cursor: "pointer",
                 }}>
-                  <p style={{ fontSize: "12px", fontWeight: 700,
-                    color: type === t ? "#F97316" : "#1C1917", margin: 0 }}>
+                  <p style={{ fontSize: "12px", fontWeight: 700, margin: 0,
+                    color: type === t ? "#F97316" : "#1C1917" }}>
                     {t === "binary" ? "Yes / No" : "Measurable"}
                   </p>
                   <p style={{ fontSize: "10px", color: "#78716C", margin: "2px 0 0" }}>
@@ -114,7 +150,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals }: Props
             </div>
           </Field>
 
-          {/* Target + unit for measurable */}
+          {/* Target + unit */}
           {type === "measurable" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <Field label="Daily target">
@@ -186,21 +222,37 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals }: Props
             </Field>
           )}
 
-          {/* Link to goal */}
+          {/* Goal link */}
           {goals.length > 0 && (
-            <Field label="Link to a goal (optional)">
-              <select
-                value={linkedGoalId}
-                onChange={(e) => setLinkedGoalId(e.target.value)}
-                style={{ ...inStyle, backgroundColor: "#FFFFFF" }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-                onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }}
-              >
-                <option value="">— No goal —</option>
-                {goals.map((g) => (
-                  <option key={g.id} value={g.id}>{g.outcome || g.statement}</option>
-                ))}
-              </select>
+            <Field label="Goal (optional)">
+              <GoalSelect goals={goals} value={linkedGoalId} onChange={handleGoalChange} zIndex={60} />
+            </Field>
+          )}
+
+          {/* No milestones warning */}
+          {goalHasNoMilestones && (
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: "8px",
+              padding: "10px 12px", borderRadius: "8px",
+              backgroundColor: "#FFFBEB", border: "1px solid #FCD34D", marginBottom: "16px",
+            }}>
+              <AlertTriangle size={14} color="#D97706" style={{ flexShrink: 0, marginTop: "1px" }} />
+              <p style={{ fontSize: "12px", color: "#92400E", margin: 0, lineHeight: 1.5 }}>
+                This goal has no milestones yet — add milestones to the goal first to link this habit.
+              </p>
+            </div>
+          )}
+
+          {/* Milestone — required */}
+          {linkedGoalId && goalMilestones.length > 0 && (
+            <Field label="Milestone *">
+              <MilestoneSelect milestones={goalMilestones} value={linkedMilestoneId}
+                onChange={setLinkedMilestoneId} required zIndex={60} />
+              {milestoneRequired && (
+                <p style={{ fontSize: "11px", color: "#D97706", fontWeight: 500, marginTop: "5px" }}>
+                  Habits must be linked to a specific milestone — pick one above.
+                </p>
+              )}
             </Field>
           )}
 
@@ -254,11 +306,229 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals }: Props
   );
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
 function Field({ label: lbl, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: "16px" }}>
       <p style={{ fontSize: "11px", fontWeight: 600, color: "#78716C", marginBottom: "6px" }}>{lbl}</p>
       {children}
+    </div>
+  );
+}
+
+// ── Custom dropdowns ──────────────────────────────────────────────────────────
+
+function GoalSelect({ goals, value, onChange, zIndex }: {
+  goals: GoalData[]; value: string; onChange: (id: string) => void; zIndex: number;
+}) {
+  const [open, setOpen]   = useState(false);
+  const containerRef      = useRef<HTMLDivElement>(null);
+  const triggerRef        = useRef<HTMLButtonElement>(null);
+  const [pos, setPos]     = useState({ top: 0, left: 0, width: 0, maxH: 260 });
+
+  const openDrop = () => {
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const vh = window.innerHeight;
+    const estH = Math.min((goals.length + 1) * 38, 260);
+    const fitsBelow = r.bottom + 6 + estH < vh - 56;
+    setPos({
+      top:  fitsBelow ? r.bottom + 4 : r.top - estH - 4,
+      left: r.left, width: r.width,
+      maxH: fitsBelow ? Math.min(260, vh - r.bottom - 64) : Math.min(260, r.top - 12),
+    });
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (containerRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const sel  = goals.find((g) => g.id === value);
+  const meta = sel ? GOAL_AREA_META[sel.area] : null;
+
+  return (
+    <div ref={containerRef}>
+      <button ref={triggerRef} onClick={() => open ? setOpen(false) : openDrop()} style={{
+        width: "100%", padding: "9px 12px", borderRadius: "8px", boxSizing: "border-box",
+        border: `1.5px solid ${open ? "#F97316" : "#E8DDD0"}`,
+        backgroundColor: "#FFFFFF", cursor: "pointer",
+        display: "flex", alignItems: "center", gap: "8px",
+      }}>
+        {sel && meta ? (
+          <>
+            <div style={{ width: "8px", height: "8px", borderRadius: "50%", flexShrink: 0, backgroundColor: meta.color }} />
+            <span style={{ flex: 1, textAlign: "left", fontSize: "12px", fontWeight: 700, color: "#1C1917",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {sel.outcome || sel.statement.slice(0, 55)}
+            </span>
+            <span style={{ fontSize: "9px", fontWeight: 600, color: meta.color, backgroundColor: meta.bg,
+              padding: "2px 7px", borderRadius: "8px", flexShrink: 0, whiteSpace: "nowrap" }}>
+              {meta.label}
+            </span>
+          </>
+        ) : (
+          <span style={{ flex: 1, textAlign: "left", fontSize: "13px", color: "#A8A29E" }}>
+            No linked goal
+          </span>
+        )}
+        <ChevronDown size={13} color="#A8A29E" style={{ flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: "fixed", top: pos.top, left: pos.left, width: pos.width,
+          backgroundColor: "#FFFFFF", borderRadius: "10px",
+          border: "1.5px solid #EDE5D8", boxShadow: "0 8px 32px rgba(28,25,23,0.16)",
+          zIndex, maxHeight: pos.maxH, overflowY: "auto",
+        }}>
+          <button onClick={() => { onChange(""); setOpen(false); }} style={{
+            width: "100%", padding: "7px 12px", border: "none", borderBottom: "1px solid #F2EAE0",
+            backgroundColor: value === "" ? "#FFF7ED" : "#FFFFFF", cursor: "pointer", textAlign: "left",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <span style={{ fontSize: "11px", fontWeight: 500, color: "#78716C" }}>No linked goal</span>
+            {value === "" && <Check size={11} color="#F97316" />}
+          </button>
+
+          {goals.map((g) => {
+            const m = GOAL_AREA_META[g.area]; const isSel = g.id === value;
+            return (
+              <button key={g.id} onClick={() => { onChange(g.id); setOpen(false); }} style={{
+                width: "100%", padding: "7px 12px", border: "none", borderBottom: "1px solid #F9F5EF",
+                backgroundColor: isSel ? "#FFF7ED" : "#FFFFFF", cursor: "pointer", textAlign: "left",
+                display: "flex", alignItems: "center", gap: "8px",
+              }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%",
+                  backgroundColor: m.color, flexShrink: 0 }} />
+                <p style={{ flex: 1, fontSize: "12px", fontWeight: 600, margin: 0,
+                  color: isSel ? "#F97316" : "#1C1917",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {g.outcome || g.statement.slice(0, 60)}
+                </p>
+                <span style={{ fontSize: "9px", fontWeight: 600, color: m.color, backgroundColor: m.bg,
+                  padding: "2px 7px", borderRadius: "8px", flexShrink: 0, whiteSpace: "nowrap" }}>
+                  {m.label}
+                </span>
+                {isSel && <Check size={11} color="#F97316" style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MilestoneSelect({ milestones, value, onChange, required: req, zIndex }: {
+  milestones: Milestone[]; value: string; onChange: (id: string) => void;
+  required?: boolean; zIndex: number;
+}) {
+  const [open, setOpen]   = useState(false);
+  const containerRef      = useRef<HTMLDivElement>(null);
+  const triggerRef        = useRef<HTMLButtonElement>(null);
+  const [pos, setPos]     = useState({ top: 0, left: 0, width: 0, maxH: 240 });
+
+  const openDrop = () => {
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const vh = window.innerHeight;
+    const estH = Math.min(milestones.length * 48, 240);
+    const fitsBelow = r.bottom + 6 + estH < vh - 56;
+    setPos({
+      top:  fitsBelow ? r.bottom + 4 : r.top - estH - 4,
+      left: r.left, width: r.width,
+      maxH: fitsBelow ? Math.min(240, vh - r.bottom - 64) : Math.min(240, r.top - 12),
+    });
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (containerRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const sel       = milestones.find((m) => m.id === value);
+  const needsPick = req && !value;
+
+  return (
+    <div ref={containerRef}>
+      <button ref={triggerRef} onClick={() => open ? setOpen(false) : openDrop()} style={{
+        width: "100%", padding: "9px 12px", borderRadius: "8px", boxSizing: "border-box",
+        border: `1.5px solid ${needsPick ? "#D97706" : open ? "#D97706" : "#E8DDD0"}`,
+        backgroundColor: needsPick ? "#FFFBEB" : "#FFFFFF", cursor: "pointer",
+        display: "flex", alignItems: "center", gap: "8px",
+      }}>
+        {sel ? (
+          <>
+            <span style={{ fontSize: "11px", color: "#D97706", flexShrink: 0 }}>◆</span>
+            <span style={{ flex: 1, textAlign: "left", fontSize: "12px", fontWeight: 700, color: "#1C1917",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {sel.title}
+            </span>
+            <span style={{ fontSize: "9px", color: "#D97706", fontWeight: 500, flexShrink: 0, whiteSpace: "nowrap" }}>
+              {fmtMilestoneDate(sel.deadline)}
+            </span>
+          </>
+        ) : (
+          <span style={{ flex: 1, textAlign: "left", fontSize: "13px",
+            color: needsPick ? "#D97706" : "#A8A29E", fontWeight: needsPick ? 600 : 400 }}>
+            {needsPick ? "Select a milestone *" : "— Select a milestone —"}
+          </span>
+        )}
+        <ChevronDown size={13} color={needsPick ? "#D97706" : "#A8A29E"} style={{ flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: "fixed", top: pos.top, left: pos.left, width: pos.width,
+          backgroundColor: "#FFFFFF", borderRadius: "10px",
+          border: "1.5px solid #FCD34D", boxShadow: "0 8px 32px rgba(28,25,23,0.16)",
+          zIndex, maxHeight: pos.maxH, overflowY: "auto",
+        }}>
+          {milestones.map((m) => {
+            const isSel = m.id === value;
+            return (
+              <button key={m.id} onClick={() => { onChange(m.id); setOpen(false); }} style={{
+                width: "100%", padding: "8px 12px", border: "none", borderBottom: "1px solid #F9F5EF",
+                backgroundColor: isSel ? "#FFFBEB" : "#FFFFFF", cursor: "pointer", textAlign: "left",
+                display: "flex", alignItems: "center", gap: "8px",
+              }}>
+                <span style={{ fontSize: "11px", color: "#D97706", flexShrink: 0 }}>◆</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: "12px", fontWeight: 600, margin: 0,
+                    color: isSel ? "#D97706" : "#1C1917",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {m.title}
+                  </p>
+                  <p style={{ fontSize: "10px", color: "#A8A29E", margin: "2px 0 0" }}>
+                    Due {fmtMilestoneDate(m.deadline)}
+                  </p>
+                </div>
+                {m.completed && (
+                  <span style={{ fontSize: "9px", fontWeight: 700, color: "#16A34A",
+                    backgroundColor: "#F0FDF4", padding: "2px 6px", borderRadius: "8px", flexShrink: 0 }}>
+                    Done
+                  </span>
+                )}
+                {isSel && !m.completed && <Check size={11} color="#D97706" style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -282,19 +552,19 @@ const cancelBtn: React.CSSProperties = {
 };
 const backdrop: React.CSSProperties = {
   position: "fixed", inset: 0, backgroundColor: "rgba(28,25,23,0.3)",
-  backdropFilter: "blur(2px)", zIndex: 40,
+  backdropFilter: "blur(2px)", zIndex: 400,
 };
 const sheet: React.CSSProperties = {
   position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px,100vw)",
   backgroundColor: "#FAF5EE", borderLeft: "1px solid #EDE5D8",
-  zIndex: 50, display: "flex", flexDirection: "column",
+  zIndex: 401, display: "flex", flexDirection: "column",
   boxShadow: "-8px 0 32px rgba(28,25,23,0.12)",
 };
 const header: React.CSSProperties = {
   padding: "20px 24px 16px", borderBottom: "1px solid #EDE5D8",
   display: "flex", alignItems: "center", justifyContent: "space-between",
 };
-const label: React.CSSProperties = {
+const labelStyle: React.CSSProperties = {
   fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
   textTransform: "uppercase", color: "#F97316", marginBottom: "2px",
 };

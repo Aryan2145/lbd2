@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Plus, X, Check, Clock, CheckSquare, AlertTriangle, Lightbulb, ArrowRight, Pencil, Trash2 } from "lucide-react";
 import type { DayIntention, DailyPriority, DecisionEntry, LifeArea } from "@/lib/dayTypes";
-import { LIFE_AREAS, LIFE_AREA_COLORS } from "@/lib/dayTypes";
+import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import type { WeekPlan, WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
@@ -34,7 +34,7 @@ function getDailyQuote(): { text: string; author: string } {
   return DAILY_QUOTES[doy % DAILY_QUOTES.length];
 }
 
-const EMPTY_PRI = (lifeArea: LifeArea = "Work"): DailyPriority => ({
+const EMPTY_PRI = (lifeArea: LifeArea = "professional"): DailyPriority => ({
   text: "", lifeArea, completed: false,
 });
 
@@ -640,7 +640,7 @@ export default function MorningIntention({
                           onChange={(v) => updatePri(idx, { lifeArea: v as LifeArea })}
                           options={LIFE_AREAS}
                           getColor={(a) => LIFE_AREA_COLORS[a as LifeArea]}
-                          getLabel={(a) => a}
+                          getLabel={(a) => LIFE_AREA_LABELS[a as LifeArea]}
                         />
                       </div>
                       <button onClick={() => requestDeletePri(idx)} style={{ ...ghostBtn, marginTop: 1 }}>

@@ -60,6 +60,18 @@ export default function HabitsPage() {
     });
   };
 
+  const handleToggleDate = (id: string, date: string) => {
+    const habit = habits.find((h) => h.id === id);
+    if (!habit) return;
+    if (habit.type === "measurable") {
+      const cur  = habit.measurements[date] ?? 0;
+      const next = cur >= habit.target ? 0 : habit.target;
+      setHabitMeasurement(id, date, next);
+    } else {
+      toggleHabitDay(id, date);
+    }
+  };
+
   const handleStep = (id: string, delta: number) => {
     stepHabitToday(id, delta);
     setDetailHabit((prev) => {
@@ -203,6 +215,7 @@ export default function HabitsPage() {
                 onClick={() => setDetailHabit(habits.find((x) => x.id === h.id) ?? h)}
                 onToggleToday={handleToggle}
                 onStep={handleStep}
+                onToggleDate={handleToggleDate}
               />
             ))}
             <button

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Sparkles } from "lucide-react";
-import type { LifeArea, GoalData } from "./GoalCard";
+import { X, Sparkles, Plus, Trash2 } from "lucide-react";
+import type { LifeArea, GoalData, Milestone } from "./GoalCard";
+import { AREA_META } from "./GoalCard";
 
 const AREAS: { value: LifeArea; label: string }[] = [
   { value: "professional",  label: "Professional"   },
@@ -25,6 +26,11 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
+function fmtMilestoneDate(iso: string) {
+  if (!iso) return "";
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function buildStatement(outcome: string, metric: string, unit: string, date: string, connector: string) {
   const parts = [outcome.trim(), connector, metric.trim(), unit.trim(), "by", fmtDate(date)];
   return parts.filter(Boolean).join(" ");
@@ -43,16 +49,42 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
   const [connector, setConnector] = useState(CONNECTORS[0]);
   const [deadline,  setDeadline]  = useState("");
   const [area,      setArea]      = useState<LifeArea>("professional");
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [mTitle,    setMTitle]    = useState("");
+  const [mDeadline, setMDeadline] = useState("");
 
   useEffect(() => {
     if (!open) {
       setOutcome(""); setMetric(""); setUnit("");
       setConnector(CONNECTORS[0]); setDeadline(""); setArea("professional");
+      setMilestones([]); setMTitle(""); setMDeadline("");
     }
   }, [open]);
 
+  const mDeadlineError     = deadline && mDeadline && mDeadline > deadline
+    ? "Milestone date can't be after the goal's target date."
+    : null;
+  const goalDeadlineWarning = deadline ? milestones.filter((m) => m.deadline > deadline) : [];
+
   const statement = buildStatement(outcome, metric, unit, deadline, connector);
-  const canSave   = outcome.trim() && metric.trim() && deadline;
+  const canSave   = outcome.trim() && metric.trim() && deadline && goalDeadlineWarning.length === 0;
+
+  const addMilestone = () => {
+    if (!mTitle.trim() || !mDeadline || mDeadlineError) return;
+    const m: Milestone = {
+      id: crypto.randomUUID(),
+      title: mTitle.trim(),
+      deadline: mDeadline,
+      completed: false,
+      createdAt: Date.now(),
+    };
+    setMilestones((p) => [...p, m].sort((a, b) => a.deadline.localeCompare(b.deadline)));
+    setMTitle("");
+    setMDeadline("");
+  };
+
+  const removeMilestone = (id: string) =>
+    setMilestones((p) => p.filter((m) => m.id !== id));
 
   const handleSave = () => {
     if (!canSave) return;
@@ -69,6 +101,7 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
       lastMoved: now,
       velocity:  0,
       notes:     [],
+      milestones,
       createdAt: now,
     };
     onSave(goal);
@@ -136,9 +169,9 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
                   onClick={() => setArea(a.value)}
                   style={{
                     padding: "5px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 600,
-                    border: `1.5px solid ${area === a.value ? "#F97316" : "#E8DDD0"}`,
-                    backgroundColor: area === a.value ? "#FFF7ED" : "#FFFFFF",
-                    color: area === a.value ? "#F97316" : "#78716C",
+                    border: `1.5px solid ${area === a.value ? AREA_META[a.value].color : "#E8DDD0"}`,
+                    backgroundColor: area === a.value ? AREA_META[a.value].bg : "#FFFFFF",
+                    color: area === a.value ? AREA_META[a.value].color : "#78716C",
                     cursor: "pointer", transition: "all 0.15s",
                   }}>
                   {a.label}
@@ -192,6 +225,23 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
             </Field>
           </div>
 
+                  {/* Deadline */}
+                  <Field label="Target date">
+                    <input
+                      type="date"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                      style={{ ...inputStyle, colorScheme: "light" }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
+                      onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }}
+                    />
+                    {goalDeadlineWarning.length > 0 && (
+                      <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
+                        ⚠ {goalDeadlineWarning.length} milestone{goalDeadlineWarning.length > 1 ? "s are" : " is"} scheduled after this date — please remove or reschedule them.
+                      </p>
+                    )}
+                  </Field>
+
           {/* Connector */}
           <Field label="Statement connector">
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -212,16 +262,89 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
             </div>
           </Field>
 
-          {/* Deadline */}
-          <Field label="Target date">
-            <input
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              style={{ ...inputStyle, colorScheme: "light" }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-              onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }}
-            />
+
+          {/* Milestones */}
+          <Field label="Milestones (optional)">
+            <div style={{ display: "flex", gap: "6px", marginBottom: "4px" }}>
+              <input
+                type="text"
+                value={mTitle}
+                onChange={(e) => setMTitle(e.target.value)}
+                placeholder="Milestone title"
+                style={{ ...inputStyle, flex: 1 }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#D97706"; }}
+                onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }}
+                onKeyDown={(e) => { if (e.key === "Enter") addMilestone(); }}
+              />
+              <input
+                type="date"
+                value={mDeadline}
+                onChange={(e) => setMDeadline(e.target.value)}
+                style={{
+                  ...inputStyle, width: "130px", flexShrink: 0, colorScheme: "light",
+                  borderColor: mDeadlineError ? "#DC2626" : "#E8DDD0",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = mDeadlineError ? "#DC2626" : "#D97706"; }}
+                onBlur={(e)  => { e.currentTarget.style.borderColor = mDeadlineError ? "#DC2626" : "#E8DDD0"; }}
+              />
+              <button
+                onClick={addMilestone}
+                disabled={!mTitle.trim() || !mDeadline || !!mDeadlineError}
+                style={{
+                  flexShrink: 0, width: "34px", height: "36px", borderRadius: "8px", border: "none",
+                  background: mTitle.trim() && mDeadline && !mDeadlineError
+                    ? "linear-gradient(135deg, #D97706, #B45309)" : "#E8DDD0",
+                  cursor: mTitle.trim() && mDeadline && !mDeadlineError ? "pointer" : "default",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <Plus size={14} color={mTitle.trim() && mDeadline && !mDeadlineError ? "#FFFFFF" : "#A8A29E"} />
+              </button>
+            </div>
+            {mDeadlineError && (
+              <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginBottom: "6px" }}>
+                {mDeadlineError}
+              </p>
+            )}
+            {milestones.length > 0 && (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                  {milestones.map((m) => (
+                    <div key={m.id} style={{
+                      display: "flex", alignItems: "center", gap: "8px",
+                      padding: "7px 10px", borderRadius: "8px",
+                      backgroundColor: "#FFFBEB", border: "1px solid #FCD34D",
+                    }}>
+                      <span style={{ fontSize: "10px" }}>◆</span>
+                      <span style={{ flex: 1, fontSize: "12px", fontWeight: 600, color: "#1C1917",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.title}
+                      </span>
+                      <span style={{ fontSize: "10px", color: "#D97706", fontWeight: 500, flexShrink: 0 }}>
+                        {fmtMilestoneDate(m.deadline)}
+                      </span>
+                      <button
+                        onClick={() => removeMilestone(m.id)}
+                        style={{
+                          flexShrink: 0, width: "20px", height: "20px", borderRadius: "4px",
+                          border: "none", backgroundColor: "transparent",
+                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          opacity: 0.5,
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.5"; }}
+                      >
+                        <Trash2 size={11} color="#DC2626" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: "11px", color: "#B8AEA4", marginTop: "8px",
+                  textAlign: "center", fontStyle: "italic" }}>
+                  After saving, you can link tasks & habits to each milestone
+                </p>
+              </>
+            )}
           </Field>
 
           {/* Auto-generated statement preview */}

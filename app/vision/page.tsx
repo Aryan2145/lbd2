@@ -5,6 +5,8 @@ import WheelOfLife from "@/components/vision/WheelOfLife";
 import PolaroidCard, { type AreaData } from "@/components/vision/PolaroidCard";
 import AreaEditSheet from "@/components/vision/AreaEditSheet";
 import { Edit2, RotateCcw } from "lucide-react";
+import { AREA_META } from "@/components/goals/GoalCard";
+import type { LifeArea } from "@/components/goals/GoalCard";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const CY       = 440;    // vertical center of wheel in canvas
@@ -273,6 +275,7 @@ export default function VisionPage() {
                 area={areas[i]}
                 rotation={meta.rotation}
                 onClick={() => {}}
+                accentColor={AREA_META[meta.id as LifeArea]?.color ?? "#F97316"}
               />
             </div>
           );

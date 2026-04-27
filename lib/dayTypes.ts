@@ -1,22 +1,31 @@
+// Canonical 7 life areas — single source of truth used across all modules
 export type LifeArea =
-  | "Health" | "Work" | "Family" | "Learning"
-  | "Finance" | "Relationships" | "Personal" | "Spiritual" | "Other";
+  | "professional" | "contribution" | "wealth"
+  | "spiritual"    | "personal"     | "relationships" | "health";
 
 export const LIFE_AREAS: LifeArea[] = [
-  "Health", "Work", "Family", "Learning",
-  "Finance", "Relationships", "Personal", "Spiritual", "Other",
+  "professional", "contribution", "wealth",
+  "spiritual", "personal", "relationships", "health",
 ];
 
+export const LIFE_AREA_LABELS: Record<LifeArea, string> = {
+  professional:  "Professional",
+  contribution:  "Contribution",
+  wealth:        "Wealth",
+  spiritual:     "Spiritual",
+  personal:      "Personal Growth",
+  relationships: "Relationships",
+  health:        "Health",
+};
+
 export const LIFE_AREA_COLORS: Record<LifeArea, string> = {
-  Health:        "#10B981",
-  Work:          "#6366F1",
-  Family:        "#F59E0B",
-  Learning:      "#3B82F6",
-  Finance:       "#06B6D4",
-  Relationships: "#EC4899",
-  Personal:      "#8B5CF6",
-  Spiritual:     "#F97316",
-  Other:         "#9CA3AF",
+  professional:  "#2563EB",   // blue
+  contribution:  "#16A34A",   // green
+  wealth:        "#CA8A04",   // yellow
+  spiritual:     "#7C3AED",   // purple
+  personal:      "#F97316",   // orange
+  relationships: "#DB2777",   // pink
+  health:        "#DC2626",   // red
 };
 
 export interface DailyPriority {

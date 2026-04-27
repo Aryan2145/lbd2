@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Camera } from "lucide-react";
+import { X, Camera, Check } from "lucide-react";
 import type { BucketEntry } from "@/lib/bucketTypes";
-import { LIFE_AREA_EMOJI } from "@/lib/bucketTypes";
 import { LIFE_AREA_COLORS } from "@/lib/dayTypes";
 
 interface Props {
@@ -36,17 +35,17 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
   if (!entry) return null;
 
   const areaColor = LIFE_AREA_COLORS[entry.lifeArea];
-  const emoji     = LIFE_AREA_EMOJI[entry.lifeArea];
   const imgSrc    = entry.imageUrl ? processImageUrl(entry.imageUrl) : "";
   const memorySrc = memoryPhotoUrl ? processImageUrl(memoryPhotoUrl) : "";
 
-  function handleFlip() { setIsFlipped(true); }
-  function handleSave() { onSave({ memoryPhotoUrl: memoryPhotoUrl.trim(), changeReflection: changeText.trim() }); }
+  function handleSave() {
+    onSave({ memoryPhotoUrl: memoryPhotoUrl.trim(), changeReflection: changeText.trim() });
+  }
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 60,
-      backgroundColor: "rgba(10,8,6,0.88)",
+      backgroundColor: "rgba(28,25,23,0.55)",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: "24px",
     }}>
@@ -54,12 +53,11 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
       <button onClick={onCancel} style={{
         position: "absolute", top: 20, right: 20,
         width: 36, height: 36, borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.15)",
-        backgroundColor: "rgba(255,255,255,0.07)",
+        border: "1px solid #EDE5D8", backgroundColor: "#FFFFFF",
         display: "flex", alignItems: "center", justifyContent: "center",
-        cursor: "pointer",
+        cursor: "pointer", boxShadow: "0 2px 8px rgba(28,25,23,0.12)",
       }}>
-        <X size={16} color="#E8DDD0" />
+        <X size={16} color="#57534E" />
       </button>
 
       {/* Flip scene */}
@@ -68,79 +66,100 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
 
           {/* ── FRONT: Celebration ── */}
           <div className="bucket-flip-front" style={{
-            background: "linear-gradient(160deg, #1C1917 0%, #0F0E0C 100%)",
-            border: "1px solid rgba(249,115,22,0.25)",
+            backgroundColor: "#FFFFFF",
+            border: "1.5px solid #EDE5D8",
+            borderTop: "4px solid #F97316",
+            borderRadius: "16px",
             padding: "32px 28px 28px",
             display: "flex", flexDirection: "column", alignItems: "center",
+            boxShadow: "0 8px 40px rgba(249,115,22,0.15)",
           }}>
-            {/* Sparkle header */}
+            {/* Badge */}
             <div style={{ marginBottom: "20px", textAlign: "center" }}>
-              <p style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em",
-                textTransform: "uppercase", color: "#F97316", marginBottom: "6px" }}>
-                ✦ Moment of Legacy ✦
-              </p>
-              <h2 style={{ fontSize: "26px", fontWeight: 800, color: "#FAF5EE",
-                lineHeight: 1.2, margin: 0 }}>
+              <span style={{
+                display: "inline-block", padding: "4px 14px", borderRadius: "20px",
+                backgroundColor: "#FFF7ED", border: "1px solid #FED7AA",
+                fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em",
+                textTransform: "uppercase", color: "#EA580C", marginBottom: "12px",
+              }}>
+                Moment of Legacy
+              </span>
+              <h2 style={{ fontSize: "28px", fontWeight: 800, color: "#1C1917",
+                lineHeight: 1.15, margin: 0 }}>
                 Dream Achieved.
               </h2>
             </div>
 
-            {/* Entry image or emoji */}
+            {/* Entry image or area label */}
             <div style={{
-              width: "100%", height: 180, borderRadius: "14px", overflow: "hidden",
+              width: "100%", height: 170, borderRadius: "12px", overflow: "hidden",
               marginBottom: "20px", position: "relative",
-              background: `linear-gradient(135deg, ${areaColor}30, ${areaColor}08)`,
+              background: `linear-gradient(135deg, ${areaColor}20 0%, #FFF7ED 100%)`,
               border: `1.5px solid ${areaColor}30`,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               {imgSrc ? (
-                <img src={imgSrc} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                <img src={imgSrc} alt=""
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <span style={{ fontSize: "64px" }}>{emoji}</span>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%",
+                    backgroundColor: areaColor + "20",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    margin: "0 auto 8px" }}>
+                    <div style={{ width: 16, height: 16, borderRadius: "50%",
+                      backgroundColor: areaColor }} />
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em",
+                    textTransform: "uppercase", color: areaColor }}>
+                    {entry.lifeArea}
+                  </span>
+                </div>
               )}
-              {/* Overlay glow */}
               <div style={{
-                position: "absolute", inset: 0, borderRadius: "14px",
-                background: "linear-gradient(to bottom, transparent 50%, rgba(10,8,6,0.4) 100%)",
+                position: "absolute", inset: 0, borderRadius: "11px",
+                background: "linear-gradient(to bottom, transparent 50%, rgba(255,255,255,0.6) 100%)",
                 pointerEvents: "none",
               }} />
             </div>
 
-            {/* Entry title */}
-            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#FAF5EE",
+            {/* Title + area */}
+            <h3 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917",
               textAlign: "center", lineHeight: 1.3, margin: "0 0 8px" }}>
               {entry.title}
             </h3>
-
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "20px" }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: areaColor }} />
-              <span style={{ fontSize: "11px", fontWeight: 600, color: areaColor }}>
+              <span style={{
+                fontSize: "9px", fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: "0.06em", color: areaColor,
+                backgroundColor: areaColor + "18", padding: "2px 8px", borderRadius: "20px",
+              }}>
                 {entry.lifeArea}
               </span>
             </div>
 
-            {/* Legacy quote */}
+            {/* Quote */}
             <div style={{
               padding: "14px 18px", borderRadius: "12px",
-              backgroundColor: "rgba(249,115,22,0.08)",
-              border: "1px solid rgba(249,115,22,0.18)",
-              marginBottom: "28px", textAlign: "center",
+              backgroundColor: "#FFF7ED", border: "1px solid #FED7AA",
+              marginBottom: "24px", width: "100%",
             }}>
-              <p style={{ fontSize: "12px", color: "#D6D0C9", lineHeight: 1.6, margin: 0, fontStyle: "italic" }}>
+              <p style={{ fontSize: "12px", color: "#78716C", lineHeight: 1.65, margin: 0,
+                fontStyle: "italic", textAlign: "center" }}>
                 &ldquo;Your past self dreamed of this. Your present self made it happen.
                 This goes into your legacy — permanent, undeniable, yours.&rdquo;
               </p>
             </div>
 
             <button
-              onClick={handleFlip}
-              className="legacy-glow"
+              onClick={() => setIsFlipped(true)}
               style={{
                 width: "100%", padding: "13px", borderRadius: "12px", border: "none",
                 background: "linear-gradient(135deg, #F97316, #EA580C)",
                 fontSize: "13px", fontWeight: 700, color: "#FFFFFF",
-                cursor: "pointer", letterSpacing: "0.03em",
+                cursor: "pointer", letterSpacing: "0.02em",
+                boxShadow: "0 4px 16px rgba(249,115,22,0.35)",
               }}
             >
               Capture This Memory →
@@ -149,29 +168,36 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
 
           {/* ── BACK: Reflection form ── */}
           <div className="bucket-flip-back" style={{
-            background: "linear-gradient(160deg, #1C1917 0%, #0F0E0C 100%)",
-            border: "1px solid rgba(249,115,22,0.25)",
+            backgroundColor: "#FFFFFF",
+            border: "1.5px solid #EDE5D8",
+            borderTop: "4px solid #F97316",
+            borderRadius: "16px",
             padding: "28px",
             display: "flex", flexDirection: "column", gap: "18px",
+            boxShadow: "0 8px 40px rgba(249,115,22,0.15)",
           }}>
             <div>
-              <p style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.12em",
-                textTransform: "uppercase", color: "#F97316", marginBottom: "4px" }}>
+              <span style={{
+                display: "inline-block", padding: "3px 12px", borderRadius: "20px",
+                backgroundColor: "#FFF7ED", border: "1px solid #FED7AA",
+                fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em",
+                textTransform: "uppercase", color: "#EA580C", marginBottom: "8px",
+              }}>
                 Legacy Archive
-              </p>
-              <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#FAF5EE", margin: 0, lineHeight: 1.2 }}>
+              </span>
+              <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#1C1917", margin: 0, lineHeight: 1.25 }}>
                 {entry.title}
               </h3>
             </div>
 
             {/* Memory photo */}
             <div>
-              <label style={{ ...lbl, color: "#A8A29E" }}>
-                <Camera size={10} style={{ display: "inline", marginRight: 4 }} />
+              <label style={lbl}>
+                <Camera size={10} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
                 Memory Photo URL
                 <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0,
-                  marginLeft: 5, color: "#78716C" }}>
-                  (optional — Google Drive or direct link)
+                  marginLeft: 5, color: "#A8A29E", fontSize: "9px" }}>
+                  optional
                 </span>
               </label>
               <input
@@ -179,62 +205,47 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
                 onChange={(e) => { setMemoryPhotoUrl(e.target.value); setImgError(false); }}
                 placeholder="Paste a photo link from the moment…"
                 className="weekly-input"
-                style={{
-                  width: "100%", padding: "9px 12px", borderRadius: "10px",
-                  border: "1.5px solid rgba(255,255,255,0.12)",
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                  fontSize: "12px", color: "#FAF5EE", outline: "none",
-                  boxSizing: "border-box",
-                }}
+                style={inp}
               />
               {memoryPhotoUrl && !imgError && (
-                <div style={{ marginTop: 8, height: 90, borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ marginTop: 8, height: 80, borderRadius: 8, overflow: "hidden",
+                  border: "1px solid #E8DDD0" }}>
                   <img src={memorySrc} alt="" onError={() => setImgError(true)}
                     style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
               )}
             </div>
 
-            {/* Change reflection */}
+            {/* Reflection */}
             <div>
-              <label style={{ ...lbl, color: "#A8A29E" }}>
-                How did this change you?
-              </label>
+              <label style={lbl}>How did this change you?</label>
               <textarea
                 value={changeText}
                 onChange={(e) => setChangeText(e.target.value)}
-                placeholder="Write freely — what shifted inside you, what new doors opened, who you became..."
+                placeholder="What shifted inside you, what new doors opened, who you became…"
                 rows={5}
                 autoFocus
                 className="weekly-textarea"
-                style={{
-                  width: "100%", padding: "10px 12px", borderRadius: "10px",
-                  border: "1.5px solid rgba(255,255,255,0.12)",
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                  fontSize: "12px", color: "#FAF5EE", outline: "none",
-                  boxSizing: "border-box", resize: "none", fontFamily: "inherit",
-                  lineHeight: 1.6,
-                }}
+                style={{ ...inp, resize: "none", fontFamily: "inherit", lineHeight: 1.6 }}
               />
             </div>
 
             <div style={{ display: "flex", gap: "8px" }}>
               <button onClick={onCancel} style={{
                 flex: 1, padding: "11px", borderRadius: "10px",
-                border: "1px solid rgba(255,255,255,0.12)",
-                backgroundColor: "rgba(255,255,255,0.05)",
-                fontSize: "12px", fontWeight: 600, color: "#A8A29E",
-                cursor: "pointer",
+                border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA",
+                fontSize: "12px", fontWeight: 600, color: "#78716C", cursor: "pointer",
               }}>
                 Cancel
               </button>
               <button onClick={handleSave} style={{
                 flex: 2, padding: "11px", borderRadius: "10px", border: "none",
-                background: "linear-gradient(135deg, #10B981, #059669)",
-                fontSize: "12px", fontWeight: 700, color: "#FFFFFF",
-                cursor: "pointer",
+                background: "linear-gradient(135deg, #F97316, #EA580C)",
+                fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                boxShadow: "0 2px 8px rgba(249,115,22,0.3)",
               }}>
-                ✓ Save to Legacy Archive
+                <Check size={14} /> Save to Legacy Archive
               </button>
             </div>
           </div>
@@ -246,6 +257,12 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
 }
 
 const lbl: React.CSSProperties = {
-  display: "block", fontSize: "10px", fontWeight: 700,
+  display: "block", fontSize: "10px", fontWeight: 700, color: "#44403C",
   textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "7px",
+};
+
+const inp: React.CSSProperties = {
+  width: "100%", padding: "9px 13px", borderRadius: "10px",
+  border: "1.5px solid #D6CEC5", backgroundColor: "#FAFAF9",
+  fontSize: "13px", color: "#1C1917", outline: "none", boxSizing: "border-box",
 };

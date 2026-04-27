@@ -8,18 +8,19 @@ export type EisenhowerQ  = "Q1" | "Q2" | "Q3" | "Q4";
 export type TaskStatus   = "open" | "complete" | "incomplete";
 
 export interface TaskData {
-  id:            string;
-  kind:          "one-time" | "instance";
-  parentId?:     string;
-  title:         string;
-  description:   string;
-  deadline:      string;          // YYYY-MM-DD
-  quadrant:      EisenhowerQ;
-  status:        TaskStatus;
-  closedAt?:     number;
-  variance?:     number;
-  createdAt:     number;
-  linkedGoalId:  string;
+  id:                 string;
+  kind:               "one-time" | "instance";
+  parentId?:          string;
+  title:              string;
+  description:        string;
+  deadline:           string;          // YYYY-MM-DD
+  quadrant:           EisenhowerQ;
+  status:             TaskStatus;
+  closedAt?:          number;
+  variance?:          number;
+  createdAt:          number;
+  linkedGoalId:       string;
+  linkedMilestoneId?: string;          // "" or undefined = none
 }
 
 /* RECURRING_DISABLED — RecurringTemplate feature removed from UI; type kept for data compatibility
@@ -136,6 +137,17 @@ export default function TaskCard({ task, onClick, onComplete, onMiss }: Props) {
 
       {/* Right cluster */}
       <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+        {/* Milestone indicator */}
+        {task.linkedMilestoneId && (
+          <span title="Linked to milestone" style={{
+            fontSize: "9px", fontWeight: 700,
+            color: "#D97706", backgroundColor: "#FFFBEB",
+            padding: "1px 4px", borderRadius: "3px",
+            border: "1px solid #FCD34D",
+          }}>
+            ◆
+          </span>
+        )}
         {/* Deadline badge */}
         <span style={{
           fontSize: "9px", fontWeight: 600, whiteSpace: "nowrap",

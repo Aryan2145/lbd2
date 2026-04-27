@@ -11,31 +11,32 @@ export type HabitFrequency = "daily" | "weekdays" | "weekends" | "custom";
 export type HabitType      = "binary" | "measurable";
 
 export interface HabitData {
-  id:           string;
-  name:         string;
-  description:  string;
-  area:         LifeArea;
-  frequency:    HabitFrequency;
-  customDays:   number[];       // 0=Sun…6=Sat
-  cue:          string;
-  reward:       string;
-  type:         HabitType;
-  target:       number;         // 1 for binary, N for measurable
-  unit:         string;         // "" for binary
-  completions:  string[];       // YYYY-MM-DD (binary done-days)
-  measurements: Record<string, number>; // date → value (measurable)
-  linkedGoalId: string;         // "" = no link
-  createdAt:    number;
+  id:                string;
+  name:              string;
+  description:       string;
+  area:              LifeArea;
+  frequency:         HabitFrequency;
+  customDays:        number[];       // 0=Sun…6=Sat
+  cue:               string;
+  reward:            string;
+  type:              HabitType;
+  target:            number;         // 1 for binary, N for measurable
+  unit:              string;         // "" for binary
+  completions:       string[];       // YYYY-MM-DD (binary done-days)
+  measurements:      Record<string, number>; // date → value (measurable)
+  linkedGoalId:      string;         // "" = no link
+  linkedMilestoneId: string;         // "" = no link
+  createdAt:         number;
 }
 
 // ── Shared meta ───────────────────────────────────────────────────────────────
 export const AREA_META: Record<LifeArea, { label: string; color: string; bg: string }> = {
   professional:  { label: "Professional",   color: "#2563EB", bg: "#EFF6FF" },
-  contribution:  { label: "Contribution",   color: "#7C3AED", bg: "#F5F3FF" },
-  wealth:        { label: "Wealth",          color: "#C9A84C", bg: "#FEFCE8" },
-  spiritual:     { label: "Spiritual",       color: "#059669", bg: "#ECFDF5" },
-  personal:      { label: "Personal Growth", color: "#DB2777", bg: "#FDF2F8" },
-  relationships: { label: "Relationships",   color: "#EA580C", bg: "#FFF7ED" },
+  contribution:  { label: "Contribution",   color: "#16A34A", bg: "#F0FDF4" },
+  wealth:        { label: "Wealth",          color: "#CA8A04", bg: "#FEFCE8" },
+  spiritual:     { label: "Spiritual",       color: "#7C3AED", bg: "#F5F0FF" },
+  personal:      { label: "Personal Growth", color: "#F97316", bg: "#FFF7ED" },
+  relationships: { label: "Relationships",   color: "#DB2777", bg: "#FDF2F8" },
   health:        { label: "Health",          color: "#DC2626", bg: "#FEF2F2" },
 };
 
@@ -108,13 +109,14 @@ export function calcConsistency(habit: HabitData, days = 30): number {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props {
-  habit:          HabitData;
-  onClick:        () => void;
-  onToggleToday:  (id: string) => void;
-  onStep?:        (id: string, delta: number) => void; // measurable only
+  habit:           HabitData;
+  onClick:         () => void;
+  onToggleToday:   (id: string) => void;
+  onStep?:         (id: string, delta: number) => void;
+  onToggleDate?:   (id: string, date: string) => void;
 }
 
-export default function HabitCard({ habit, onClick, onToggleToday, onStep }: Props) {
+export default function HabitCard({ habit, onClick, onToggleToday, onStep, onToggleDate }: Props) {
   const today      = toLocalDate();
   const area       = AREA_META[habit.area];
   const streak     = calcStreak(habit);
@@ -137,6 +139,12 @@ export default function HabitCard({ habit, onClick, onToggleToday, onStep }: Pro
     return { ds, scheduled: sch, ratio: habit.completions.includes(ds) ? 1 : 0,
       done: habit.completions.includes(ds) };
   });
+
+  const DOW_SHORT   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+  const todayDow    = new Date().getDay();
+  const colHeaders  = Array.from({ length: 7 }, (_, j) =>
+    DOW_SHORT[(todayDow - (27 - j) + 700) % 7]
+  );
 
   return (
     <div
@@ -229,24 +237,49 @@ export default function HabitCard({ habit, onClick, onToggleToday, onStep }: Pro
         )}
       </div>
 
-      {/* 4×7 dot grid */}
+      {/* Day-of-week column headers */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "3px", marginBottom: "3px" }}>
+        {colHeaders.map((label, j) => (
+          <div key={j} style={{
+            textAlign: "center", fontSize: "8px", fontWeight: 600,
+            color: "#B8AEA4", lineHeight: 1,
+          }}>
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* 4×7 dot grid — clickable */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "3px", marginBottom: "10px" }}>
         {dots.map((dot, idx) => {
-          const opacity = isMeasure
-            ? dot.ratio >= 1 ? 1 : dot.ratio > 0 ? 0.25 + dot.ratio * 0.75 : dot.scheduled ? 0.4 : 0.15
-            : dot.done ? 1 : dot.scheduled ? 0.5 : 0.25;
+          const isFilled = isMeasure ? dot.ratio > 0 : dot.done;
+          const bg = isFilled
+            ? area.color
+            : dot.scheduled ? "#EDE5D8" : "#C8C2BC";
+          const cellOpacity = isMeasure && isFilled && !dot.done
+            ? 0.3 + dot.ratio * 0.7 : 1;
+          const dateNum = parseInt(dot.ds.slice(8), 10);
+          const textColor = isFilled ? "rgba(255,255,255,0.55)" : "rgba(100,75,50,0.38)";
           return (
             <div
               key={idx}
               title={dot.ds}
+              onClick={(e) => { e.stopPropagation(); onToggleDate?.(habit.id, dot.ds); }}
               style={{
                 width: "100%", aspectRatio: "1", borderRadius: "3px",
-                backgroundColor: (isMeasure ? dot.ratio > 0 : dot.done)
-                  ? area.color
-                  : dot.scheduled ? "#EDE5D8" : "#F7F4F0",
-                opacity,
+                backgroundColor: bg, opacity: cellOpacity,
+                cursor: onToggleDate ? "pointer" : "default",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "opacity 0.15s",
               }}
-            />
+            >
+              <span style={{
+                fontSize: "7px", fontWeight: 500, color: textColor,
+                userSelect: "none", lineHeight: 1, pointerEvents: "none",
+              }}>
+                {dateNum}
+              </span>
+            </div>
           );
         })}
       </div>

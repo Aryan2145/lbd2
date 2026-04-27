@@ -11,32 +11,32 @@ import PurposeBox, {
 const ROLES = [
   {
     id: "spouse",
-    title: "Spouse / Partner",
+    title: "Partner",
     question: "How do I want to be remembered as a partner?",
   },
   {
     id: "child",
-    title: "Child",
+    title: "Children",
     question: "What values do I want my children to say I embodied?",
   },
   {
     id: "parent",
-    title: "Mother / Father",
+    title: "Parents",
     question: "How do I honor my parents through my actions?",
   },
   {
     id: "colleague",
-    title: "Colleague",
+    title: "Colleagues",
     question: "What was my professional reputation among peers?",
   },
   {
     id: "friend",
-    title: "Friend",
+    title: "Friends",
     question: "What kind of friend was I during their hardest times?",
   },
   {
     id: "social",
-    title: "Social Leader",
+    title: "Community Leader",
     question: "What impact did I leave on my community?",
   },
 ];

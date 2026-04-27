@@ -5,6 +5,8 @@ import { Plus, Target } from "lucide-react";
 import GoalCard, { type GoalData, type LifeArea } from "@/components/goals/GoalCard";
 import GoalCreateSheet from "@/components/goals/GoalCreateSheet";
 import GoalDetailSheet from "@/components/goals/GoalDetailSheet";
+import TaskCreateSheet from "@/components/tasks/TaskCreateSheet";
+import HabitCreateSheet from "@/components/habits/HabitCreateSheet";
 import { useAppStore } from "@/lib/AppStore";
 
 const FILTERS = [
@@ -34,11 +36,13 @@ function applyFilter(goals: GoalData[], f: FilterValue): GoalData[] {
 }
 
 export default function GoalsPage() {
-  const { goals, habits, addGoal, updateGoal, deleteGoal } = useAppStore();
+  const { goals, habits, tasks, addGoal, updateGoal, deleteGoal, addTask, addHabit, updateTask, updateHabit } = useAppStore();
 
   const [filter,     setFilter]     = useState<FilterValue>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [detailGoal, setDetailGoal] = useState<GoalData | null>(null);
+  const [taskPrefill,  setTaskPrefill]  = useState<{ goalId: string; milestoneId: string } | null>(null);
+  const [habitPrefill, setHabitPrefill] = useState<{ goalId: string; milestoneId: string } | null>(null);
 
   const filtered    = applyFilter(goals, filter);
   const staleCount  = goals.filter(isStale).length;
@@ -49,9 +53,13 @@ export default function GoalsPage() {
   const linkedHabitsFor = (goalId: string) =>
     habits.filter((h) => h.linkedGoalId === goalId);
 
+  const linkedTasksFor = (goalId: string) =>
+    tasks.filter((t) => t.linkedGoalId === goalId);
+
   const handleUpdate = (updated: GoalData) => {
     updateGoal(updated);
-    setDetailGoal(updated);
+    // Only keep the detail sheet in sync if it's already open for this goal
+    setDetailGoal((prev) => prev?.id === updated.id ? updated : prev);
   };
 
   return (
@@ -130,6 +138,8 @@ export default function GoalsPage() {
                 key={g.id}
                 goal={g}
                 linkedHabits={linkedHabitsFor(g.id)}
+                linkedTasks={linkedTasksFor(g.id)}
+                onUpdate={handleUpdate}
                 onClick={() => setDetailGoal(g)}
               />
             ))}
@@ -170,9 +180,31 @@ export default function GoalsPage() {
       <GoalDetailSheet
         goal={detailGoal}
         linkedHabits={detailGoal ? linkedHabitsFor(detailGoal.id) : []}
+        tasks={tasks}
         onClose={() => setDetailGoal(null)}
         onUpdate={handleUpdate}
         onDelete={(id) => { deleteGoal(id); setDetailGoal(null); }}
+        onUpdateTask={updateTask}
+        onUpdateHabit={updateHabit}
+        onAddTask={(goalId, milestoneId) => setTaskPrefill({ goalId, milestoneId })}
+        onAddHabit={(goalId, milestoneId) => setHabitPrefill({ goalId, milestoneId })}
+      />
+      <TaskCreateSheet
+        open={!!taskPrefill}
+        onClose={() => setTaskPrefill(null)}
+        onSaveTask={(t) => { addTask(t); setTaskPrefill(null); }}
+        onSaveTemplate={() => {}}
+        goals={goals}
+        initialGoalId={taskPrefill?.goalId}
+        initialMilestoneId={taskPrefill?.milestoneId}
+      />
+      <HabitCreateSheet
+        open={!!habitPrefill}
+        onClose={() => setHabitPrefill(null)}
+        onSave={(h) => { addHabit(h); setHabitPrefill(null); }}
+        goals={goals}
+        initialGoalId={habitPrefill?.goalId}
+        initialMilestoneId={habitPrefill?.milestoneId}
       />
     </div>
   );

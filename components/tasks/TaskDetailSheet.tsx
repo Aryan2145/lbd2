@@ -28,6 +28,9 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
 
   const m          = Q_META[task.quadrant];
   const linkedGoal = goals.find((g) => g.id === task.linkedGoalId);
+  const linkedMilestone = linkedGoal && task.linkedMilestoneId
+    ? (linkedGoal.milestones ?? []).find((ms) => ms.id === task.linkedMilestoneId)
+    : undefined;
   const isOpen     = task.status === "open";
 
   function openEdit() {
@@ -200,6 +203,29 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
                   </p>
                   <p style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", margin: 0 }}>
                     {linkedGoal.outcome}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {linkedMilestone && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: "10px",
+                padding: "10px 14px", borderRadius: "10px",
+                backgroundColor: "#FFFBEB", border: "1px solid #FCD34D",
+                marginBottom: "20px",
+              }}>
+                <span style={{ fontSize: "14px" }}>◆</span>
+                <div>
+                  <p style={{ fontSize: "9px", fontWeight: 700, color: "#D97706",
+                    textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>
+                    Milestone
+                  </p>
+                  <p style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", margin: 0 }}>
+                    {linkedMilestone.title}
+                  </p>
+                  <p style={{ fontSize: "10px", color: "#78716C", margin: "2px 0 0" }}>
+                    Due {fmtDeadline(linkedMilestone.deadline)}
                   </p>
                 </div>
               </div>

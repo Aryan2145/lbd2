@@ -11,10 +11,11 @@ export interface AreaData {
 }
 
 interface PolaroidCardProps {
-  area: AreaData;
-  rotation: number;
-  onClick: () => void;
-  isEmpty?: boolean;
+  area:        AreaData;
+  rotation:    number;
+  onClick:     () => void;
+  isEmpty?:    boolean;
+  accentColor?: string;
 }
 
 export default function PolaroidCard({
@@ -22,6 +23,7 @@ export default function PolaroidCard({
   rotation,
   onClick,
   isEmpty,
+  accentColor = "#F97316",
 }: PolaroidCardProps) {
   const hasContent = area.text.trim().length > 0;
 
@@ -54,6 +56,7 @@ export default function PolaroidCard({
           backgroundColor: "#FFFFFF",
           padding: "9px 9px 12px",
           borderRadius: "3px",
+          borderTop: `3px solid ${accentColor}`,
         }}
       >
         {/* Image area */}
@@ -132,7 +135,7 @@ export default function PolaroidCard({
             style={{
               fontSize: "13px",
               fontWeight: 700,
-              color: "#1C1917",
+              color: accentColor,
               marginBottom: "3px",
               lineHeight: 1.2,
             }}
