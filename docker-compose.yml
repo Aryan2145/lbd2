@@ -1,74 +1,80 @@
 version: "3.9"
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Life By Design — Docker Compose
-#
-#  Containers
-#    lbd_staging    → http://<host>:3001   (staging build)
-#    lbd_production → http://<host>:3000   (production build)
-#
-#  Commands
-#    Build & start both:      docker compose up -d --build
-#    Start staging only:      docker compose up -d --build lbd_staging
-#    Start production only:   docker compose up -d --build lbd_production
-#    View logs:               docker compose logs -f <service>
-#    Stop all:                docker compose down
-# ─────────────────────────────────────────────────────────────────────────────
-
 services:
-
-  # ── Staging ────────────────────────────────────────────────────────────────
-  lbd_staging:
+  # ── Frontend ──────────────────────────────────────────────────────────────────
+  lbd_frontend_staging:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_APP_ENV: staging
-    image: lbd_staging:latest
-    container_name: lbd_staging
+        NEXT_PUBLIC_API_URL: http://lbd_backend_staging:4000/api
+    container_name: lbd_frontend_staging
+    env_file: ./frontend/.env.staging
+    environment:
+      PORT: 3000
     ports:
       - "3001:3000"
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_APP_ENV: staging
-      # ── Future RDS / backend vars ──────────────────────────────────────────
-      # DATABASE_URL: ${STAGING_DATABASE_URL}
-      # NEXTAUTH_SECRET: ${STAGING_NEXTAUTH_SECRET}
-      # NEXTAUTH_URL: http://<ec2-ip>:3001
-    env_file:
-      - .env.staging          # create from .env.example — not committed to git
+    depends_on:
+      lbd_backend_staging:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
 
-  # ── Production ─────────────────────────────────────────────────────────────
-  lbd_production:
+  lbd_frontend_production:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_APP_ENV: production
-    image: lbd_production:latest
-    container_name: lbd_production
+        NEXT_PUBLIC_API_URL: http://lbd_backend_production:4000/api
+    container_name: lbd_frontend_production
+    env_file: ./frontend/.env.production
+    environment:
+      PORT: 3000
     ports:
       - "3000:3000"
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_APP_ENV: production
-      # ── Future RDS / backend vars ──────────────────────────────────────────
-      # DATABASE_URL: ${PRODUCTION_DATABASE_URL}
-      # NEXTAUTH_SECRET: ${PRODUCTION_NEXTAUTH_SECRET}
-      # NEXTAUTH_URL: http://<ec2-ip>:3000
-    env_file:
-      - .env.production       # create from .env.example — not committed to git
+    depends_on:
+      lbd_backend_production:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+
+  # ── Backend ───────────────────────────────────────────────────────────────────
+  lbd_backend_staging:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lbd_backend_staging
+    env_file: ./backend/.env.staging
+    ports:
+      - "4001:4000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  lbd_backend_production:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lbd_backend_production
+    env_file: ./backend/.env.production
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

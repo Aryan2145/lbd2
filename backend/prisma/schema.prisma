@@ -1,0 +1,368 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum LifeArea {
+  professional
+  contribution
+  wealth
+  spiritual
+  personal
+  relationships
+  health
+}
+
+enum HabitFrequency {
+  daily
+  weekdays
+  weekends
+  custom
+}
+
+enum HabitType {
+  binary
+  measurable
+}
+
+enum Quadrant {
+  q1  // urgent + important
+  q2  // not urgent + important
+  q3  // urgent + not important
+  q4  // not urgent + not important
+}
+
+enum TaskStatus {
+  open
+  complete
+  incomplete
+}
+
+enum BucketStatus {
+  dream
+  planned
+  achieved
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Users
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  role      String?
+  password  String   // bcrypt hash
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  goals              Goal[]
+  habits             Habit[]
+  tasks              Task[]
+  eventGroups        EventGroup[]
+  weekEvents         WeekEvent[]
+  weekPlans          WeekPlan[]
+  dayPlans           DayPlan[]
+  eveningReflections EveningReflection[]
+  weeklyReviews      WeeklyReview[]
+  bucketEntries      BucketEntry[]
+  tickets            SupportTicket[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Goals
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Goal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  statement String
+  outcome   String?
+  metric    String?
+  deadline  String   // YYYY-MM-DD
+  area      LifeArea
+  progress  Int      @default(0)
+  velocity  Int?
+
+  notes     GoalNote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("goals")
+}
+
+model GoalNote {
+  id        String   @id @default(cuid())
+  goalId    String
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([goalId])
+  @@map("goal_notes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Habits
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Habit {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name       String
+  area       LifeArea
+  frequency  HabitFrequency
+  customDays Int[]          // day-of-week indices (0=Sun … 6=Sat)
+  type       HabitType
+  target     Float          @default(1)
+  unit       String?
+
+  // binary habits: ISO date strings of completed days
+  completions  String[]
+  // measurable habits: { "YYYY-MM-DD": value }
+  measurements Json         @default("{}")
+
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([userId])
+  @@map("habits")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Tasks
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Task {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title        String
+  deadline     String     // YYYY-MM-DD
+  quadrant     Quadrant
+  status       TaskStatus @default(open)
+  linkedGoalId String?    // references Goal.id (no FK — goal may be deleted)
+  kind         String     @default("standalone")
+  closedAt     BigInt?    // epoch ms
+  variance     Int?       // days late (+) or early (-)
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([userId, deadline])
+  @@index([userId, status])
+  @@map("tasks")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Calendar — Event Groups & Events
+// ─────────────────────────────────────────────────────────────────────────────
+
+model EventGroup {
+  id     String    @id @default(cuid())
+  userId String
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name   String
+  color  String
+
+  events WeekEvent[]
+
+  @@index([userId])
+  @@map("event_groups")
+}
+
+model WeekEvent {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       EventGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  title       String
+  date        String     // YYYY-MM-DD
+  startTime   String     // HH:MM
+  endTime     String     // HH:MM
+  description String?
+
+  @@index([userId, date])
+  @@map("week_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Weekly Planning
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WeekPlan {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  weekStart String   // YYYY-MM-DD (Monday)
+  // { text, lifeArea, completed }[]
+  priorities Json    @default("[]")
+  // string[]
+  outcomes   Json    @default("[]")
+  // Record<YYYY-MM-DD, string>
+  dayNotes   Json    @default("{}")
+  // Record<YYYY-MM-DD, string>
+  dayThemes  Json    @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, weekStart])
+  @@index([userId])
+  @@map("week_plans")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Daily Planning
+// ─────────────────────────────────────────────────────────────────────────────
+
+model DayPlan {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date      String   // YYYY-MM-DD
+  // { text, lifeArea, completed }[]
+  priorities Json    @default("[]")
+  gratitude  String?
+  // { id, text, made, createdAt }[]
+  decisions  Json    @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("day_plans")
+}
+
+model EveningReflection {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date         String   // YYYY-MM-DD
+  energyLevel  Int      @default(5) // 1–10
+  mood         String   @default("") // MoodEmoji or ""
+  highlights   String?
+  keyLearnings String?
+  wins         String[] // plain strings
+  notes        String?
+  // { id, text, resolved, createdAt }[]
+  stuck        Json     @default("[]")
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("evening_reflections")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Weekly Review
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WeeklyReview {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  weekStart       String   // YYYY-MM-DD (Monday)
+  // { id, date, text }[]
+  topWins         Json     @default("[]")
+  outcomeNotes    String?
+  outcomeChecked  Boolean[]
+  taskReflection  String?
+  habitReflection String?
+  overallRating   Int      @default(0) // 1–10
+  journalDate     String?
+  journalText     String?
+  // { id, heading, body }[] — heading = ISO date
+  journalSections Json     @default("[]")
+  // { id, text, lifeArea }[]
+  lifeLessons     Json     @default("[]")
+  // { id, value, note }[]
+  coreValuesLived Json     @default("[]")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, weekStart])
+  @@index([userId])
+  @@map("weekly_reviews")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Bucket List
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BucketEntry {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title      String
+  lifeArea   LifeArea
+  status     BucketStatus @default(dream)
+  targetDate String?      // YYYY-MM-DD
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([userId])
+  @@map("bucket_entries")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Support Tickets
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SupportTicket {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject   String
+  status    TicketStatus @default(open)
+  // { id, role, content, createdAt }[]
+  messages  Json         @default("[]")
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([userId])
+  @@map("support_tickets")
+}
