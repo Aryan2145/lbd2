@@ -10,6 +10,10 @@ frontend/.next/
 frontend/out/
 frontend/build
 
+# Root env files — create these manually on the server
+.env.production
+.env.staging
+
 # Root
 *.pem
 .DS_Store

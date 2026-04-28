@@ -1,80 +1,30 @@
 version: "3.9"
 
 services:
-  # ── Frontend ──────────────────────────────────────────────────────────────────
-  lbd_frontend_staging:
+  lbd_production:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_APP_ENV: staging
-        NEXT_PUBLIC_API_URL: http://lbd_backend_staging:4000/api
-    container_name: lbd_frontend_staging
-    env_file: ./frontend/.env.staging
-    environment:
-      PORT: 3000
-    ports:
-      - "3101:3000"
-    depends_on:
-      lbd_backend_staging:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  lbd_frontend_production:
-    build:
-      context: ./frontend
+      context: .
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_APP_ENV: production
-        NEXT_PUBLIC_API_URL: http://lbd_backend_production:4000/api
-    container_name: lbd_frontend_production
-    env_file: ./frontend/.env.production
-    environment:
-      PORT: 3000
+        NEXT_PUBLIC_API_URL: https://api.lbd.rgbindia.com
+    container_name: lbd_production
+    env_file: .env.production
     ports:
       - "3100:3000"
-    depends_on:
-      lbd_backend_production:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ── Backend ───────────────────────────────────────────────────────────────────
-  lbd_backend_staging:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: lbd_backend_staging
-    env_file: ./backend/.env.staging
-    ports:
-      - "4101:4000"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  lbd_backend_production:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: lbd_backend_production
-    env_file: ./backend/.env.production
-    ports:
       - "4100:4000"
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
+  lbd_staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_ENV: staging
+        NEXT_PUBLIC_API_URL: https://api.lbd-staging.rgbindia.com
+    container_name: lbd_staging
+    env_file: .env.staging
+    ports:
+      - "3101:3000"
+      - "4101:4000"
+    restart: unless-stopped

@@ -6,7 +6,10 @@
       "Bash(npm install *)",
       "Bash(npm run *)",
       "Bash(node -e ' *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git rm *)"
     ]
   }
 }
