@@ -31,6 +31,7 @@ RUN npm run build
 
 # ── Stage 5: Runner ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
+RUN apk add --no-cache openssl
 RUN npm install -g pm2
 
 # Frontend (Next.js standalone)
