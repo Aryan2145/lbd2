@@ -1,0 +1,74 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Life By Design — Docker Compose
+#
+#  Containers
+#    lbd_staging    → http://<host>:3001   (staging build)
+#    lbd_production → http://<host>:3000   (production build)
+#
+#  Commands
+#    Build & start both:      docker compose up -d --build
+#    Start staging only:      docker compose up -d --build lbd_staging
+#    Start production only:   docker compose up -d --build lbd_production
+#    View logs:               docker compose logs -f <service>
+#    Stop all:                docker compose down
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Staging ────────────────────────────────────────────────────────────────
+  lbd_staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_ENV: staging
+    image: lbd_staging:latest
+    container_name: lbd_staging
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_ENV: staging
+      # ── Future RDS / backend vars ──────────────────────────────────────────
+      # DATABASE_URL: ${STAGING_DATABASE_URL}
+      # NEXTAUTH_SECRET: ${STAGING_NEXTAUTH_SECRET}
+      # NEXTAUTH_URL: http://<ec2-ip>:3001
+    env_file:
+      - .env.staging          # create from .env.example — not committed to git
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ── Production ─────────────────────────────────────────────────────────────
+  lbd_production:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_ENV: production
+    image: lbd_production:latest
+    container_name: lbd_production
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_ENV: production
+      # ── Future RDS / backend vars ──────────────────────────────────────────
+      # DATABASE_URL: ${PRODUCTION_DATABASE_URL}
+      # NEXTAUTH_SECRET: ${PRODUCTION_NEXTAUTH_SECRET}
+      # NEXTAUTH_URL: http://<ec2-ip>:3000
+    env_file:
+      - .env.production       # create from .env.example — not committed to git
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

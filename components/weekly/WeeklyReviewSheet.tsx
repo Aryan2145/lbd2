@@ -38,22 +38,6 @@ const DAY_PALETTE = [
   { bg:"#FFF7ED", border:"#FED7AA", head:"#C2410C" }, // Sun — orange
 ] as const;
 
-type SectionId = "wins"|"outcomes"|"tasks"|"habits"|"journal"|"lessons"|"values";
-
-const NAV: { id: SectionId; label: string; group: "success"|"reflections"; Icon: React.ElementType }[] = [
-  { id:"wins",     label:"Top Wins",       group:"success",     Icon:Trophy      },
-  { id:"outcomes", label:"Outcome Review", group:"success",     Icon:Target      },
-  { id:"tasks",    label:"Task Review",    group:"success",     Icon:CheckSquare },
-  { id:"habits",   label:"Habits Review",  group:"success",     Icon:TrendingUp  },
-  { id:"journal",  label:"Weekly Journal", group:"reflections", Icon:BookOpen    },
-  { id:"lessons",  label:"Life Lessons",   group:"reflections", Icon:Lightbulb   },
-  { id:"values",   label:"Core Values",    group:"reflections", Icon:Star        },
-];
-
-const GROUP_COLOR: Record<string, string> = {
-  success:     "#F97316",
-  reflections: "#7C3AED",
-};
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +54,7 @@ interface Props {
   onCompleteTask:     (id: string) => void;
   onReopenTask:       (id: string) => void;
   onToggleHabit:      (habitId: string, date: string) => void;
+  onAddWin:           (date: string, text: string) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -164,11 +149,6 @@ const ta: React.CSSProperties = {
 const ratingColor = (n: number) =>
   n <= 3 ? "#EF4444" : n <= 6 ? "#F59E0B" : "#10B981";
 
-const navBtnStyle: React.CSSProperties = {
-  padding:"7px 14px", borderRadius:"9px",
-  border:"1.5px solid #C8BFB5", backgroundColor:"#FFFFFF",
-  color:"#44403C", fontSize:"11px", fontWeight:600, cursor:"pointer",
-};
 
 const thStyle: React.CSSProperties = {
   padding:"8px 10px", fontSize:"9px", fontWeight:700,
@@ -204,10 +184,11 @@ function addDashedBtn(
 export default function WeeklyReviewSheet({
   open, onClose, weekStart, review, onSave,
   tasks, habits, eveningReflections, weekPlanOutcomes,
-  onCompleteTask, onReopenTask, onToggleHabit,
+  onCompleteTask, onReopenTask, onToggleHabit, onAddWin,
 }: Props) {
   const [draft,  setDraft]  = useState<WeeklyReview>(emptyReview(weekStart));
-  const [active, setActive] = useState<SectionId>("wins");
+  const [tab, setTab] = useState<"success" | "reflections">("success");
+  const [winPage, setWinPage] = useState(0); // 0=Mon-Wed, 1=Thu-Sat, 2=Sun
   // Wins section: inline "add win" form
   const [addWin, setAddWin] = useState<{ date: string; text: string } | null>(null);
   // Journal: which entry's date picker is open ("main" | section id | null)
@@ -216,7 +197,7 @@ export default function WeeklyReviewSheet({
   useEffect(() => {
     if (!open) return;
     setDraft(review ? { ...emptyReview(weekStart), ...review } : emptyReview(weekStart));
-    setActive("wins");
+    setTab("success");
     setAddWin(null);
     setOpenDateFor(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,203 +224,149 @@ export default function WeeklyReviewSheet({
   // ── Section: Top Wins ─────────────────────────────────────────────────────
 
   function renderWins() {
-    // Per-day wins: merge reflection wins + user-added topWins
+    // Groups: Mon-Wed | Thu-Sat | Sun
+    const WIN_GROUPS = [[0,1,2],[3,4,5],[6]] as const;
+    const GROUP_LABELS = ["Mon – Wed", "Thu – Sat", "Sun"];
+    const groupIndices = WIN_GROUPS[winPage as 0|1|2];
+    const groupDates   = groupIndices.map((i) => dates[i]);
+
     function getDayWins(date: string) {
-      const fromReflection = (eveningReflections.find((r) => r.date === date)?.wins ?? [])
-        .filter((w) => w.trim())
-        .map((w) => ({ text: w, source: "reflection" as const }));
-      const fromAdded = (draft.topWins ?? [])
-        .filter((w) => w.date === date)
-        .map((w) => ({ text: w.text, source: "added" as const, id: w.id }));
-      return [...fromReflection, ...fromAdded];
+      return (eveningReflections.find((r) => r.date === date)?.wins ?? []).filter((w) => w.trim());
     }
 
-    const allAdded = draft.topWins ?? [];
+    function saveWin() {
+      if (!addWin || !addWin.text.trim()) return;
+      ud("topWins", [...(draft.topWins ?? []), { id: crypto.randomUUID(), date: addWin.date, text: addWin.text.trim() }]);
+      onAddWin(addWin.date, addWin.text.trim());
+      setAddWin(null);
+    }
 
     return (
-      <div>
-        {/* ── TOP WIN OF THE WEEK (curated, editable) ── */}
-        <div style={{ marginBottom:"28px" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"10px" }}>
-            <label style={lbl}>Top Win of the Week</label>
-            {!addWin && (
-              <button
-                onClick={() => setAddWin({ date: weekStart, text: "" })}
-                style={addDashedBtn("#FED7AA", "#FFF7ED", "#C2410C")}
-              >
-                <Plus size={13} /> Add Win
+      <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
+
+        {/* Group tabs + Add Win button */}
+        <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
+          {GROUP_LABELS.map((label, i) => {
+            const on = winPage === i;
+            return (
+              <button key={i} onClick={() => setWinPage(i)} style={{
+                padding:"5px 12px", borderRadius:"8px",
+                border:`1.5px solid ${on ? "#F97316" : "#C8BFB5"}`,
+                backgroundColor: on ? "#F97316" : "#FFFFFF",
+                color: on ? "#FFFFFF" : "#44403C",
+                fontSize:"11px", fontWeight:700, cursor:"pointer",
+              }}>
+                {label}
               </button>
-            )}
-          </div>
-
-          {/* Existing curated wins */}
-          {allAdded.length === 0 && !addWin && (
-            <p style={{ fontSize:"13px", color:"#78716C", fontStyle:"italic" }}>
-              No wins added yet — click "Add Win" to record one.
-            </p>
-          )}
-          <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            {allAdded.map((w, i) => {
-              const dateIdx = dates.indexOf(w.date);
-              const col     = DAY_PALETTE[dateIdx >= 0 ? dateIdx : 0];
-              const d       = new Date(w.date + "T00:00:00");
-              const dayLabel = d.toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" });
-              return (
-                <div key={w.id} style={{
-                  display:"flex", alignItems:"center", gap:"10px",
-                  padding:"10px 14px", borderRadius:"10px",
-                  backgroundColor: col.bg, border:`1.5px solid ${col.border}`,
-                }}>
-                  <span style={{
-                    fontSize:"10px", fontWeight:700, color: col.head,
-                    whiteSpace:"nowrap", flexShrink:0,
-                  }}>
-                    {dayLabel}
-                  </span>
-                  <input
-                    value={w.text}
-                    onChange={(e) => {
-                      const wins = [...allAdded];
-                      wins[i] = { ...w, text: e.target.value };
-                      ud("topWins", wins);
-                    }}
-                    placeholder="Describe this win…"
-                    style={{
-                      flex:1, border:"none", backgroundColor:"transparent",
-                      fontSize:"13px", color:"#1C1917", outline:"none",
-                    }}
-                  />
-                  <button
-                    onClick={() => ud("topWins", allAdded.filter((_, j) => j !== i))}
-                    style={{ ...delBtn, backgroundColor:"transparent", border:"none" }}
-                  >
-                    <Trash2 size={12} color="#78716C" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Inline "add win" form */}
-          {addWin !== null && (
-            <div style={{
-              marginTop:"10px", padding:"14px", borderRadius:"12px",
-              border:"1.5px solid #FED7AA", backgroundColor:"#FFFBEB",
-            }}>
-              <p style={{ fontSize:"11px", fontWeight:700, color:"#B45309",
-                textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"10px" }}>
-                Select a date
-              </p>
-              <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"12px" }}>
-                {dates.map((date, i) => {
-                  const on = addWin.date === date;
-                  const d  = new Date(date + "T00:00:00");
-                  return (
-                    <button key={date} onClick={() => setAddWin({ ...addWin, date })} style={{
-                      padding:"5px 10px", borderRadius:"8px",
-                      border:`1.5px solid ${on ? "#F97316" : "#C8BFB5"}`,
-                      backgroundColor: on ? "#F97316" : "#FFFFFF",
-                      color: on ? "#FFFFFF" : "#44403C",
-                      fontSize:"11px", fontWeight:700, cursor:"pointer",
-                    }}>
-                      {d.toLocaleDateString("en-US", { weekday:"short", day:"numeric" })}
-                    </button>
-                  );
-                })}
-              </div>
-              <input
-                value={addWin.text}
-                onChange={(e) => setAddWin({ ...addWin, text: e.target.value })}
-                placeholder="Describe this win…"
-                autoFocus
-                style={{ ...inp, marginBottom:"10px" }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && addWin.text.trim()) {
-                    ud("topWins", [...allAdded, { id: crypto.randomUUID(), ...addWin }]);
-                    setAddWin(null);
-                  }
-                  if (e.key === "Escape") setAddWin(null);
-                }}
-              />
-              <div style={{ display:"flex", gap:"8px" }}>
-                <button
-                  onClick={() => {
-                    if (!addWin.text.trim()) return;
-                    ud("topWins", [...allAdded, { id: crypto.randomUUID(), ...addWin }]);
-                    setAddWin(null);
-                  }}
-                  style={{
-                    padding:"7px 16px", borderRadius:"8px", border:"none",
-                    backgroundColor:"#F97316", color:"#FFFFFF",
-                    fontSize:"12px", fontWeight:700, cursor:"pointer",
-                  }}
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => setAddWin(null)}
-                  style={{
-                    padding:"7px 14px", borderRadius:"8px",
-                    border:"1px solid #E8DDD0", backgroundColor:"#FFFFFF",
-                    fontSize:"12px", fontWeight:600, color:"#44403C", cursor:"pointer",
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            );
+          })}
+          <div style={{ flex:1 }} />
+          {!addWin && (
+            <button
+              onClick={() => setAddWin({ date: groupDates[0], text: "" })}
+              style={addDashedBtn("#FED7AA", "#FFF7ED", "#C2410C")}
+            >
+              <Plus size={13} /> Add Win
+            </button>
           )}
         </div>
 
-        {/* ── 7-day grid (reflections + added) ── */}
-        <div>
-          <label style={lbl}>From this week's reflections</label>
-          <div style={{
-            display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"10px",
-          }}>
-            {dates.map((date, i) => {
-              const col  = DAY_PALETTE[i];
-              const d    = new Date(date + "T00:00:00");
-              const wins = getDayWins(date);
-              return (
-                <div key={date} style={{
-                  borderRadius:"12px", padding:"12px 14px",
-                  backgroundColor: col.bg, border:`1.5px solid ${col.border}`,
-                  minHeight:"80px",
+        {/* Day cards — 3 at a time */}
+        <div style={{
+          display:"grid",
+          gridTemplateColumns: groupDates.length === 1 ? "1fr" : "repeat(3, 1fr)",
+          gap:"10px",
+        }}>
+          {groupDates.map((date, idx) => {
+            const col  = DAY_PALETTE[groupIndices[idx]];
+            const d    = new Date(date + "T00:00:00");
+            const wins = getDayWins(date);
+            return (
+              <div key={date} style={{
+                borderRadius:"12px", padding:"12px 14px",
+                backgroundColor:col.bg, border:`1.5px solid ${col.border}`,
+                minHeight:"80px",
+              }}>
+                <p style={{
+                  fontSize:"10px", fontWeight:700, color:col.head,
+                  textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 8px",
                 }}>
-                  <p style={{
-                    fontSize:"10px", fontWeight:700, color: col.head,
-                    textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 8px",
-                  }}>
-                    {d.toLocaleDateString("en-US", { weekday:"short" })} ·{" "}
-                    {d.toLocaleDateString("en-US", { month:"short", day:"numeric" })}
+                  {d.toLocaleDateString("en-US", { weekday:"short" })} ·{" "}
+                  {d.toLocaleDateString("en-US", { month:"short", day:"numeric" })}
+                </p>
+                {wins.length === 0 ? (
+                  <p style={{ fontSize:"11px", color:"#78716C", fontStyle:"italic", margin:0 }}>
+                    No wins logged
                   </p>
-                  {wins.length === 0 ? (
-                    <p style={{ fontSize:"11px", color:"#78716C", fontStyle:"italic", margin:0 }}>
-                      No wins logged
-                    </p>
-                  ) : (
-                    <ul style={{ margin:0, padding:"0 0 0 14px" }}>
-                      {wins.map((w, j) => (
-                        <li key={j} style={{
-                          fontSize:"12px", color:"#1C1917", lineHeight:1.55,
-                          marginBottom: j < wins.length - 1 ? "5px" : 0,
-                        }}>
-                          {w.text}
-                          {w.source === "added" && (
-                            <span style={{ marginLeft:4, fontSize:"9px", color: col.head, fontWeight:700 }}>
-                              ★
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                ) : (
+                  <ul style={{ margin:0, padding:"0 0 0 14px" }}>
+                    {wins.map((w, j) => (
+                      <li key={j} style={{ fontSize:"12px", color:"#1C1917", lineHeight:1.55,
+                        marginBottom: j < wins.length - 1 ? "5px" : 0 }}>
+                        {w}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
+
+        {/* Inline add form */}
+        {addWin !== null && (
+          <div style={{
+            padding:"14px", borderRadius:"12px",
+            border:"1.5px solid #FED7AA", backgroundColor:"#FFFBEB",
+          }}>
+            <p style={{ fontSize:"10px", fontWeight:700, color:"#B45309",
+              textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 10px" }}>
+              Which day?
+            </p>
+            <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"12px" }}>
+              {dates.map((date) => {
+                const on = addWin.date === date;
+                const d  = new Date(date + "T00:00:00");
+                return (
+                  <button key={date} onClick={() => setAddWin({ ...addWin, date })} style={{
+                    padding:"4px 10px", borderRadius:"7px",
+                    border:`1.5px solid ${on ? "#F97316" : "#C8BFB5"}`,
+                    backgroundColor: on ? "#F97316" : "#FFFFFF",
+                    color: on ? "#FFFFFF" : "#44403C",
+                    fontSize:"11px", fontWeight:700, cursor:"pointer",
+                  }}>
+                    {d.toLocaleDateString("en-US", { weekday:"short", day:"numeric" })}
+                  </button>
+                );
+              })}
+            </div>
+            <input
+              value={addWin.text}
+              onChange={(e) => setAddWin({ ...addWin, text: e.target.value })}
+              placeholder="Describe this win…"
+              autoFocus
+              style={{ ...inp, marginBottom:"10px" }}
+              onKeyDown={(e) => { if (e.key === "Enter") saveWin(); if (e.key === "Escape") setAddWin(null); }}
+            />
+            <div style={{ display:"flex", gap:"8px" }}>
+              <button onClick={saveWin} style={{
+                padding:"7px 16px", borderRadius:"8px", border:"none",
+                backgroundColor:"#F97316", color:"#FFFFFF",
+                fontSize:"12px", fontWeight:700, cursor:"pointer",
+              }}>
+                Save Win
+              </button>
+              <button onClick={() => setAddWin(null)} style={{
+                padding:"7px 14px", borderRadius:"8px",
+                border:"1px solid #E8DDD0", backgroundColor:"#FFFFFF",
+                fontSize:"12px", fontWeight:600, color:"#44403C", cursor:"pointer",
+              }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
@@ -1130,173 +1057,176 @@ export default function WeeklyReviewSheet({
     );
   }
 
-  // ── Layout ────────────────────────────────────────────────────────────────
+  // ── Layout helpers ────────────────────────────────────────────────────────
 
-  const activeNav = NAV.find((n) => n.id === active)!;
-  const activeIdx = NAV.findIndex((n) => n.id === active);
-  const successSections = NAV.filter((n) => n.group === "success");
-  const reflSections    = NAV.filter((n) => n.group === "reflections");
+  function ReviewCard({
+    title, icon, color, maxH, children,
+  }: {
+    title: string; icon: React.ReactNode; color: string;
+    maxH?: number | string; children: React.ReactNode;
+  }) {
+    return (
+      <div style={{
+        backgroundColor:"#FFFFFF", borderRadius:"14px",
+        border:"1px solid #EDE5D8", boxShadow:"0 2px 8px rgba(0,0,0,0.05)",
+        display:"flex", flexDirection:"column",
+        maxHeight: maxH,           // constrains the whole card
+        overflow:"hidden",
+      }}>
+        <div style={{
+          padding:"10px 16px", borderBottom:"1px solid #F0EBE4",
+          display:"flex", alignItems:"center", gap:"8px", flexShrink:0,
+          backgroundColor:"#FAF5EE",
+        }}>
+          <div style={{
+            width:26, height:26, borderRadius:"7px",
+            backgroundColor: color + "20",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>
+            {icon}
+          </div>
+          <span style={{ fontSize:"12px", fontWeight:700, color:"#1C1917",
+            textTransform:"uppercase", letterSpacing:"0.06em" }}>
+            {title}
+          </span>
+        </div>
+        <div style={{
+          flex:1, minHeight:0,     // lets flex shrink so scroll kicks in at maxH
+          overflowY:"auto",
+          padding:"16px",
+        }}>
+          {children}
+        </div>
+      </div>
+    );
+  }
 
-  const sectionMap: Record<SectionId, () => React.ReactNode> = {
-    wins: renderWins, outcomes: renderOutcomes, tasks: renderTasks,
-    habits: renderHabits, journal: renderJournal, lessons: renderLessons, values: renderValues,
-  };
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div style={{
-      height:"100%", backgroundColor:"#FFFFFF",
+      height:"100%", backgroundColor:"#FAF5EE",
       display:"flex", flexDirection:"column", overflow:"hidden",
     }}>
-        {/* Header */}
-        <div style={{
-          padding:"14px 24px", borderBottom:"1px solid #EDE5D8",
-          display:"flex", alignItems:"center", gap:"16px",
-          flexShrink:0, backgroundColor:"#FAF5EE",
+
+      {/* ── Header ── */}
+      <div style={{
+        padding:"12px 24px", borderBottom:"1px solid #EDE5D8",
+        display:"flex", alignItems:"center", gap:"14px",
+        flexShrink:0, backgroundColor:"#FAF5EE",
+      }}>
+        {/* Back */}
+        <button onClick={onClose} style={{
+          width:32, height:32, borderRadius:9, border:"1px solid #EDE5D8",
+          backgroundColor:"#FFFFFF", display:"flex", alignItems:"center",
+          justifyContent:"center", cursor:"pointer", flexShrink:0,
         }}>
-          <button onClick={onClose} style={{
-            width:32, height:32, borderRadius:9, border:"1px solid #EDE5D8",
-            backgroundColor:"#FFFFFF", display:"flex", alignItems:"center",
-            justifyContent:"center", cursor:"pointer", flexShrink:0,
-          }}>
-            <X size={15} color="#44403C" />
-          </button>
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase",
-              letterSpacing:"0.07em", color:"#C2410C", marginBottom:"2px" }}>
-              Week {weekNum} Review
-            </p>
-            <h2 style={{ fontSize:"17px", fontWeight:700, color:"#1C1917", margin:0 }}>
-              {weekLabel(weekStart)}
-            </h2>
-          </div>
+          <X size={15} color="#44403C" />
+        </button>
+
+        {/* Title */}
+        <div>
+          <p style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase",
+            letterSpacing:"0.07em", color:"#C2410C", marginBottom:"1px", margin:0 }}>
+            Week {weekNum} Review
+          </p>
+          <h2 style={{ fontSize:"16px", fontWeight:700, color:"#1C1917", margin:0 }}>
+            {weekLabel(weekStart)}
+          </h2>
         </div>
 
-        {/* Body */}
-        <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
+        <div style={{ flex:1 }} />
 
-          {/* Sidebar */}
-          <div style={{
-            width:210, backgroundColor:"#FAF5EE",
-            borderRight:"1px solid #EDE5D8",
-            display:"flex", flexDirection:"column",
-            padding:"14px 0", overflowY:"auto", flexShrink:0,
-          }}>
-            <p style={{
-              fontSize:"9px", fontWeight:700, color:"#C2410C",
-              textTransform:"uppercase", letterSpacing:"0.1em",
-              padding:"0 14px", marginBottom:"4px",
-            }}>
-              My Success Story
-            </p>
-            {successSections.map((sec) => {
-              const on = active === sec.id;
-              return (
-                <button key={sec.id} onClick={() => setActive(sec.id)} style={{
-                  width:"100%", display:"flex", alignItems:"center", gap:"9px",
-                  padding:"9px 14px", border:"none",
-                  backgroundColor: on ? "#FFF7ED" : "transparent",
-                  borderLeft: on ? "3px solid #F97316" : "3px solid transparent",
-                  color: on ? "#C2410C" : "#44403C",
-                  fontSize:"13px", fontWeight: on ? 700 : 500,
-                  cursor:"pointer", textAlign:"left",
-                }}>
-                  <sec.Icon size={14} />
-                  {sec.label}
-                </button>
-              );
-            })}
-
-            <div style={{ height:1, backgroundColor:"#EDE5D8", margin:"10px 0" }} />
-
-            <p style={{
-              fontSize:"9px", fontWeight:700, color:"#7C3AED",
-              textTransform:"uppercase", letterSpacing:"0.1em",
-              padding:"0 14px", marginBottom:"4px",
-            }}>
-              Reflections
-            </p>
-            {reflSections.map((sec) => {
-              const on = active === sec.id;
-              return (
-                <button key={sec.id} onClick={() => setActive(sec.id)} style={{
-                  width:"100%", display:"flex", alignItems:"center", gap:"9px",
-                  padding:"9px 14px", border:"none",
-                  backgroundColor: on ? "#FAF5FF" : "transparent",
-                  borderLeft: on ? "3px solid #7C3AED" : "3px solid transparent",
-                  color: on ? "#7C3AED" : "#44403C",
-                  fontSize:"13px", fontWeight: on ? 700 : 500,
-                  cursor:"pointer", textAlign:"left",
-                }}>
-                  <sec.Icon size={14} />
-                  {sec.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Content */}
-          <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"24px" }}>
-              <div style={{
-                width:38, height:38, borderRadius:"11px",
-                backgroundColor: GROUP_COLOR[activeNav.group] + "18",
-                display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+        {/* Tab toggle */}
+        <div style={{
+          display:"flex", borderRadius:"10px",
+          border:"1.5px solid #C8BFB5", overflow:"hidden",
+          backgroundColor:"#FFFFFF",
+        }}>
+          {([
+            ["success",     "My Success Story", "#F97316", "#FFF7ED"],
+            ["reflections", "Reflections",      "#7C3AED", "#FAF5FF"],
+          ] as const).map(([id, label, activeColor, activeBg]) => {
+            const on = tab === id;
+            return (
+              <button key={id} onClick={() => setTab(id)} style={{
+                padding:"7px 18px", border:"none",
+                backgroundColor: on ? activeBg : "#FFFFFF",
+                color: on ? activeColor : "#57534E",
+                fontSize:"12px", fontWeight:700, cursor:"pointer",
+                borderLeft: id === "reflections" ? "1.5px solid #C8BFB5" : "none",
               }}>
-                <activeNav.Icon size={18} color={GROUP_COLOR[activeNav.group]} />
-              </div>
-              <div>
-                <p style={{ fontSize:"9px", fontWeight:700,
-                  color:GROUP_COLOR[activeNav.group],
-                  textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>
-                  {activeNav.group === "success" ? "My Success Story" : "Reflections"}
-                </p>
-                <h3 style={{ fontSize:"16px", fontWeight:700, color:"#1C1917", margin:0 }}>
-                  {activeNav.label}
-                </h3>
-              </div>
-            </div>
-            {sectionMap[active]()}
-          </div>
+                {label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding:"12px 24px", borderTop:"1px solid #EDE5D8",
-          display:"flex", alignItems:"center", justifyContent:"space-between",
-          flexShrink:0, backgroundColor:"#FAF5EE",
+        {/* Save */}
+        <button onClick={handleSave} style={{
+          padding:"8px 20px", borderRadius:"10px", border:"none",
+          background:"linear-gradient(135deg, #F97316, #EA580C)",
+          fontSize:"12px", fontWeight:700, color:"#FFFFFF", cursor:"pointer",
+          flexShrink:0,
         }}>
-          <div style={{ display:"flex", gap:"6px" }}>
-            {activeIdx > 0 && (
-              <button onClick={() => setActive(NAV[activeIdx - 1].id)} style={navBtnStyle}>
-                ‹ {NAV[activeIdx - 1].label}
-              </button>
-            )}
-            {activeIdx < NAV.length - 1 && (
-              <button
-                onClick={() => setActive(NAV[activeIdx + 1].id)}
-                style={{ ...navBtnStyle, border:"none", backgroundColor:"#F97316", color:"#FFFFFF" }}
-              >
-                {NAV[activeIdx + 1].label} ›
-              </button>
-            )}
+          Save Review ✓
+        </button>
+      </div>
+
+      {/* ── Scrollable content ── */}
+      <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>
+
+        {tab === "success" ? (
+          <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+
+            {/* Top Wins — auto-sizes to content */}
+            <ReviewCard title="Top Wins" color="#F97316"
+              icon={<Trophy size={13} color="#F97316" />}>
+              {renderWins()}
+            </ReviewCard>
+
+            {/* Outcome · Task · Habits — 3 columns */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"16px" }}>
+              <ReviewCard title="Outcome Review" color="#F97316" maxH={400}
+                icon={<Target size={13} color="#F97316" />}>
+                {renderOutcomes()}
+              </ReviewCard>
+              <ReviewCard title="Task Review" color="#F97316" maxH={400}
+                icon={<CheckSquare size={13} color="#F97316" />}>
+                {renderTasks()}
+              </ReviewCard>
+              <ReviewCard title="Habits Review" color="#F97316" maxH={400}
+                icon={<TrendingUp size={13} color="#F97316" />}>
+                {renderHabits()}
+              </ReviewCard>
+            </div>
+
           </div>
-          <div style={{ display:"flex", gap:"8px" }}>
-            <button onClick={onClose} style={{
-              padding:"9px 20px", borderRadius:"10px",
-              border:"1px solid #E8DDD0", backgroundColor:"#FFFFFF",
-              fontSize:"12px", fontWeight:600, color:"#44403C", cursor:"pointer",
-            }}>
-              Cancel
-            </button>
-            <button onClick={handleSave} style={{
-              padding:"9px 24px", borderRadius:"10px", border:"none",
-              background:"linear-gradient(135deg, #F97316, #EA580C)",
-              fontSize:"12px", fontWeight:700, color:"#FFFFFF", cursor:"pointer",
-            }}>
-              Save Review ✓
-            </button>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+
+            {/* Weekly Journal — full width */}
+            <ReviewCard title="Weekly Journal" color="#7C3AED" maxH={460}
+              icon={<BookOpen size={13} color="#7C3AED" />}>
+              {renderJournal()}
+            </ReviewCard>
+
+            {/* Life Lessons · Core Values — 2 columns */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px" }}>
+              <ReviewCard title="Life Lessons" color="#7C3AED" maxH={400}
+                icon={<Lightbulb size={13} color="#7C3AED" />}>
+                {renderLessons()}
+              </ReviewCard>
+              <ReviewCard title="Core Values Lived" color="#7C3AED" maxH={400}
+                icon={<Star size={13} color="#7C3AED" />}>
+                {renderValues()}
+              </ReviewCard>
+            </div>
+
           </div>
-        </div>
+        )}
+
+      </div>
     </div>
   );
 }

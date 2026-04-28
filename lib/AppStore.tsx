@@ -11,6 +11,18 @@ import type { DayPlan, EveningReflection, WeeklyReview } from "@/lib/dayTypes";
 import type { BucketEntry } from "@/lib/bucketTypes";
 import type { SupportTicket } from "@/lib/ticketTypes";
 
+// ── User profile ─────────────────────────────────────────────────────────────
+export interface UserProfile {
+  name:     string;
+  email:    string;
+  phone:    string;
+  role:     string;
+  password: string;
+}
+const DEFAULT_PROFILE: UserProfile = {
+  name: "Aryan", email: "", phone: "", role: "Business Owner", password: "",
+};
+
 // ── localStorage helpers ──────────────────────────────────────────────────────
 function fromStorage<T>(key: string, fallback: () => T): T {
   if (typeof window === "undefined") return fallback();
@@ -468,6 +480,9 @@ interface AppState {
   addTicket:     (t: SupportTicket) => void;
   updateTicket:  (t: SupportTicket) => void;
   deleteTicket:  (id: string)       => void;
+  // User profile
+  userProfile:         UserProfile;
+  updateUserProfile:   (p: UserProfile) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -489,6 +504,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>(()      => fromStorage("lbd_weeklyReviews",      () => []));
   const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>(()       => migrateBucketEntries(fromStorage("lbd_bucketEntries", seedBucketEntries)));
   const [tickets,            setTickets]            = useState<SupportTicket[]>(()     => fromStorage("lbd_tickets",            seedTickets));
+  const [userProfile,        setUserProfile]        = useState<UserProfile>(()         => fromStorage("lbd_userProfile",        () => DEFAULT_PROFILE));
   const [eventGroups, setEventGroups] = useState<EventGroup[]>(() => {
     const groups = fromStorage("lbd_eventGroups", seedEventGroups);
     // Always ensure the system General group exists
@@ -517,6 +533,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => { localStorage.setItem("lbd_weeklyReviews",      JSON.stringify(weeklyReviews));      }, [weeklyReviews]);
   useEffect(() => { localStorage.setItem("lbd_bucketEntries",      JSON.stringify(bucketEntries));      }, [bucketEntries]);
   useEffect(() => { localStorage.setItem("lbd_tickets",            JSON.stringify(tickets));            }, [tickets]);
+  useEffect(() => { localStorage.setItem("lbd_userProfile",        JSON.stringify(userProfile));        }, [userProfile]);
 
   const updateHabitById = (id: string, fn: (h: HabitData) => HabitData) =>
     setHabits((prev) => prev.map((h) => h.id === id ? fn(h) : h));
@@ -624,6 +641,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addTicket:    (t) => setTickets((p) => [...p, t]),
     updateTicket: (t) => setTickets((p) => p.map((x) => x.id === t.id ? t : x)),
     deleteTicket: (id) => setTickets((p) => p.filter((x) => x.id !== id)),
+
+    userProfile,
+    updateUserProfile: (p) => setUserProfile(p),
   };
 
   return <AppContext.Provider value={ctx}>{children}</AppContext.Provider>;

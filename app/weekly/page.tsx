@@ -54,7 +54,8 @@ export default function WeeklyPage() {
     weeklyReviews, eveningReflections,
     addEventGroup, updateEventGroup, deleteEventGroup,
     addWeekEvent, updateWeekEvent, deleteWeekEvent,
-    upsertWeekPlan, upsertWeeklyReview, closeTask, reopenTask, toggleHabitDay,
+    upsertWeekPlan, upsertWeeklyReview, upsertEveningReflection,
+    closeTask, reopenTask, toggleHabitDay,
   } = useAppStore();
 
   const [weekStart,    setWeekStart]    = useState(() => getWeekStart());
@@ -120,6 +121,19 @@ export default function WeeklyPage() {
         onCompleteTask={(id) => closeTask(id, "complete")}
         onReopenTask={reopenTask}
         onToggleHabit={toggleHabitDay}
+        onAddWin={(date, text) => {
+          const existing = eveningReflections.find((r) => r.date === date);
+          upsertEveningReflection({
+            date,
+            energyLevel:  existing?.energyLevel  ?? 5,
+            mood:         existing?.mood          ?? "",
+            highlights:   existing?.highlights    ?? "",
+            keyLearnings: existing?.keyLearnings  ?? "",
+            wins:         [...(existing?.wins ?? []), text],
+            notes:        existing?.notes         ?? "",
+            stuck:        existing?.stuck         ?? [],
+          });
+        }}
       />
     );
   }
