@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
   X, Trophy, Target, CheckSquare, TrendingUp,
   BookOpen, Lightbulb, Star, Plus, Trash2, Check,
-  CalendarDays,
 } from "lucide-react";
 import type {
   WeeklyReview, EveningReflection, LifeArea,
@@ -211,15 +210,15 @@ export default function WeeklyReviewSheet({
   const [active, setActive] = useState<SectionId>("wins");
   // Wins section: inline "add win" form
   const [addWin, setAddWin] = useState<{ date: string; text: string } | null>(null);
-  // Journal section: date-picker toggle
-  const [showJournalDates, setShowJournalDates] = useState(false);
+  // Journal: which entry's date picker is open ("main" | section id | null)
+  const [openDateFor, setOpenDateFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setDraft(review ? { ...emptyReview(weekStart), ...review } : emptyReview(weekStart));
     setActive("wins");
     setAddWin(null);
-    setShowJournalDates(false);
+    setOpenDateFor(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -778,97 +777,197 @@ export default function WeeklyReviewSheet({
   // ── Section: Weekly Journal (diary style) ─────────────────────────────────
 
   function renderJournal() {
-    const hasDate = Boolean(draft.journalDate);
-    const displayDate = hasDate ? wordDate(draft.journalDate) : "";
+    const entries = draft.journalSections; // repurposed: heading=date, body=text
 
-    return (
-      <div>
-        {/* Optional date — subtle, not compulsory */}
-        <div style={{ marginBottom:"16px" }}>
-          {hasDate ? (
-            <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-              <p style={{
-                fontFamily:"cursive", fontSize:"17px", color:"#44403C",
-                margin:0, flex:1,
-              }}>
-                {displayDate}
-              </p>
-              <button
-                onClick={() => { ud("journalDate", ""); setShowJournalDates(false); }}
-                style={{
-                  fontSize:"11px", color:"#A8A29E", background:"none",
-                  border:"none", cursor:"pointer", padding:"2px 6px",
-                  textDecoration:"underline",
-                }}
-              >
-                clear
-              </button>
-            </div>
-          ) : (
-            <div>
-              <button
-                onClick={() => setShowJournalDates((v) => !v)}
-                style={{
-                  display:"flex", alignItems:"center", gap:"5px",
-                  background:"none", border:"none", cursor:"pointer",
-                  color:"#A8A29E", fontSize:"12px", padding:0,
-                }}
-              >
-                <CalendarDays size={13} color="#A8A29E" />
-                {showJournalDates ? "Hide dates" : "Set a date (optional)"}
-              </button>
-              {showJournalDates && (
-                <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginTop:"8px" }}>
-                  {dates.map((date) => {
-                    const d = new Date(date + "T00:00:00");
-                    return (
-                      <button key={date}
-                        onClick={() => { ud("journalDate", date); setShowJournalDates(false); }}
-                        style={{
-                          padding:"5px 10px", borderRadius:"8px",
-                          border:"1.5px solid #C8BFB5", backgroundColor:"#FFFFFF",
-                          color:"#44403C", fontSize:"11px", fontWeight:600, cursor:"pointer",
-                        }}
-                      >
-                        {d.toLocaleDateString("en-US", { weekday:"short", day:"numeric", month:"short" })}
-                      </button>
-                    );
-                  })}
+    // Renders one date-line row inside the diary page
+    function dateLine(
+      dateVal: string,
+      entryId: string,
+      onSelect: (d: string) => void,
+      onClear: () => void,
+      onDelete?: () => void,
+    ) {
+      const isOpen = openDateFor === entryId;
+      return (
+        <>
+          <div style={{
+            height:32, display:"flex", alignItems:"center",
+            padding:"0 14px 0 16px", gap:6,
+          }}>
+            {dateVal ? (
+              <>
+                <div style={{ position:"relative", display:"inline-flex", alignItems:"center" }}>
+                  {/* Clickable date text — opens picker to change */}
+                  <button
+                    onClick={() => setOpenDateFor(isOpen ? null : entryId)}
+                    style={{
+                      fontFamily:"cursive", fontSize:"15px", color:"#44403C",
+                      background:"none", border:"none", cursor:"pointer", padding:0,
+                    }}
+                  >
+                    {wordDate(dateVal)}
+                  </button>
+                  {/* Clear badge — sits at top-right corner of the date text */}
+                  <button
+                    onClick={onClear}
+                    style={{
+                      position:"absolute", top:-7, right:-14,
+                      width:14, height:14, borderRadius:"50%",
+                      backgroundColor:"#D6C9B8", border:"none",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      cursor:"pointer", padding:0, lineHeight:1,
+                    }}
+                  >
+                    <X size={8} color="#78716C" />
+                  </button>
                 </div>
-              )}
+                <div style={{ flex:1 }} />
+              </>
+            ) : (
+              <button
+                onClick={() => setOpenDateFor(isOpen ? null : entryId)}
+                style={{
+                  fontFamily:"cursive", fontSize:"15px", color:"#A8A29E",
+                  background:"none", border:"none", cursor:"pointer",
+                  padding:0, flex:1, textAlign:"left" as const,
+                }}
+              >
+                — tap to add date —
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                style={{ background:"none", border:"none", cursor:"pointer", padding:2, lineHeight:1 }}
+              >
+                <X size={12} color="#C8BFB5" />
+              </button>
+            )}
+          </div>
+          {/* Date chips — show when open, regardless of whether a date is already set */}
+          {isOpen && (
+            <div style={{
+              padding:"6px 16px 10px",
+              backgroundColor:"rgba(253,250,246,0.96)",
+            }}>
+              <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
+                {dates.map((d) => (
+                  <button key={d}
+                    onClick={() => { onSelect(d); setOpenDateFor(null); }}
+                    style={{
+                      padding:"4px 10px", borderRadius:"8px",
+                      border:"1.5px solid #C8BFB5", backgroundColor:"#FFFFFF",
+                      color:"#44403C", fontSize:"11px", fontWeight:600, cursor:"pointer",
+                    }}
+                  >
+                    {new Date(d + "T00:00:00")
+                      .toLocaleDateString("en-US", { weekday:"short", day:"numeric", month:"short" })}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-        </div>
+        </>
+      );
+    }
 
-        {/* Diary-style textarea */}
-        <div style={{
-          borderRadius:"12px", overflow:"hidden",
-          border:"1px solid #E8DDD0",
-          boxShadow:"inset 0 2px 6px rgba(0,0,0,0.04)",
-        }}>
-          {/* Red margin line (diary aesthetic) */}
-          <div style={{ display:"flex", height:"100%" }}>
-            <div style={{
-              width:3, flexShrink:0,
-              background:"linear-gradient(to bottom, #FCA5A5, #F87171)",
-            }} />
+    const RULED = "repeating-linear-gradient(transparent, transparent 31px, #D6C9B8 31px, #D6C9B8 32px)";
+    const taStyle = (minH: number): React.CSSProperties => ({
+      width:"100%", minHeight: minH,
+      paddingTop:"10px", paddingBottom:"6px", paddingLeft:"16px", paddingRight:"16px",
+      fontFamily:"cursive", fontSize:"15px", lineHeight:"32px",
+      color:"#1C1917",
+      background: RULED,
+      border:"none", outline:"none",
+      resize:"none", boxSizing:"border-box",
+      display:"block",
+    });
+
+    function autoResize(e: React.FormEvent<HTMLTextAreaElement>) {
+      const t = e.currentTarget;
+      t.style.height = "auto";
+      // snap to next 32px multiple to keep lines in phase
+      const rows = Math.max(1, Math.ceil((t.scrollHeight - 16) / 32));
+      t.style.height = (rows * 32 + 16) + "px";
+    }
+
+    return (
+      <div style={{
+        borderRadius:"12px", overflow:"hidden",
+        border:"1px solid #E8DDD0",
+        boxShadow:"0 2px 8px rgba(0,0,0,0.06)",
+      }}>
+        <div style={{ display:"flex", background:"#FDFAF6" }}>
+          {/* Red margin */}
+          <div style={{
+            width:3, flexShrink:0,
+            background:"linear-gradient(to bottom, #FCA5A5, #F87171)",
+          }} />
+
+          <div style={{ flex:1 }}>
+            {/* ── Main entry ── */}
+            {dateLine(
+              draft.journalDate, "main",
+              (d) => ud("journalDate", d),
+              () => ud("journalDate", ""),
+            )}
             <textarea
               value={draft.journalText}
               onChange={(e) => ud("journalText", e.target.value)}
-              placeholder="Write freely…"
-              rows={14}
-              style={{
-                flex:1, padding:"10px 16px",
-                fontFamily:"cursive",
-                fontSize:"15px",
-                lineHeight:"32px",
-                color:"#1C1917",
-                background:"repeating-linear-gradient(#FDFAF6, #FDFAF6 31px, #D6C9B8 31px, #D6C9B8 32px)",
-                border:"none", outline:"none",
-                resize:"vertical", boxSizing:"border-box" as const,
-                width:"100%",
-              }}
+              onInput={autoResize}
+              placeholder="Write freely here…"
+              style={taStyle(128)}
             />
+
+            {/* ── Additional entries ── */}
+            {entries.map((sec, i) => (
+              <div key={sec.id}>
+                {dateLine(
+                  sec.heading, sec.id,
+                  (d) => {
+                    const secs = [...entries]; secs[i] = { ...sec, heading: d };
+                    ud("journalSections", secs);
+                  },
+                  () => {
+                    const secs = [...entries]; secs[i] = { ...sec, heading: "" };
+                    ud("journalSections", secs);
+                  },
+                  () => ud("journalSections", entries.filter((_, j) => j !== i)),
+                )}
+                <textarea
+                  value={sec.body}
+                  onChange={(e) => {
+                    const secs = [...entries]; secs[i] = { ...sec, body: e.target.value };
+                    ud("journalSections", secs);
+                  }}
+                  onInput={autoResize}
+                  placeholder="Continue writing…"
+                  style={taStyle(96)}
+                />
+              </div>
+            ))}
+
+            {/* ── Permanent "new entry" line — always visible ── */}
+            <div style={{
+              height:32, display:"flex", alignItems:"center", padding:"0 16px",
+              background: RULED,
+            }}>
+              <button
+                onClick={() => ud("journalSections", [
+                  ...entries,
+                  { id: crypto.randomUUID(), heading:"", body:"" },
+                ])}
+                style={{
+                  fontFamily:"cursive", fontSize:"15px", color:"#A8A29E",
+                  background:"none", border:"none", cursor:"pointer", padding:0,
+                }}
+              >
+                — new entry —
+              </button>
+            </div>
+
+            {/* Trailing blank ruled space */}
+            <div style={{ height:64, background: RULED }} />
           </div>
         </div>
       </div>
