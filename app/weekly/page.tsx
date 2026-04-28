@@ -96,14 +96,33 @@ export default function WeeklyPage() {
   }
 
   function handleEditConflict(ev: WeekEvent) {
-    // Switch the open sheet to edit the conflicting event directly
     setEditEvent(ev);
     setNewEventDate("");
     setNewEventTime("");
   }
 
-  const isCurrentWeek  = weekStart === getWeekStart();
-  const currentReview  = weeklyReviews.find((r) => r.weekStart === weekStart) ?? null;
+  const isCurrentWeek = weekStart === getWeekStart();
+  const currentReview = weeklyReviews.find((r) => r.weekStart === weekStart) ?? null;
+
+  // ── Full-page review ──────────────────────────────────────────────────────
+  if (reviewOpen) {
+    return (
+      <WeeklyReviewSheet
+        open={true}
+        onClose={() => setReviewOpen(false)}
+        weekStart={weekStart}
+        review={currentReview}
+        onSave={upsertWeeklyReview}
+        tasks={tasks}
+        habits={habits}
+        eveningReflections={eveningReflections}
+        weekPlanOutcomes={plan.outcomes ?? []}
+        onCompleteTask={(id) => closeTask(id, "complete")}
+        onReopenTask={reopenTask}
+        onToggleHabit={toggleHabitDay}
+      />
+    );
+  }
 
   return (
     <div style={{
@@ -228,21 +247,6 @@ export default function WeeklyPage() {
         onComplete={(id) => { closeTask(id, "complete"); }}
         onMiss={(id) => { closeTask(id, "incomplete"); }}
         onReopen={reopenTask}
-      />
-
-      <WeeklyReviewSheet
-        open={reviewOpen}
-        onClose={() => setReviewOpen(false)}
-        weekStart={weekStart}
-        review={currentReview}
-        onSave={upsertWeeklyReview}
-        tasks={tasks}
-        habits={habits}
-        eveningReflections={eveningReflections}
-        weekPlanOutcomes={plan.outcomes ?? []}
-        onCompleteTask={(id) => closeTask(id, "complete")}
-        onReopenTask={reopenTask}
-        onToggleHabit={toggleHabitDay}
       />
     </div>
   );

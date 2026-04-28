@@ -1143,25 +1143,23 @@ export default function WeeklyReviewSheet({
   };
 
   return (
-    <>
-      <div onClick={onClose} style={{
-        position:"fixed", inset:0, backgroundColor:"rgba(0,0,0,0.5)", zIndex:50,
-      }} />
-
-      <div style={{
-        position:"fixed", top:"50%", left:"50%",
-        transform:"translate(-50%,-50%)",
-        width:"min(1080px, 95vw)", height:"90vh",
-        backgroundColor:"#FFFFFF", borderRadius:"20px",
-        zIndex:51, boxShadow:"0 20px 60px rgba(0,0,0,0.28)",
-        display:"flex", flexDirection:"column", overflow:"hidden",
-      }}>
+    <div style={{
+      height:"100%", backgroundColor:"#FFFFFF",
+      display:"flex", flexDirection:"column", overflow:"hidden",
+    }}>
         {/* Header */}
         <div style={{
           padding:"14px 24px", borderBottom:"1px solid #EDE5D8",
           display:"flex", alignItems:"center", gap:"16px",
           flexShrink:0, backgroundColor:"#FAF5EE",
         }}>
+          <button onClick={onClose} style={{
+            width:32, height:32, borderRadius:9, border:"1px solid #EDE5D8",
+            backgroundColor:"#FFFFFF", display:"flex", alignItems:"center",
+            justifyContent:"center", cursor:"pointer", flexShrink:0,
+          }}>
+            <X size={15} color="#44403C" />
+          </button>
           <div style={{ flex:1 }}>
             <p style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase",
               letterSpacing:"0.07em", color:"#C2410C", marginBottom:"2px" }}>
@@ -1171,13 +1169,6 @@ export default function WeeklyReviewSheet({
               {weekLabel(weekStart)}
             </h2>
           </div>
-          <button onClick={onClose} style={{
-            width:32, height:32, borderRadius:9, border:"1px solid #EDE5D8",
-            backgroundColor:"#FFFFFF", display:"flex", alignItems:"center",
-            justifyContent:"center", cursor:"pointer", flexShrink:0,
-          }}>
-            <X size={15} color="#44403C" />
-          </button>
         </div>
 
         {/* Body */}
@@ -1306,7 +1297,6 @@ export default function WeeklyReviewSheet({
             </button>
           </div>
         </div>
-      </div>
-    </>
+    </div>
   );
 }
