@@ -20,6 +20,7 @@ import { EveningReflectionsModule } from './evening-reflections/evening-reflecti
 import { WeeklyReviewsModule } from './weekly-reviews/weekly-reviews.module';
 import { BucketModule } from './bucket/bucket.module';
 import { SupportModule } from './support/support.module';
+import { VisionModule } from './vision/vision.module';
 
 @Module({
   controllers: [HealthController],
@@ -38,6 +39,7 @@ import { SupportModule } from './support/support.module';
     WeeklyReviewsModule,
     BucketModule,
     SupportModule,
+    VisionModule,
   ],
 })
 export class AppModule {}

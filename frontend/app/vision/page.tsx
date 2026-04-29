@@ -7,6 +7,7 @@ import AreaEditSheet from "@/components/vision/AreaEditSheet";
 import { Edit2, RotateCcw } from "lucide-react";
 import { AREA_META } from "@/components/goals/GoalCard";
 import type { LifeArea } from "@/components/goals/GoalCard";
+import { api } from "@/lib/api";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const CY       = 440;    // vertical center of wheel in canvas
@@ -46,6 +47,7 @@ const EMPTY_AREA: AreaData[] = AREAS_META.map((m) => ({
 export default function VisionPage() {
   const [areas, setAreas]         = useState<AreaData[]>(EMPTY_AREA);
   const [editingIdx, setEditing]  = useState<number | null>(null);
+  const [saving, setSaving]       = useState(false);
   const [CX, setCX]               = useState(0);
   const [positions, setPositions] = useState<Record<string, Pos>>({});
   const [dragging, setDragging]   = useState<{
@@ -84,6 +86,17 @@ export default function VisionPage() {
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Load persisted vision data on mount
+  useEffect(() => {
+    api.get<{ areas: AreaData[] }>("/vision").then((data) => {
+      if (data.areas && data.areas.length > 0) {
+        setAreas((prev) =>
+          prev.map((a) => data.areas.find((d: AreaData) => d.id === a.id) ?? a)
+        );
+      }
+    }).catch(() => {});
   }, []);
 
   // ── Drag logic ─────────────────────────────────────────────────────────────
@@ -156,8 +169,12 @@ export default function VisionPage() {
     };
   };
 
-  const handleSave = (u: AreaData) =>
-    setAreas((prev) => prev.map((a) => (a.id === u.id ? u : a)));
+  const handleSave = (u: AreaData) => {
+    const updated = areas.map((a) => (a.id === u.id ? u : a));
+    setAreas(updated);
+    setSaving(true);
+    api.put("/vision", { areas: updated }).finally(() => setSaving(false));
+  };
 
   return (
     <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
@@ -180,6 +197,9 @@ export default function VisionPage() {
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          {saving && (
+            <span style={{ fontSize: "11px", color: "#A8A29E" }}>Saving…</span>
+          )}
           <button
             onClick={resetPositions}
             title="Reset card positions"

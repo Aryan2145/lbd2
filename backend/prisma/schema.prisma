@@ -85,6 +85,7 @@ model User {
   weeklyReviews      WeeklyReview[]
   bucketEntries      BucketEntry[]
   tickets            SupportTicket[]
+  visionCanvas       VisionCanvas?
 
   @@map("users")
 }
@@ -345,6 +346,25 @@ model BucketEntry {
 
   @@index([userId])
   @@map("bucket_entries")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Vision Canvas
+// ─────────────────────────────────────────────────────────────────────────────
+
+model VisionCanvas {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // { id, name, text, score, imageUrl }[]
+  areas            Json     @default("[]")
+  purposeStatement String   @default("")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("vision_canvas")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
