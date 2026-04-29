@@ -44,7 +44,7 @@ export default function AreaEditSheet({
 
   if (!area) return null;
 
-  const aiPrompt = `A high-fidelity, cinematic visualization of ${area.name} representing: ${text || "a life of purpose and achievement"}. Minimalist, inspiring, 8k resolution, photorealistic, warm golden light.`;
+  const aiPrompt = `A high-fidelity, cinematic visualization of ${area.name} representing: ${text || "a life of purpose and achievement"}. Minimalist, inspiring, 8k resolution, photorealistic, warm golden light. 4:3 aspect ratio --ar 4:3`;
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(aiPrompt);
