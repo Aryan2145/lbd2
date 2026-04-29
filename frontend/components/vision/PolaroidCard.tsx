@@ -102,8 +102,8 @@ export default function PolaroidCard({
             </div>
           )}
 
-          {/* Add overlay on empty */}
-          {!hasContent && (
+          {/* Add overlay on empty — hide if an image is present */}
+          {!hasContent && !area.imageUrl && (
             <div
               style={{
                 position: "absolute",
