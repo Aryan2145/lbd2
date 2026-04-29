@@ -4,29 +4,56 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Crown } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { api } from "@/lib/api";
+
+type Mode = "login" | "register";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router    = useRouter();
 
+  const [mode,     setMode]     = useState<Mode>("login");
+  const [name,     setName]     = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
+
+  function switchMode(m: Mode) {
+    setMode(m); setError("");
+    setName(""); setEmail(""); setPassword("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
+      if (mode === "register") {
+        if (name.trim().length < 2) throw new Error("Please enter your full name");
+        await api.post("/auth/register", { name: name.trim(), email, password });
+      }
       await login(email, password);
       router.replace("/legacy");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Sign in failed");
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
   }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "10px 12px",
+    borderRadius: 10, border: "1.5px solid #D6C9BC",
+    backgroundColor: "#FDFAF7", color: "#1C1917",
+    fontSize: 14, outline: "none", boxSizing: "border-box",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: "block", fontSize: 11, fontWeight: 700,
+    color: "#78716C", textTransform: "uppercase",
+    letterSpacing: "0.07em", marginBottom: 6,
+  };
 
   return (
     <div
@@ -49,7 +76,7 @@ export default function LoginPage() {
               Life By Design
             </h1>
             <p style={{ fontSize: 13, color: "#A8A29E", marginTop: 4 }}>
-              Sign in to your account
+              {mode === "login" ? "Sign in to your account" : "Create your account"}
             </p>
           </div>
         </div>
@@ -63,54 +90,51 @@ export default function LoginPage() {
           padding: "32px 28px",
         }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+            {mode === "register" && (
+              <div>
+                <label style={labelStyle}>Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                  placeholder="Aryan Jain"
+                  style={inputStyle}
+                />
+              </div>
+            )}
+
             <div>
-              <label style={{
-                display: "block", fontSize: 11, fontWeight: 700,
-                color: "#78716C", textTransform: "uppercase",
-                letterSpacing: "0.07em", marginBottom: 6,
-              }}>
-                Email
-              </label>
+              <label style={labelStyle}>Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                style={{
-                  width: "100%", padding: "10px 12px",
-                  borderRadius: 10, border: "1.5px solid #D6C9BC",
-                  backgroundColor: "#FDFAF7", color: "#1C1917",
-                  fontSize: 14, outline: "none", boxSizing: "border-box",
-                }}
+                style={inputStyle}
               />
             </div>
 
             <div>
-              <label style={{
-                display: "block", fontSize: 11, fontWeight: 700,
-                color: "#78716C", textTransform: "uppercase",
-                letterSpacing: "0.07em", marginBottom: 6,
-              }}>
-                Password
-              </label>
+              <label style={labelStyle}>Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
+                minLength={6}
                 placeholder="••••••••"
-                style={{
-                  width: "100%", padding: "10px 12px",
-                  borderRadius: 10, border: "1.5px solid #D6C9BC",
-                  backgroundColor: "#FDFAF7", color: "#1C1917",
-                  fontSize: 14, outline: "none", boxSizing: "border-box",
-                }}
+                style={inputStyle}
               />
             </div>
 
             {error && (
-              <p style={{ fontSize: 13, color: "#DC2626", margin: 0, padding: "8px 12px", backgroundColor: "#FEF2F2", borderRadius: 8 }}>
+              <p style={{
+                fontSize: 13, color: "#DC2626", margin: 0,
+                padding: "8px 12px", backgroundColor: "#FEF2F2", borderRadius: 8,
+              }}>
                 {error}
               </p>
             )}
@@ -119,27 +143,44 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               style={{
-                padding: "11px 0",
-                borderRadius: 10,
-                border: "none",
-                background: loading
-                  ? "#E8C8A8"
-                  : "linear-gradient(135deg, #F97316, #EA580C)",
-                color: "#FFFFFF",
-                fontSize: 14,
-                fontWeight: 700,
+                padding: "11px 0", borderRadius: 10, border: "none",
+                background: loading ? "#E8C8A8" : "linear-gradient(135deg, #F97316, #EA580C)",
+                color: "#FFFFFF", fontSize: 14, fontWeight: 700,
                 cursor: loading ? "not-allowed" : "pointer",
                 letterSpacing: "-0.01em",
                 boxShadow: loading ? "none" : "0 2px 8px rgba(234,88,12,0.3)",
               }}
             >
-              {loading ? "Signing in…" : "Sign in"}
+              {loading
+                ? (mode === "login" ? "Signing in…" : "Creating account…")
+                : (mode === "login" ? "Sign in" : "Create account & sign in")}
             </button>
           </form>
         </div>
 
-        <p style={{ textAlign: "center", fontSize: 12, color: "#A8A29E", marginTop: 24 }}>
-          Contact your administrator to create an account.
+        {/* Toggle */}
+        <p style={{ textAlign: "center", fontSize: 13, color: "#A8A29E", marginTop: 20 }}>
+          {mode === "login" ? (
+            <>
+              New here?{" "}
+              <button
+                onClick={() => switchMode("register")}
+                style={{ background: "none", border: "none", color: "#EA580C", fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+              >
+                Create an account
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button
+                onClick={() => switchMode("login")}
+                style={{ background: "none", border: "none", color: "#EA580C", fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+              >
+                Sign in
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>
