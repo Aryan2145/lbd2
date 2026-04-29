@@ -4,6 +4,20 @@ import { useState, useEffect } from "react";
 import { X, Copy, Check, Image as ImageIcon } from "lucide-react";
 import type { AreaData } from "./PolaroidCard";
 
+// Converts any Google Drive share URL to a directly embeddable CDN URL.
+// Works for publicly shared files ("Anyone with the link") — no OAuth needed.
+function toDriveImgUrl(raw: string): string {
+  if (!raw || (!raw.includes("drive.google.com") && !raw.includes("docs.google.com"))) return raw;
+  let id: string | null = null;
+  const fileMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) id = fileMatch[1];
+  if (!id) {
+    const idMatch = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idMatch) id = idMatch[1];
+  }
+  return id ? `https://lh3.googleusercontent.com/d/${id}` : raw;
+}
+
 interface AreaEditSheetProps {
   area: AreaData | null;
   onClose: () => void;
@@ -38,8 +52,10 @@ export default function AreaEditSheet({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const resolvedImageUrl = toDriveImgUrl(imageUrl);
+
   const handleSave = () => {
-    onSave({ ...area, text, score, imageUrl });
+    onSave({ ...area, text, score, imageUrl: resolvedImageUrl });
     onClose();
   };
 
@@ -288,6 +304,9 @@ export default function AreaEditSheet({
             </div>
 
             {/* Image URL input */}
+            <p style={{ fontSize: "10px", color: "#A8A29E", marginBottom: "6px", fontStyle: "italic" }}>
+              Upload to Google Drive → right-click → Share → &ldquo;Anyone with the link&rdquo; → copy link and paste below.
+            </p>
             <div
               style={{
                 display: "flex",
@@ -304,7 +323,7 @@ export default function AreaEditSheet({
                 type="text"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="Paste Google Drive or image URL..."
+                placeholder="Paste Google Drive or direct image URL…"
                 style={{
                   flex: 1,
                   fontSize: "12px",
@@ -317,7 +336,7 @@ export default function AreaEditSheet({
               />
             </div>
 
-            {imageUrl && (
+            {resolvedImageUrl && (
               <div
                 style={{
                   marginTop: "10px",
@@ -328,7 +347,7 @@ export default function AreaEditSheet({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={imageUrl}
+                  src={resolvedImageUrl}
                   alt="preview"
                   style={{
                     width: "100%",
