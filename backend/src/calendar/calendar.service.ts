@@ -10,11 +10,18 @@ export class CalendarService {
   }
 
   createGroup(userId: string, data: any) {
-    return this.prisma.eventGroup.create({ data: { userId, ...data } });
+    const { id, name, color } = data;
+    return this.prisma.eventGroup.create({
+      data: { ...(id ? { id } : {}), userId, name, color },
+      include: { events: true },
+    });
   }
 
   updateGroup(id: string, data: any) {
-    return this.prisma.eventGroup.update({ where: { id }, data });
+    const fields: any = {};
+    if (data.name  !== undefined) fields.name  = data.name;
+    if (data.color !== undefined) fields.color = data.color;
+    return this.prisma.eventGroup.update({ where: { id }, data: fields });
   }
 
   removeGroup(id: string) {
@@ -22,11 +29,21 @@ export class CalendarService {
   }
 
   createEvent(userId: string, data: any) {
-    return this.prisma.weekEvent.create({ data: { userId, ...data } });
+    const { groupId, title, date, startTime, endTime, description } = data;
+    return this.prisma.weekEvent.create({
+      data: { userId, groupId, title, date, startTime, endTime, description: description || null },
+    });
   }
 
   updateEvent(id: string, data: any) {
-    return this.prisma.weekEvent.update({ where: { id }, data });
+    const fields: any = {};
+    if (data.groupId     !== undefined) fields.groupId     = data.groupId;
+    if (data.title       !== undefined) fields.title       = data.title;
+    if (data.date        !== undefined) fields.date        = data.date;
+    if (data.startTime   !== undefined) fields.startTime   = data.startTime;
+    if (data.endTime     !== undefined) fields.endTime     = data.endTime;
+    if (data.description !== undefined) fields.description = data.description || null;
+    return this.prisma.weekEvent.update({ where: { id }, data: fields });
   }
 
   removeEvent(id: string) {

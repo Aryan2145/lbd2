@@ -10,11 +10,31 @@ export class HabitsService {
   }
 
   create(userId: string, data: any) {
-    return this.prisma.habit.create({ data: { userId, ...data } });
+    const { name, area, frequency, customDays, type, target, unit, completions, measurements } = data;
+    return this.prisma.habit.create({
+      data: {
+        userId, name, area, frequency,
+        customDays: customDays ?? [],
+        type, target: target ?? 1,
+        unit: unit || null,
+        completions: completions ?? [],
+        measurements: measurements ?? {},
+      },
+    });
   }
 
   update(id: string, data: any) {
-    return this.prisma.habit.update({ where: { id }, data });
+    const fields: any = {};
+    if (data.name         !== undefined) fields.name         = data.name;
+    if (data.area         !== undefined) fields.area         = data.area;
+    if (data.frequency    !== undefined) fields.frequency    = data.frequency;
+    if (data.customDays   !== undefined) fields.customDays   = data.customDays;
+    if (data.type         !== undefined) fields.type         = data.type;
+    if (data.target       !== undefined) fields.target       = data.target;
+    if (data.unit         !== undefined) fields.unit         = data.unit || null;
+    if (data.completions  !== undefined) fields.completions  = data.completions;
+    if (data.measurements !== undefined) fields.measurements = data.measurements;
+    return this.prisma.habit.update({ where: { id }, data: fields });
   }
 
   remove(id: string) {
