@@ -9,6 +9,8 @@ frontend/node_modules
 frontend/.next/
 frontend/out/
 frontend/build
+frontend/.env.local
+frontend/.env*.local
 
 # Root env files — create these manually on the server
 .env.production
