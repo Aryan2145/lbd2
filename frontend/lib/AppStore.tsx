@@ -10,6 +10,8 @@ import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import type { DayPlan, EveningReflection, WeeklyReview } from "@/lib/dayTypes";
 import type { BucketEntry } from "@/lib/bucketTypes";
 import type { SupportTicket } from "@/lib/ticketTypes";
+import { api } from "@/lib/api";
+import type { AuthUser } from "@/lib/AuthContext";
 
 // ── User profile ─────────────────────────────────────────────────────────────
 export interface UserProfile {
@@ -19,9 +21,13 @@ export interface UserProfile {
   role:     string;
   password: string;
 }
-const DEFAULT_PROFILE: UserProfile = {
-  name: "Aryan", email: "", phone: "", role: "Business Owner", password: "",
-};
+
+// Read the currently logged-in user from localStorage (written by AuthContext)
+function readAuthUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem("lbd_auth_user");
+  try { return raw ? (JSON.parse(raw) as AuthUser) : null; } catch { return null; }
+}
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 function fromStorage<T>(key: string, fallback: () => T): T {
@@ -488,25 +494,42 @@ interface AppState {
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [goals,       setGoals]       = useState<GoalData[]>(()           => fromStorage("lbd_goals",     seedGoals));
-  const [habits,      setHabits]      = useState<HabitData[]>(()          => fromStorage("lbd_habits",    seedHabits));
+  // Scope all localStorage keys to the logged-in user so two accounts on the
+  // same browser never share data.
+  const authUser = readAuthUser();
+  const uid = authUser?.id ?? "guest";
+  const k = (name: string) => `lbd_${uid}_${name}`;
+
+  const [goals,       setGoals]       = useState<GoalData[]>(()           => fromStorage(k("goals"),     seedGoals));
+  const [habits,      setHabits]      = useState<HabitData[]>(()          => fromStorage(k("habits"),    seedHabits));
   const [tasks,       setTasks]       = useState<TaskData[]>(()           => {
     // Strip any recurring instances that may have been persisted before the feature was disabled
-    const stored = fromStorage("lbd_tasks", seedTasks);
+    const stored = fromStorage(k("tasks"), seedTasks);
     return stored.filter((t) => t.kind !== "instance");
   });
-  // RECURRING_DISABLED: const [templates, setTemplates] = useState<RecurringTemplate[]>(() => fromStorage("lbd_templates", seedTemplates));
+  // RECURRING_DISABLED: const [templates, setTemplates] = useState<RecurringTemplate[]>(() => fromStorage(k("templates"), seedTemplates));
   const templates: RecurringTemplate[] = [];
-  const [weekEvents,         setWeekEvents]         = useState<WeekEvent[]>(()         => fromStorage("lbd_weekEvents",         seedWeekEvents));
-  const [weekPlans,          setWeekPlans]          = useState<WeekPlan[]>(()          => fromStorage("lbd_weekPlans",          seedWeekPlans));
-  const [dayPlans,           setDayPlans]           = useState<DayPlan[]>(()           => fromStorage("lbd_dayIntentions",     () => []));
-  const [eveningReflections, setEveningReflections] = useState<EveningReflection[]>(() => fromStorage("lbd_eveningReflections", () => []));
-  const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>(()      => fromStorage("lbd_weeklyReviews",      () => []));
-  const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>(()       => migrateBucketEntries(fromStorage("lbd_bucketEntries", seedBucketEntries)));
-  const [tickets,            setTickets]            = useState<SupportTicket[]>(()     => fromStorage("lbd_tickets",            seedTickets));
-  const [userProfile,        setUserProfile]        = useState<UserProfile>(()         => fromStorage("lbd_userProfile",        () => DEFAULT_PROFILE));
+  const [weekEvents,         setWeekEvents]         = useState<WeekEvent[]>(()         => fromStorage(k("weekEvents"),         seedWeekEvents));
+  const [weekPlans,          setWeekPlans]          = useState<WeekPlan[]>(()          => fromStorage(k("weekPlans"),          seedWeekPlans));
+  const [dayPlans,           setDayPlans]           = useState<DayPlan[]>(()           => fromStorage(k("dayIntentions"),     () => []));
+  const [eveningReflections, setEveningReflections] = useState<EveningReflection[]>(() => fromStorage(k("eveningReflections"), () => []));
+  const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>(()      => fromStorage(k("weeklyReviews"),      () => []));
+  const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>(()       => migrateBucketEntries(fromStorage(k("bucketEntries"), seedBucketEntries)));
+  const [tickets,            setTickets]            = useState<SupportTicket[]>(()     => fromStorage(k("tickets"),            seedTickets));
+  // Profile is seeded from the authenticated user so each account sees their own data
+  const [userProfile,        setUserProfile]        = useState<UserProfile>(() => {
+    const stored = fromStorage<UserProfile | null>(k("userProfile"), () => null);
+    if (stored) return stored;
+    return {
+      name:     authUser?.name  ?? "",
+      email:    authUser?.email ?? "",
+      phone:    authUser?.phone ?? "",
+      role:     authUser?.role  ?? "",
+      password: "",
+    };
+  });
   const [eventGroups, setEventGroups] = useState<EventGroup[]>(() => {
-    const groups = fromStorage("lbd_eventGroups", seedEventGroups);
+    const groups = fromStorage(k("eventGroups"), seedEventGroups);
     // Always ensure the system General group exists
     if (!groups.find((g) => g.id === GENERAL_GROUP_ID)) {
       return [{ id: GENERAL_GROUP_ID, name: "General", color: "#9CA3AF", createdAt: 0 }, ...groups];
@@ -516,24 +539,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // One-time cleanup: remove stale recurring data from localStorage
   useEffect(() => {
-    localStorage.removeItem("lbd_templates");
+    localStorage.removeItem(k("templates"));
     setTasks((prev) => prev.filter((t) => t.kind !== "instance"));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist every slice to localStorage whenever it changes
-  useEffect(() => { localStorage.setItem("lbd_goals",       JSON.stringify(goals));       }, [goals]);
-  useEffect(() => { localStorage.setItem("lbd_habits",      JSON.stringify(habits));      }, [habits]);
-  useEffect(() => { localStorage.setItem("lbd_tasks",       JSON.stringify(tasks));       }, [tasks]);
-  // RECURRING_DISABLED: useEffect(() => { localStorage.setItem("lbd_templates", JSON.stringify(templates)); }, [templates]);
-  useEffect(() => { localStorage.setItem("lbd_eventGroups", JSON.stringify(eventGroups)); }, [eventGroups]);
-  useEffect(() => { localStorage.setItem("lbd_weekEvents",         JSON.stringify(weekEvents));         }, [weekEvents]);
-  useEffect(() => { localStorage.setItem("lbd_weekPlans",          JSON.stringify(weekPlans));          }, [weekPlans]);
-  useEffect(() => { localStorage.setItem("lbd_dayIntentions",      JSON.stringify(dayPlans));           }, [dayPlans]);
-  useEffect(() => { localStorage.setItem("lbd_eveningReflections", JSON.stringify(eveningReflections)); }, [eveningReflections]);
-  useEffect(() => { localStorage.setItem("lbd_weeklyReviews",      JSON.stringify(weeklyReviews));      }, [weeklyReviews]);
-  useEffect(() => { localStorage.setItem("lbd_bucketEntries",      JSON.stringify(bucketEntries));      }, [bucketEntries]);
-  useEffect(() => { localStorage.setItem("lbd_tickets",            JSON.stringify(tickets));            }, [tickets]);
-  useEffect(() => { localStorage.setItem("lbd_userProfile",        JSON.stringify(userProfile));        }, [userProfile]);
+  // Persist every slice to localStorage (user-scoped) whenever it changes
+  useEffect(() => { localStorage.setItem(k("goals"),              JSON.stringify(goals));              }, [goals]);
+  useEffect(() => { localStorage.setItem(k("habits"),             JSON.stringify(habits));             }, [habits]);
+  useEffect(() => { localStorage.setItem(k("tasks"),              JSON.stringify(tasks));              }, [tasks]);
+  // RECURRING_DISABLED: useEffect(() => { localStorage.setItem(k("templates"), JSON.stringify(templates)); }, [templates]);
+  useEffect(() => { localStorage.setItem(k("eventGroups"),        JSON.stringify(eventGroups));        }, [eventGroups]);
+  useEffect(() => { localStorage.setItem(k("weekEvents"),         JSON.stringify(weekEvents));         }, [weekEvents]);
+  useEffect(() => { localStorage.setItem(k("weekPlans"),          JSON.stringify(weekPlans));          }, [weekPlans]);
+  useEffect(() => { localStorage.setItem(k("dayIntentions"),      JSON.stringify(dayPlans));           }, [dayPlans]);
+  useEffect(() => { localStorage.setItem(k("eveningReflections"), JSON.stringify(eveningReflections)); }, [eveningReflections]);
+  useEffect(() => { localStorage.setItem(k("weeklyReviews"),      JSON.stringify(weeklyReviews));      }, [weeklyReviews]);
+  useEffect(() => { localStorage.setItem(k("bucketEntries"),      JSON.stringify(bucketEntries));      }, [bucketEntries]);
+  useEffect(() => { localStorage.setItem(k("tickets"),            JSON.stringify(tickets));            }, [tickets]);
+  useEffect(() => { localStorage.setItem(k("userProfile"),        JSON.stringify(userProfile));        }, [userProfile]);
 
   const updateHabitById = (id: string, fn: (h: HabitData) => HabitData) =>
     setHabits((prev) => prev.map((h) => h.id === id ? fn(h) : h));
@@ -643,7 +666,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteTicket: (id) => setTickets((p) => p.filter((x) => x.id !== id)),
 
     userProfile,
-    updateUserProfile: (p) => setUserProfile(p),
+    updateUserProfile: (p) => {
+      setUserProfile(p);
+      // Keep the stored auth user in sync so next load shows updated name/email
+      const stored = readAuthUser();
+      if (stored) {
+        const updated = { ...stored, name: p.name, email: p.email, phone: p.phone, role: p.role };
+        localStorage.setItem("lbd_auth_user", JSON.stringify(updated));
+      }
+      // Persist to backend (fire-and-forget)
+      api.patch("/users/me", { name: p.name, email: p.email, phone: p.phone, role: p.role }).catch(console.error);
+    },
   };
 
   return <AppContext.Provider value={ctx}>{children}</AppContext.Provider>;

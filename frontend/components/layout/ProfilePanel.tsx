@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { X, User, Mail, Phone, Briefcase, Lock, Eye, EyeOff, Check } from "lucide-react";
+import { X, User, Mail, Phone, Briefcase, Lock, Eye, EyeOff, Check, LogOut } from "lucide-react";
 import type { UserProfile } from "@/lib/AppStore";
 
 interface Props {
-  onClose:  () => void;
-  profile:  UserProfile;
-  onSave:   (p: UserProfile) => void;
+  onClose:          () => void;
+  profile:          UserProfile;
+  onSave:           (p: UserProfile) => void;
+  onChangePassword: (currentPw: string, newPw: string) => Promise<string | null>;
+  onLogout:         () => void;
 }
 
-export default function ProfilePanel({ onClose, profile, onSave }: Props) {
+export default function ProfilePanel({ onClose, profile, onSave, onChangePassword, onLogout }: Props) {
   const [form,          setForm]          = useState<UserProfile>({ ...profile });
   const [showPwSection, setShowPwSection] = useState(false);
   const [currentPw,     setCurrentPw]     = useState("");
@@ -24,16 +26,12 @@ export default function ProfilePanel({ onClose, profile, onSave }: Props) {
 
   function handleSave() { onSave(form); flash(); }
 
-  function handleChangePw() {
-    if (profile.password && currentPw !== profile.password) {
-      setPwError("Current password is incorrect"); return;
-    }
+  async function handleChangePw() {
     if (newPw.length < 6) { setPwError("Password must be at least 6 characters"); return; }
     if (newPw !== confirmPw) { setPwError("Passwords do not match"); return; }
     setPwError("");
-    const updated = { ...form, password: newPw };
-    setForm(updated);
-    onSave(updated);
+    const err = await onChangePassword(currentPw, newPw);
+    if (err) { setPwError(err); return; }
     setCurrentPw(""); setNewPw(""); setConfirmPw("");
     setShowPwSection(false);
     flash();
@@ -126,23 +124,32 @@ export default function ProfilePanel({ onClose, profile, onSave }: Props) {
               <Lock size={12} /> Change Password
             </button>
 
+            {/* Sign out */}
+            <button onClick={onLogout} style={{
+              padding: "8px", borderRadius: "10px",
+              border: "1.5px solid #FECACA", backgroundColor: "#FEF2F2",
+              color: "#DC2626", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+              marginTop: "4px",
+            }}>
+              <LogOut size={12} /> Sign Out
+            </button>
+
             {showPwSection && (
               <div style={{
                 padding: "12px", borderRadius: "10px",
                 border: "1px solid #EDE5D8", backgroundColor: "#FAF5EE",
                 display: "flex", flexDirection: "column", gap: "10px",
               }}>
-                {profile.password && (
-                  <div>
-                    <label style={lbl}><Lock size={9} /> Current Password</label>
-                    <input
-                      type={showPw ? "text" : "password"}
-                      value={currentPw}
-                      onChange={(e) => setCurrentPw(e.target.value)}
-                      style={field}
-                    />
-                  </div>
-                )}
+                <div>
+                  <label style={lbl}><Lock size={9} /> Current Password</label>
+                  <input
+                    type={showPw ? "text" : "password"}
+                    value={currentPw}
+                    onChange={(e) => setCurrentPw(e.target.value)}
+                    style={field}
+                  />
+                </div>
                 <div>
                   <label style={lbl}>New Password</label>
                   <div style={{ position: "relative" }}>

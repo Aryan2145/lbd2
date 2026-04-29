@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, Crown, Search } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
+import { useAuth } from "@/lib/AuthContext";
+import { api } from "@/lib/api";
 import { toTaskDate } from "@/components/tasks/TaskCard";
 import { isScheduledDay } from "@/components/habits/HabitCard";
 import NotificationPanel from "@/components/layout/NotificationPanel";
@@ -36,7 +38,23 @@ function getWeekStart(): string {
 
 export default function TopNav() {
   const pathname = usePathname();
+  const router   = useRouter();
+  const { logout } = useAuth();
   const [panel, setPanel] = useState<Panel>(null);
+
+  async function handleChangePassword(currentPw: string, newPw: string): Promise<string | null> {
+    try {
+      await api.patch("/users/me/password", { currentPassword: currentPw, newPassword: newPw });
+      return null;
+    } catch (err: unknown) {
+      return err instanceof Error ? err.message : "Password change failed";
+    }
+  }
+
+  function handleLogout() {
+    logout();
+    router.replace("/login");
+  }
 
   const {
     tasks, habits, weekPlans, dayPlans,
@@ -200,6 +218,8 @@ export default function TopNav() {
                 onClose={() => setPanel(null)}
                 profile={userProfile}
                 onSave={updateUserProfile}
+                onChangePassword={handleChangePassword}
+                onLogout={handleLogout}
               />
             )}
           </div>

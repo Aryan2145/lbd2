@@ -1,7 +1,7 @@
 "use client";
 
-import { AppProvider } from "@/lib/AppStore";
+import { AuthProvider } from "@/lib/AuthContext";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  return <AppProvider>{children}</AppProvider>;
+  return <AuthProvider>{children}</AuthProvider>;
 }
