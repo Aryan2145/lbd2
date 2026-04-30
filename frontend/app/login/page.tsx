@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Crown, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { api } from "@/lib/api";
@@ -10,9 +10,16 @@ type Mode = "login" | "register";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const router    = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
 
-  const [mode,     setMode]     = useState<Mode>("login");
+  const [mode,     setMode]     = useState<Mode>(() =>
+    searchParams.get("mode") === "register" ? "register" : "login"
+  );
+
+  useEffect(() => {
+    if (searchParams.get("mode") === "register") setMode("register");
+  }, [searchParams]);
   const [name,     setName]     = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");

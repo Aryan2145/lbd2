@@ -34,14 +34,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
   const router    = useRouter();
 
-  const isLogin = pathname === "/login";
+  const isLogin  = pathname === "/login";
+  const isPublic = pathname === "/" || pathname === "/privacy" || pathname === "/terms";
 
   useEffect(() => {
-    if (!token && !isLogin) router.replace("/login");
+    if (!token && !isLogin && !isPublic) router.replace("/login");
     if (token  &&  isLogin) router.replace("/legacy");
-  }, [token, isLogin, router]);
+  }, [token, isLogin, isPublic, router]);
 
-  if (isLogin) return <>{children}</>;
+  if (isLogin || isPublic) return <>{children}</>;
   if (!token)  return null;
 
   if (pathname.startsWith("/admin")) {
