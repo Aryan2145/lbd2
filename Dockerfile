@@ -27,7 +27,7 @@ WORKDIR /backend
 COPY --from=backend-deps /backend/node_modules ./node_modules
 COPY backend/ .
 RUN npx prisma generate
-RUN npm run build
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 # ── Stage 5: Runner ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
