@@ -1,8 +1,13 @@
 import { NextRequest } from "next/server";
+import { aiLimiter } from "../_lib/rateLimiter";
 
-// Simulates Claude's streaming response.
-// In production, this proxies to the Nest.js backend which calls the Claude API.
 export async function POST(req: NextRequest) {
+  const ip    = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+  const limit = aiLimiter.check(ip);
+  if (!limit.allowed) {
+    return Response.json({ message: limit.message }, { status: 429 });
+  }
+
   const { roles } = await req.json();
 
   // Build the statement from role inputs — deterministic mock for now.

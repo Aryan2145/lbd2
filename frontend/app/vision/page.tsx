@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import WheelOfLife from "@/components/vision/WheelOfLife";
 import PolaroidCard, { type AreaData } from "@/components/vision/PolaroidCard";
 import AreaEditSheet from "@/components/vision/AreaEditSheet";
-import { Edit2, RotateCcw } from "lucide-react";
+import { Edit2, RotateCcw, Sparkles, Loader2 } from "lucide-react";
 import { AREA_META } from "@/components/goals/GoalCard";
 import type { LifeArea } from "@/components/goals/GoalCard";
 import { api } from "@/lib/api";
@@ -52,6 +52,8 @@ export default function VisionPage() {
   const [saving, setSaving]                 = useState(false);
   const [purposeStatement, setPurpose]      = useState(DEFAULT_PURPOSE);
   const [editingPurpose, setEditingPurpose] = useState(false);
+  const [isGenerating, setIsGenerating]     = useState(false);
+  const [generateError, setGenerateError]   = useState<string | null>(null);
   const [CX, setCX]                         = useState(0);
   const [positions, setPositions]           = useState<Record<string, Pos>>({});
   const [dragging, setDragging]             = useState<{
@@ -222,6 +224,42 @@ export default function VisionPage() {
     api.put("/vision", { areas, purposeStatement: trimmed }).catch(() => {});
   };
 
+  const handleGenerate = async () => {
+    if (isGenerating) return; // hard guard — ignore extra clicks
+    setIsGenerating(true);
+    setGenerateError(null);
+    setPurpose("");
+    try {
+      const res = await fetch("/api/generate-purpose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ areas: areas.map(a => ({ id: a.id, name: a.name, text: a.text })) }),
+      });
+      if (res.status === 429) {
+        const { message } = await res.json();
+        setGenerateError(message ?? "Too many requests, please wait.");
+        setPurpose(DEFAULT_PURPOSE);
+        return;
+      }
+      if (!res.ok || !res.body) throw new Error("Generation failed.");
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let generated = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        generated += decoder.decode(value, { stream: true });
+        setPurpose(generated);
+      }
+      api.put("/vision", { areas, purposeStatement: generated }).catch(() => {});
+    } catch {
+      setGenerateError("Something went wrong. Please try again.");
+      setPurpose(DEFAULT_PURPOSE);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
 
@@ -353,42 +391,73 @@ export default function VisionPage() {
           position: "absolute", bottom: 16, left: "50%",
           transform: "translateX(-50%)", width: "min(820px, 90%)",
           textAlign: "center", borderTop: "1px solid #E8DDD0",
-          paddingTop: "12px", display: "flex", alignItems: "center",
-          justifyContent: "center", gap: "8px",
+          paddingTop: "12px",
         }}>
-          {editingPurpose ? (
-            <textarea
-              autoFocus
-              defaultValue={purposeStatement}
-              rows={2}
-              onBlur={(e) => handlePurposeSave(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePurposeSave(e.currentTarget.value); }
-                if (e.key === "Escape") setEditingPurpose(false);
-              }}
-              style={{
-                flex: 1, maxWidth: "740px", fontSize: "13px", color: "#78716C",
-                fontStyle: "italic", lineHeight: 1.65, textAlign: "center",
-                border: "1.5px solid #F97316", borderRadius: "8px",
-                padding: "6px 10px", backgroundColor: "#FDFAF7",
-                outline: "none", resize: "none", fontFamily: "inherit",
-                caretColor: "#F97316",
-              }}
-            />
-          ) : (
-            <p style={{ fontSize: "13px", color: "#78716C", fontStyle: "italic",
-              lineHeight: 1.65, maxWidth: "740px" }}>
-              &ldquo;{purposeStatement}&rdquo;
+          {generateError && (
+            <p style={{ fontSize: "11px", color: "#EF4444", marginBottom: "6px" }}>
+              {generateError}
             </p>
           )}
-          <button
-            onClick={() => setEditingPurpose(true)}
-            style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "6px",
-              backgroundColor: "#F5F0EB", border: "none", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <Edit2 size={10} color="#A8A29E" />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+            {editingPurpose ? (
+              <textarea
+                autoFocus
+                defaultValue={purposeStatement}
+                rows={2}
+                onBlur={(e) => handlePurposeSave(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePurposeSave(e.currentTarget.value); }
+                  if (e.key === "Escape") setEditingPurpose(false);
+                }}
+                style={{
+                  flex: 1, maxWidth: "740px", fontSize: "13px", color: "#78716C",
+                  fontStyle: "italic", lineHeight: 1.65, textAlign: "center",
+                  border: "1.5px solid #F97316", borderRadius: "8px",
+                  padding: "6px 10px", backgroundColor: "#FDFAF7",
+                  outline: "none", resize: "none", fontFamily: "inherit",
+                  caretColor: "#F97316",
+                }}
+              />
+            ) : (
+              <p style={{ fontSize: "13px", color: "#78716C", fontStyle: "italic",
+                lineHeight: 1.65, maxWidth: "640px",
+                opacity: isGenerating ? 0.5 : 1, transition: "opacity 0.2s" }}>
+                {purposeStatement ? `“${purposeStatement}”` : " "}
+              </p>
+            )}
+            {/* Edit button */}
+            <button
+              onClick={() => !isGenerating && setEditingPurpose(true)}
+              disabled={isGenerating}
+              title="Edit purpose statement"
+              style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "6px",
+                backgroundColor: "#F5F0EB", border: "none",
+                cursor: isGenerating ? "not-allowed" : "pointer", opacity: isGenerating ? 0.4 : 1,
+                display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <Edit2 size={10} color="#A8A29E" />
+            </button>
+            {/* Generate with AI button */}
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              title="Generate purpose statement with AI"
+              style={{
+                flexShrink: 0, display: "flex", alignItems: "center", gap: "5px",
+                padding: "5px 10px", borderRadius: "7px",
+                background: isGenerating ? "#F5F0EB" : "linear-gradient(135deg,#F97316,#EA580C)",
+                border: "none", cursor: isGenerating ? "not-allowed" : "pointer",
+                fontSize: "10px", fontWeight: 600,
+                color: isGenerating ? "#A8A29E" : "#fff",
+                transition: "opacity 0.2s",
+              }}
+            >
+              {isGenerating
+                ? <><Loader2 size={10} className="animate-spin" /> Generating…</>
+                : <><Sparkles size={10} /> Generate with AI</>
+              }
+            </button>
+          </div>
         </div>
       </div>
 
