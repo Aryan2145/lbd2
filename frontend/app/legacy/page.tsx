@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sparkles, CheckCircle, X } from "lucide-react";
+import { api } from "@/lib/api";
 import RoleCard from "@/components/legacy/RoleCard";
 import PurposeBox, {
   type SynthesisState,
@@ -54,6 +55,34 @@ export default function LegacyPage() {
   const [prevState, setPrevState] = useState<SynthesisState>("idle");
   const [showAchievement, setShowAchievement] = useState(false);
   const [dismissedAchievement, setDismissedAchievement] = useState(false);
+  const [savedIndicator, setSavedIndicator] = useState(false);
+
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const persist = (patch: { roleTexts?: Record<string, string>; purposeText?: string; isSealed?: boolean }) => {
+    api.put("/legacy", patch).then(() => {
+      setSavedIndicator(true);
+      setTimeout(() => setSavedIndicator(false), 1500);
+    }).catch(() => {});
+  };
+
+  const persistDebounced = (roleTexts: Record<string, string>) => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => persist({ roleTexts }), 1500);
+  };
+
+  // Load saved data on mount
+  useEffect(() => {
+    api.get<{ roleTexts: Record<string,string>; purposeText: string; isSealed: boolean }>("/legacy")
+      .then(data => {
+        if (data.roleTexts && Object.keys(data.roleTexts).length > 0)
+          setRoleTexts(prev => ({ ...prev, ...data.roleTexts }));
+        if (data.purposeText) {
+          setPurposeText(data.purposeText);
+          setSynthesisState(data.isSealed ? "sealed" : "ready");
+        }
+      }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRoleComplete = (id: string) => wordCount(roleTexts[id]) >= 10;
   const completedCount = ROLES.filter((r) => isRoleComplete(r.id)).length;
@@ -63,7 +92,11 @@ export default function LegacyPage() {
     (synthesisState === "idle" || synthesisState === "streaming");
 
   const handleRoleChange = (id: string, value: string) => {
-    setRoleTexts((prev) => ({ ...prev, [id]: value }));
+    setRoleTexts((prev) => {
+      const next = { ...prev, [id]: value };
+      persistDebounced(next);
+      return next;
+    });
   };
 
   const handleSynthesize = async () => {
@@ -97,6 +130,7 @@ export default function LegacyPage() {
       }
 
       setSynthesisState("ready");
+      persist({ roleTexts, purposeText: fullText, isSealed: false });
     } catch {
       setSynthesisState("idle");
     }
@@ -104,6 +138,7 @@ export default function LegacyPage() {
 
   const handleSeal = () => {
     setSynthesisState("sealed");
+    persist({ roleTexts, purposeText, isSealed: true });
     if (!dismissedAchievement) {
       setShowAchievement(true);
       setTimeout(() => setShowAchievement(false), 6000);
@@ -118,6 +153,7 @@ export default function LegacyPage() {
   const handleSaveEdit = (text: string) => {
     setPurposeText(text);
     setSynthesisState("ready");
+    persist({ roleTexts, purposeText: text, isSealed: false });
   };
 
   const handleCancelEdit = () => {
@@ -166,6 +202,9 @@ export default function LegacyPage() {
             Define your legacy across every role you inhabit. Your purpose
             lives at their intersection.
           </p>
+          {savedIndicator && (
+            <p style={{ fontSize: 11, color: "#A8A29E", marginTop: 4 }}>Saved ✓</p>
+          )}
         </div>
 
         {/* Progress ring */}

@@ -21,6 +21,7 @@ import { WeeklyReviewsModule } from './weekly-reviews/weekly-reviews.module';
 import { BucketModule } from './bucket/bucket.module';
 import { SupportModule } from './support/support.module';
 import { VisionModule } from './vision/vision.module';
+import { LegacyModule } from './legacy/legacy.module';
 
 @Module({
   controllers: [HealthController],
@@ -40,6 +41,7 @@ import { VisionModule } from './vision/vision.module';
     BucketModule,
     SupportModule,
     VisionModule,
+    LegacyModule,
   ],
 })
 export class AppModule {}

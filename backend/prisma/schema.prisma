@@ -86,6 +86,7 @@ model User {
   bucketEntries      BucketEntry[]
   tickets            SupportTicket[]
   visionCanvas       VisionCanvas?
+  legacyCanvas       LegacyCanvas?
 
   @@map("users")
 }
@@ -346,6 +347,26 @@ model BucketEntry {
 
   @@index([userId])
   @@map("bucket_entries")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Legacy Canvas
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LegacyCanvas {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // { roleId: text }
+  roleTexts   Json     @default("{}")
+  purposeText String   @default("")
+  isSealed    Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("legacy_canvas")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
