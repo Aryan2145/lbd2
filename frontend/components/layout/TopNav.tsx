@@ -19,7 +19,6 @@ const NAV = [
   { href: "/dashboard",   label: "Dashboard"     },
   { href: "/legacy",      label: "My Legacy"     },
   { href: "/vision",      label: "Vision Canvas" },
-  { href: "/value",       label: "Value"         },
   { href: "/goals",       label: "Goals"         },
   { href: "/habits",      label: "Habits"        },
   { href: "/bucket-list", label: "Bucket List"   },
