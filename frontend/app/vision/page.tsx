@@ -38,6 +38,8 @@ const AREAS_META = [
 
 const N = AREAS_META.length;
 
+const DEFAULT_PURPOSE = "I live to build a legacy so deeply rooted in love and discipline that my family carries its warmth for generations.";
+
 type Pos = { x: number; y: number };
 
 const EMPTY_AREA: AreaData[] = AREAS_META.map((m) => ({
@@ -45,17 +47,23 @@ const EMPTY_AREA: AreaData[] = AREAS_META.map((m) => ({
 }));
 
 export default function VisionPage() {
-  const [areas, setAreas]         = useState<AreaData[]>(EMPTY_AREA);
-  const [editingIdx, setEditing]  = useState<number | null>(null);
-  const [saving, setSaving]       = useState(false);
-  const [CX, setCX]               = useState(0);
-  const [positions, setPositions] = useState<Record<string, Pos>>({});
-  const [dragging, setDragging]   = useState<{
+  const [areas, setAreas]                   = useState<AreaData[]>(EMPTY_AREA);
+  const [editingIdx, setEditing]            = useState<number | null>(null);
+  const [saving, setSaving]                 = useState(false);
+  const [purposeStatement, setPurpose]      = useState(DEFAULT_PURPOSE);
+  const [editingPurpose, setEditingPurpose] = useState(false);
+  const [CX, setCX]                         = useState(0);
+  const [positions, setPositions]           = useState<Record<string, Pos>>({});
+  const [dragging, setDragging]             = useState<{
     id: string; offX: number; offY: number; startX: number; startY: number;
   } | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const initialized  = useRef(false);
+  const containerRef      = useRef<HTMLDivElement>(null);
+  const initialized       = useRef(false);
+  const positionsRef      = useRef<Record<string, Pos>>({});
+  const positionsRestored = useRef(false);
+
+  useEffect(() => { positionsRef.current = positions; }, [positions]);
 
   // One-time init: measure width → set CX + default card positions
   useEffect(() => {
@@ -90,14 +98,43 @@ export default function VisionPage() {
 
   // Load persisted vision data on mount
   useEffect(() => {
-    api.get<{ areas: AreaData[] }>("/vision").then((data) => {
+    api.get<{ areas: AreaData[]; purposeStatement?: string }>("/vision").then((data) => {
       if (data.areas && data.areas.length > 0) {
         setAreas((prev) =>
           prev.map((a) => data.areas.find((d: AreaData) => d.id === a.id) ?? a)
         );
       }
+      if (data.purposeStatement) setPurpose(data.purposeStatement);
     }).catch(() => {});
   }, []);
+
+  // Restore card positions from localStorage once CX is known
+  useEffect(() => {
+    if (CX === 0 || positionsRestored.current) return;
+    positionsRestored.current = true;
+    try {
+      const raw = localStorage.getItem("lbd_vision_positions");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Record<string, { dx: number; dy: number }>;
+      setPositions((prev) => {
+        const next = { ...prev };
+        for (const [id, off] of Object.entries(saved)) {
+          next[id] = { x: CX + off.dx, y: CY + off.dy };
+        }
+        return next;
+      });
+    } catch {}
+  }, [CX]);
+
+  const savePositionsToLS = (pos: Record<string, Pos>, cx: number) => {
+    try {
+      const rel: Record<string, { dx: number; dy: number }> = {};
+      for (const [id, p] of Object.entries(pos)) {
+        rel[id] = { dx: Math.round(p.x - cx), dy: Math.round(p.y - CY) };
+      }
+      localStorage.setItem("lbd_vision_positions", JSON.stringify(rel));
+    } catch {}
+  };
 
   // ── Drag logic ─────────────────────────────────────────────────────────────
   const startDrag = (id: string, e: React.MouseEvent) => {
@@ -128,8 +165,9 @@ export default function VisionPage() {
     const onUp = (e: MouseEvent) => {
       const moved = Math.hypot(e.clientX - dragging.startX, e.clientY - dragging.startY);
       if (moved < 6) {
-        // treat as click → open edit sheet
         setEditing(AREAS_META.findIndex((m) => m.id === dragging.id));
+      } else {
+        savePositionsToLS(positionsRef.current, CX);
       }
       setDragging(null);
     };
@@ -148,6 +186,7 @@ export default function VisionPage() {
       pos[m.id] = { x: CX + REL_POS[i].dx, y: CY + REL_POS[i].dy };
     });
     setPositions(pos);
+    localStorage.removeItem("lbd_vision_positions");
   };
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -173,7 +212,14 @@ export default function VisionPage() {
     const updated = areas.map((a) => (a.id === u.id ? u : a));
     setAreas(updated);
     setSaving(true);
-    api.put("/vision", { areas: updated }).finally(() => setSaving(false));
+    api.put("/vision", { areas: updated, purposeStatement }).finally(() => setSaving(false));
+  };
+
+  const handlePurposeSave = (text: string) => {
+    const trimmed = text.trim() || DEFAULT_PURPOSE;
+    setPurpose(trimmed);
+    setEditingPurpose(false);
+    api.put("/vision", { areas, purposeStatement: trimmed }).catch(() => {});
   };
 
   return (
@@ -310,14 +356,37 @@ export default function VisionPage() {
           paddingTop: "12px", display: "flex", alignItems: "center",
           justifyContent: "center", gap: "8px",
         }}>
-          <p style={{ fontSize: "13px", color: "#78716C", fontStyle: "italic",
-            lineHeight: 1.65, maxWidth: "740px" }}>
-            &ldquo;I live to build a legacy so deeply rooted in love and discipline
-            that my family carries its warmth for generations.&rdquo;
-          </p>
-          <button style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "6px",
-            backgroundColor: "#F5F0EB", border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {editingPurpose ? (
+            <textarea
+              autoFocus
+              defaultValue={purposeStatement}
+              rows={2}
+              onBlur={(e) => handlePurposeSave(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePurposeSave(e.currentTarget.value); }
+                if (e.key === "Escape") setEditingPurpose(false);
+              }}
+              style={{
+                flex: 1, maxWidth: "740px", fontSize: "13px", color: "#78716C",
+                fontStyle: "italic", lineHeight: 1.65, textAlign: "center",
+                border: "1.5px solid #F97316", borderRadius: "8px",
+                padding: "6px 10px", backgroundColor: "#FDFAF7",
+                outline: "none", resize: "none", fontFamily: "inherit",
+                caretColor: "#F97316",
+              }}
+            />
+          ) : (
+            <p style={{ fontSize: "13px", color: "#78716C", fontStyle: "italic",
+              lineHeight: 1.65, maxWidth: "740px" }}>
+              &ldquo;{purposeStatement}&rdquo;
+            </p>
+          )}
+          <button
+            onClick={() => setEditingPurpose(true)}
+            style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "6px",
+              backgroundColor: "#F5F0EB", border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
             <Edit2 size={10} color="#A8A29E" />
           </button>
         </div>
