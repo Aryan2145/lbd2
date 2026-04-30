@@ -71,6 +71,8 @@ model User {
   role      String?
   password  String   // bcrypt hash
 
+  googleRefreshToken String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -210,11 +212,12 @@ model WeekEvent {
   groupId     String
   group       EventGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  title       String
-  date        String     // YYYY-MM-DD
-  startTime   String     // HH:MM
-  endTime     String     // HH:MM
-  description String?
+  title         String
+  date          String     // YYYY-MM-DD
+  startTime     String     // HH:MM
+  endTime       String     // HH:MM
+  description   String?
+  googleEventId String?
 
   @@index([userId, date])
   @@map("week_events")

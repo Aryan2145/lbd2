@@ -22,6 +22,7 @@ import { BucketModule } from './bucket/bucket.module';
 import { SupportModule } from './support/support.module';
 import { VisionModule } from './vision/vision.module';
 import { LegacyModule } from './legacy/legacy.module';
+import { GcalModule } from './gcal/gcal.module';
 
 @Module({
   controllers: [HealthController],
@@ -42,6 +43,7 @@ import { LegacyModule } from './legacy/legacy.module';
     SupportModule,
     VisionModule,
     LegacyModule,
+    GcalModule,
   ],
 })
 export class AppModule {}

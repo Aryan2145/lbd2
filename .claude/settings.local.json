@@ -11,7 +11,11 @@
       "Bash(git push *)",
       "Bash(git rm *)",
       "Bash(openssl rand *)",
-      "Bash(git commit -m 'Fix: add openssl to runner stage for Prisma on Alpine *)"
+      "Bash(git commit -m 'Fix: add openssl to runner stage for Prisma on Alpine *)",
+      "Bash(xargs grep *)",
+      "Bash(node --max-old-space-size=4096 node_modules/.bin/tsc --noEmit)",
+      "PowerShell(cd D:\\\\RGB_Software\\\\lbd2\\\\backend; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; node_modules\\\\.bin\\\\tsc.cmd --noEmit 2>&1 | Select-Object -First 40)",
+      "PowerShell(cd D:\\\\RGB_Software\\\\lbd2\\\\backend; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; node_modules\\\\.bin\\\\tsc.cmd --noEmit 2>&1 | Select-Object -First 20)"
     ]
   }
 }

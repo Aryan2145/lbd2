@@ -13,6 +13,6 @@ export class CalendarController {
   @Delete('groups/:id') removeGroup(@Param('id') id: string) { return this.cal.removeGroup(id); }
 
   @Post('events') createEvent(@Request() req, @Body() body: any) { return this.cal.createEvent(req.user.userId, body); }
-  @Patch('events/:id') updateEvent(@Param('id') id: string, @Body() body: any) { return this.cal.updateEvent(id, body); }
-  @Delete('events/:id') removeEvent(@Param('id') id: string) { return this.cal.removeEvent(id); }
+  @Patch('events/:id') updateEvent(@Request() req, @Param('id') id: string, @Body() body: any) { return this.cal.updateEvent(req.user.userId, id, body); }
+  @Delete('events/:id') removeEvent(@Request() req, @Param('id') id: string) { return this.cal.removeEvent(req.user.userId, id); }
 }

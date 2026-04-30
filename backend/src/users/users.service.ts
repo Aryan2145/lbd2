@@ -27,6 +27,10 @@ export class UsersService {
     return this.prisma.user.update({ where: { id }, data });
   }
 
+  saveGoogleToken(id: string, token: string | null) {
+    return this.prisma.user.update({ where: { id }, data: { googleRefreshToken: token } });
+  }
+
   async changePassword(id: string, currentPassword: string, newPassword: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     const match = await bcrypt.compare(currentPassword, user.password);

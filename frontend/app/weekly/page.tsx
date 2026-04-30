@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, LayoutGrid, AlignJustify, CalendarDays, X, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, AlignJustify, CalendarDays, X, Settings2, Link2, Link2Off, CheckCircle } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
+import { api } from "@/lib/api";
 import WeekSidebar        from "@/components/weekly/WeekSidebar";
 import WeeklyGrid         from "@/components/weekly/WeeklyGrid";
 import AgendaView         from "@/components/weekly/AgendaView";
@@ -66,15 +67,36 @@ export default function WeeklyPage() {
   const [newEventTime, setNewEventTime] = useState("");
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
   const [reviewOpen,   setReviewOpen]   = useState(false);
-  const [gcalOpen,     setGcalOpen]     = useState(false);
-  const [gcalUrl,      setGcalUrl]      = useState("");
-  const [editingUrl,   setEditingUrl]   = useState(false);
-  const [urlDraft,     setUrlDraft]     = useState("");
+  const [gcalOpen,       setGcalOpen]       = useState(false);
+  const [gcalUrl,        setGcalUrl]        = useState("");
+  const [editingUrl,     setEditingUrl]     = useState(false);
+  const [urlDraft,       setUrlDraft]       = useState("");
+  const [gcalConnected,  setGcalConnected]  = useState(false);
+  const [gcalToast,      setGcalToast]      = useState<"connected" | "error" | null>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("lbd_gcal_embed_url") ?? "";
     setGcalUrl(saved);
+
+    // Check OAuth connection status
+    api.get<{ connected: boolean }>("/auth/google/status")
+      .then(d => setGcalConnected(d.connected))
+      .catch(() => {});
+
+    // Handle redirect back from Google OAuth
+    const params = new URLSearchParams(window.location.search);
+    const gcalParam = params.get("gcal");
+    if (gcalParam === "connected") {
+      setGcalConnected(true);
+      setGcalToast("connected");
+      setTimeout(() => setGcalToast(null), 4000);
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (gcalParam === "error") {
+      setGcalToast("error");
+      setTimeout(() => setGcalToast(null), 4000);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   const saveGcalUrl = () => {
@@ -82,6 +104,20 @@ export default function WeeklyPage() {
     setGcalUrl(trimmed);
     localStorage.setItem("lbd_gcal_embed_url", trimmed);
     setEditingUrl(false);
+  };
+
+  const handleConnectGcal = async () => {
+    try {
+      const { url } = await api.get<{ url: string }>("/auth/google/url");
+      window.location.href = url;
+    } catch {}
+  };
+
+  const handleDisconnectGcal = async () => {
+    try {
+      await api.del("/auth/google");
+      setGcalConnected(false);
+    } catch {}
   };
 
   const weekNum   = getISOWeekNum(weekStart);
@@ -160,6 +196,23 @@ export default function WeeklyPage() {
       height: "100%", backgroundColor: "#FAF5EE",
       display: "flex", flexDirection: "column", overflow: "hidden",
     }}>
+
+      {/* Google Calendar OAuth toast */}
+      {gcalToast && (
+        <div style={{
+          position: "fixed", top: 20, right: 20, zIndex: 100,
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "12px 18px", borderRadius: "12px",
+          backgroundColor: gcalToast === "connected" ? "#FFFFFF" : "#FFF1F0",
+          border: `1px solid ${gcalToast === "connected" ? "#E8DDD0" : "#FECACA"}`,
+          boxShadow: "0 8px 30px rgba(0,0,0,0.1)",
+        }}>
+          <CheckCircle size={16} color={gcalToast === "connected" ? "#22C55E" : "#EF4444"} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#1C1917" }}>
+            {gcalToast === "connected" ? "Google Calendar connected!" : "Connection failed. Please try again."}
+          </span>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div style={{
@@ -326,6 +379,34 @@ export default function WeeklyPage() {
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {/* Sync connect/disconnect */}
+                {gcalConnected ? (
+                  <button
+                    onClick={handleDisconnectGcal}
+                    title="Disconnect Google Calendar sync"
+                    style={{
+                      display: "flex", alignItems: "center", gap: "5px",
+                      padding: "4px 10px", borderRadius: "7px",
+                      border: "1px solid #BBF7D0", backgroundColor: "#F0FDF4",
+                      fontSize: "11px", color: "#16A34A", cursor: "pointer",
+                    }}
+                  >
+                    <Link2 size={11} /> Sync On
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleConnectGcal}
+                    title="Connect Google Calendar to auto-sync events"
+                    style={{
+                      display: "flex", alignItems: "center", gap: "5px",
+                      padding: "4px 10px", borderRadius: "7px",
+                      border: "1px solid #FED7AA", backgroundColor: "#FFF7ED",
+                      fontSize: "11px", color: "#EA580C", cursor: "pointer",
+                    }}
+                  >
+                    <Link2Off size={11} /> Connect Sync
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setUrlDraft(gcalUrl);

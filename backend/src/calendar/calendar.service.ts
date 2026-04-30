@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { GcalService } from '../gcal/gcal.service';
 
 @Injectable()
 export class CalendarService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private gcal: GcalService,
+  ) {}
 
   findGroups(userId: string) {
     return this.prisma.eventGroup.findMany({ where: { userId }, include: { events: true } });
@@ -28,14 +32,24 @@ export class CalendarService {
     return this.prisma.eventGroup.delete({ where: { id } });
   }
 
-  createEvent(userId: string, data: any) {
+  async createEvent(userId: string, data: any) {
     const { groupId, title, date, startTime, endTime, description } = data;
-    return this.prisma.weekEvent.create({
+    const dbEvent = await this.prisma.weekEvent.create({
       data: { userId, groupId, title, date, startTime, endTime, description: description || null },
     });
+
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user?.googleRefreshToken) {
+        const googleEventId = await this.gcal.createEvent(user.googleRefreshToken, { title, date, startTime, endTime, description });
+        return this.prisma.weekEvent.update({ where: { id: dbEvent.id }, data: { googleEventId } });
+      }
+    } catch { /* Google sync is non-blocking */ }
+
+    return dbEvent;
   }
 
-  updateEvent(id: string, data: any) {
+  async updateEvent(userId: string, id: string, data: any) {
     const fields: any = {};
     if (data.groupId     !== undefined) fields.groupId     = data.groupId;
     if (data.title       !== undefined) fields.title       = data.title;
@@ -43,10 +57,35 @@ export class CalendarService {
     if (data.startTime   !== undefined) fields.startTime   = data.startTime;
     if (data.endTime     !== undefined) fields.endTime     = data.endTime;
     if (data.description !== undefined) fields.description = data.description || null;
-    return this.prisma.weekEvent.update({ where: { id }, data: fields });
+
+    const updated = await this.prisma.weekEvent.update({ where: { id }, data: fields });
+
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user?.googleRefreshToken && updated.googleEventId) {
+        await this.gcal.updateEvent(user.googleRefreshToken, updated.googleEventId, {
+          title: updated.title,
+          date: updated.date,
+          startTime: updated.startTime,
+          endTime: updated.endTime,
+          description: updated.description,
+        });
+      }
+    } catch { /* Google sync is non-blocking */ }
+
+    return updated;
   }
 
-  removeEvent(id: string) {
+  async removeEvent(userId: string, id: string) {
+    const event = await this.prisma.weekEvent.findUnique({ where: { id } });
+
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user?.googleRefreshToken && event?.googleEventId) {
+        await this.gcal.deleteEvent(user.googleRefreshToken, event.googleEventId);
+      }
+    } catch { /* Google sync is non-blocking */ }
+
     return this.prisma.weekEvent.delete({ where: { id } });
   }
 }
