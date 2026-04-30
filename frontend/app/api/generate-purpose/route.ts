@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { aiLimiter } from "../_lib/rateLimiter";
 
 function clientIp(req: NextRequest): string {
@@ -9,6 +10,10 @@ function clientIp(req: NextRequest): string {
   );
 }
 
+// Singleton — one client for the lifetime of the process
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const model  = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
 export async function POST(req: NextRequest) {
   // ── Rate limiting ───────────────────────────────────────────────────────────
   const limit = aiLimiter.check(clientIp(req));
@@ -16,42 +21,55 @@ export async function POST(req: NextRequest) {
     return Response.json({ message: limit.message }, { status: 429 });
   }
 
-  const { areas } = await req.json() as { areas: { id: string; name: string; text: string }[] };
+  const { areas } = await req.json() as {
+    areas: { id: string; name: string; text: string }[];
+  };
 
-  // ── Generate statement ──────────────────────────────────────────────────────
-  // TODO: replace `mockGenerate` with real Gemini call once API key is set.
-  // Swap out only this function — everything else (streaming, rate limiting) stays.
-  const statement = mockGenerate(areas);
+  const filled = areas.filter(a => a.text?.trim());
+  if (filled.length === 0) {
+    return Response.json(
+      { message: "Add your vision to at least one area before generating." },
+      { status: 400 }
+    );
+  }
 
-  // ── Stream response word-by-word ────────────────────────────────────────────
+  // ── Build prompt ────────────────────────────────────────────────────────────
+  const areaContext = filled
+    .map(a => `- ${a.name}: ${a.text.trim()}`)
+    .join("\n");
+
+  const prompt = `You are a life purpose coach. Based on this person's 10-year vision across their life areas, craft a single powerful personal purpose statement.
+
+Rules:
+- First-person, present tense — write as if it is already true
+- 2–3 sentences, deeply personal and specific to their vision
+- Poetic but clear — no corporate jargon
+- Do NOT use openers like "I am committed to", "I strive to", or "My mission is"
+- Return only the purpose statement — no intro, no quotes, no explanation
+
+Their vision:
+${areaContext}`;
+
+  // ── Stream Gemini response ──────────────────────────────────────────────────
   const encoder = new TextEncoder();
-  const stream  = new ReadableStream({
+
+  const stream = new ReadableStream({
     async start(controller) {
-      const words = statement.split(" ");
-      for (let i = 0; i < words.length; i++) {
-        controller.enqueue(encoder.encode((i === 0 ? "" : " ") + words[i]));
-        await new Promise(r => setTimeout(r, 40 + Math.random() * 30));
+      try {
+        const result = await model.generateContentStream(prompt);
+        for await (const chunk of result.stream) {
+          const text = chunk.text();
+          if (text) controller.enqueue(encoder.encode(text));
+        }
+      } catch (err) {
+        controller.enqueue(encoder.encode("Generation failed. Please try again."));
+      } finally {
+        controller.close();
       }
-      controller.close();
     },
   });
 
   return new Response(stream, {
     headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
-}
-
-// ── Mock (replace with Gemini) ─────────────────────────────────────────────────
-// When Gemini is ready, delete this function and call the Gemini SDK here instead.
-// The prompt to pass: build it from `areas` — each area's name + text as context.
-function mockGenerate(areas: { name: string; text: string }[]): string {
-  const filled = areas.filter(a => a.text?.trim());
-  if (filled.length === 0) {
-    return "Define your vision in each life area first, then generate your purpose statement.";
-  }
-  return (
-    "I live with deep intention across every dimension of life — building a legacy " +
-    "of purpose, presence, and contribution that outlasts my years and uplifts " +
-    "every person I have the privilege to walk alongside."
-  );
 }
