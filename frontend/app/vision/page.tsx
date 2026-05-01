@@ -271,18 +271,18 @@ export default function VisionPage() {
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
             textTransform: "uppercase", color: "#F97316", marginBottom: "3px" }}>
-            Module 02 · Vision
+            Vision
           </p>
           <h1 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
             Vision Canvas
           </h1>
-          <p style={{ fontSize: "12px", color: "#78716C", marginTop: "3px" }}>
+          <p style={{ fontSize: "12px", color: "#57534E", marginTop: "3px" }}>
             Drag cards to arrange your board. Click any card to edit.
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           {saving && (
-            <span style={{ fontSize: "11px", color: "#A8A29E" }}>Saving…</span>
+            <span style={{ fontSize: "11px", color: "#57534E" }}>Saving…</span>
           )}
           <button
             onClick={resetPositions}
@@ -291,13 +291,13 @@ export default function VisionPage() {
               display: "flex", alignItems: "center", gap: "5px",
               padding: "6px 12px", borderRadius: "8px",
               border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
-              fontSize: "11px", color: "#78716C", cursor: "pointer",
+              fontSize: "11px", color: "#57534E", cursor: "pointer",
             }}
           >
             <RotateCcw size={11} /> Reset layout
           </button>
           <Stat label="Areas defined" value={`${filledCount}`} unit="/7"  color="#1C1917" />
-          <Stat label="Avg. score"    value={avgScore}          unit="/10" color="#C9A84C" />
+          <Stat label="Avg. score"    value={avgScore}          unit="/10" color="#1C1917" />
         </div>
       </div>
 
@@ -343,12 +343,12 @@ export default function VisionPage() {
             <WheelOfLife scores={scores} size={WHEEL_PX} />
             <div style={{ position: "absolute", bottom: -32, left: "50%",
               transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <p style={{ fontSize: "10px", color: "#A8A29E", marginBottom: "2px" }}>
+              <p style={{ fontSize: "10px", color: "#44403C", marginBottom: "2px" }}>
                 Current Balance
               </p>
               <p style={{ fontSize: "14px", fontWeight: 700, color: "#78716C" }}>
                 {avgScore}{" "}
-                <span style={{ fontWeight: 400, color: "#A8A29E", fontSize: "12px" }}>/ 10</span>
+                <span style={{ fontWeight: 400, color: "#57534E", fontSize: "12px" }}>/ 10</span>
               </p>
             </div>
           </div>
@@ -394,7 +394,7 @@ export default function VisionPage() {
           paddingTop: "12px",
         }}>
           {generateError && (
-            <p style={{ fontSize: "11px", color: "#EF4444", marginBottom: "6px" }}>
+            <p style={{ fontSize: "11px", color: "#B91C1C", marginBottom: "6px" }}>
               {generateError}
             </p>
           )}
@@ -410,7 +410,7 @@ export default function VisionPage() {
                   if (e.key === "Escape") setEditingPurpose(false);
                 }}
                 style={{
-                  flex: 1, maxWidth: "740px", fontSize: "13px", color: "#78716C",
+                  flex: 1, maxWidth: "740px", fontSize: "13px", color: "#57534E",
                   fontStyle: "italic", lineHeight: 1.65, textAlign: "center",
                   border: "1.5px solid #F97316", borderRadius: "8px",
                   padding: "6px 10px", backgroundColor: "#FDFAF7",
@@ -419,7 +419,7 @@ export default function VisionPage() {
                 }}
               />
             ) : (
-              <p style={{ fontSize: "13px", color: "#78716C", fontStyle: "italic",
+              <p style={{ fontSize: "13px", color: "#57534E", fontStyle: "italic",
                 lineHeight: 1.65, maxWidth: "640px",
                 opacity: isGenerating ? 0.5 : 1, transition: "opacity 0.2s" }}>
                 {purposeStatement ? `“${purposeStatement}”` : " "}
@@ -448,7 +448,7 @@ export default function VisionPage() {
                 background: isGenerating ? "#F5F0EB" : "linear-gradient(135deg,#F97316,#EA580C)",
                 border: "none", cursor: isGenerating ? "not-allowed" : "pointer",
                 fontSize: "10px", fontWeight: 600,
-                color: isGenerating ? "#A8A29E" : "#fff",
+                color: isGenerating ? "#57534E" : "#fff",
                 transition: "opacity 0.2s",
               }}
             >
@@ -475,10 +475,10 @@ function Stat({ label, value, unit, color }: {
 }) {
   return (
     <div style={{ textAlign: "right" }}>
-      <p style={{ fontSize: "12px", fontWeight: 500, color: "#78716C", marginBottom: "2px" }}>{label}</p>
+      <p style={{ fontSize: "12px", fontWeight: 500, color: "#57534E", marginBottom: "2px" }}>{label}</p>
       <p style={{ fontSize: "24px", fontWeight: 700, color, lineHeight: 1 }}>
         {value}
-        <span style={{ fontSize: "14px", fontWeight: 500, color: "#78716C" }}>{unit}</span>
+        <span style={{ fontSize: "14px", fontWeight: 500, color: "#57534E" }}>{unit}</span>
       </p>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { AppProvider, useAppStore } from "@/lib/AppStore";
@@ -33,17 +33,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
   const pathname  = usePathname();
   const router    = useRouter();
+  const [mounted, setMounted] = useState(false);
 
   const isLogin  = pathname === "/login";
   const isPublic = pathname === "/" || pathname === "/privacy" || pathname === "/terms";
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (!token && !isLogin && !isPublic) router.replace("/login");
     if (token  &&  isLogin) router.replace("/legacy");
-  }, [token, isLogin, isPublic, router]);
+  }, [mounted, token, isLogin, isPublic, router]);
 
   if (isLogin || isPublic) return <>{children}</>;
-  if (!token)  return null;
+
+  // Render spinner on server and initial client render to avoid hydration mismatch
+  if (!mounted || !token) return <Spinner />;
 
   if (pathname.startsWith("/admin")) {
     return (

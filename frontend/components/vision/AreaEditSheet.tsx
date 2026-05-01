@@ -155,7 +155,7 @@ export default function AreaEditSheet({
             <p
               style={{
                 fontSize: "11px",
-                color: "#A8A29E",
+                color: "#57534E",
                 marginBottom: "8px",
                 fontStyle: "italic",
               }}
@@ -203,18 +203,18 @@ export default function AreaEditSheet({
                 style={{
                   fontSize: "18px",
                   fontWeight: 700,
-                  color: "#C9A84C",
+                  color: "#1C1917",
                   lineHeight: 1,
                 }}
               >
                 {score}
-                <span style={{ fontSize: "12px", color: "#A8A29E" }}>/10</span>
+                <span style={{ fontSize: "12px", color: "#57534E" }}>/10</span>
               </span>
             </div>
             <p
               style={{
                 fontSize: "11px",
-                color: "#A8A29E",
+                color: "#57534E",
                 marginBottom: "10px",
                 fontStyle: "italic",
               }}
@@ -240,8 +240,8 @@ export default function AreaEditSheet({
                 marginTop: "4px",
               }}
             >
-              <span style={{ fontSize: "10px", color: "#A8A29E" }}>1</span>
-              <span style={{ fontSize: "10px", color: "#A8A29E" }}>10</span>
+              <span style={{ fontSize: "10px", color: "#57534E" }}>1</span>
+              <span style={{ fontSize: "10px", color: "#57534E" }}>10</span>
             </div>
           </div>
 
@@ -272,7 +272,7 @@ export default function AreaEditSheet({
               <p
                 style={{
                   fontSize: "10px",
-                  color: "#78716C",
+                  color: "#44403C",
                   lineHeight: 1.5,
                   marginBottom: "8px",
                 }}
@@ -287,7 +287,7 @@ export default function AreaEditSheet({
                   gap: "5px",
                   fontSize: "10px",
                   fontWeight: 600,
-                  color: "#F97316",
+                  color: "#9A3412",
                   cursor: "pointer",
                   background: "none",
                   border: "none",
@@ -304,7 +304,7 @@ export default function AreaEditSheet({
             </div>
 
             {/* Image URL input */}
-            <p style={{ fontSize: "10px", color: "#A8A29E", marginBottom: "6px", fontStyle: "italic" }}>
+            <p style={{ fontSize: "10px", color: "#57534E", marginBottom: "6px", fontStyle: "italic" }}>
               Upload to Google Drive → right-click → Share → &ldquo;Anyone with the link&rdquo; → copy link and paste below.
             </p>
             <div

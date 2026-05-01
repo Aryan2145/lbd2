@@ -96,7 +96,7 @@ export default function PolaroidCard({
               }}
             >
               <ImageIcon size={20} style={{ color: "#D5C9BC" }} />
-              <span style={{ fontSize: "9px", color: "#A8A29E" }}>
+              <span style={{ fontSize: "9px", color: "#57534E" }}>
                 Add vision image
               </span>
             </div>
@@ -147,7 +147,7 @@ export default function PolaroidCard({
           <p
             style={{
               fontSize: "10px",
-              color: "#78716C",
+              color: "#44403C",
               marginBottom: "4px",
               fontWeight: 500,
             }}
@@ -176,17 +176,17 @@ export default function PolaroidCard({
                   style={{
                     fontSize: "24px",
                     fontWeight: 700,
-                    color: "#C9A84C",
+                    color: "#1C1917",
                     lineHeight: 1,
                   }}
                 >
                   {area.score}
                 </span>
-                <span style={{ fontSize: "13px", color: "#78716C", fontWeight: 500 }}>/10</span>
+                <span style={{ fontSize: "13px", color: "#44403C", fontWeight: 500 }}>/10</span>
               </div>
             </>
           ) : (
-            <p style={{ fontSize: "11px", color: "#A8A29E" }}>
+            <p style={{ fontSize: "11px", color: "#57534E" }}>
               Click to add your vision
             </p>
           )}

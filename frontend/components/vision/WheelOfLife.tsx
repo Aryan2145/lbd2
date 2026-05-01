@@ -168,7 +168,7 @@ export default function WheelOfLife({
             dominantBaseline={dominantBaseline}
             fontSize={7.5}
             fontWeight={600}
-            fill="#78716C"
+            fill="#44403C"
             letterSpacing="0.06em"
             style={{ fontFamily: "var(--font-geist-sans, sans-serif)", userSelect: "none" }}
           >

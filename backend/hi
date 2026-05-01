@@ -1,0 +1,10 @@
+DATABASE_URL=postgresql://user:password@your-rds-endpoint:5432/lbd_production
+JWT_SECRET=Qi8DozXy2iUzR+GKkgN/knB0IAwbq2QPrWrtGOIDW7M=   # run this to generate, paste the output
+FRONTEND_URL=https://lbd-staging.rgbindia.com
+PORT=4000
+
+
+
+frontend/.env.production
+  NEXT_PUBLIC_APP_ENV=production
+  NEXT_PUBLIC_API_URL=https://api.lbd.rgbindia.com/api

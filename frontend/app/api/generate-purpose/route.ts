@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 import { aiLimiter } from "../_lib/rateLimiter";
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 function clientIp(req: NextRequest): string {
   return (
@@ -10,12 +12,7 @@ function clientIp(req: NextRequest): string {
   );
 }
 
-// Singleton — one client for the lifetime of the process
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model  = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
 export async function POST(req: NextRequest) {
-  // ── Rate limiting ───────────────────────────────────────────────────────────
   const limit = aiLimiter.check(clientIp(req));
   if (!limit.allowed) {
     return Response.json({ message: limit.message }, { status: 429 });
@@ -33,7 +30,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Build prompt ────────────────────────────────────────────────────────────
   const areaContext = filled
     .map(a => `- ${a.name}: ${a.text.trim()}`)
     .join("\n");
@@ -50,18 +46,25 @@ Rules:
 Their vision:
 ${areaContext}`;
 
-  // ── Stream Gemini response ──────────────────────────────────────────────────
   const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
+  const stream  = new ReadableStream({
     async start(controller) {
       try {
-        const result = await model.generateContentStream(prompt);
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) controller.enqueue(encoder.encode(text));
+        const response = await client.messages.stream({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 512,
+          messages: [{ role: "user", content: prompt }],
+        });
+        for await (const chunk of response) {
+          if (
+            chunk.type === "content_block_delta" &&
+            chunk.delta.type === "text_delta"
+          ) {
+            controller.enqueue(encoder.encode(chunk.delta.text));
+          }
         }
       } catch (err) {
+        console.error("[generate-purpose] Claude error:", err);
         controller.enqueue(encoder.encode("Generation failed. Please try again."));
       } finally {
         controller.close();

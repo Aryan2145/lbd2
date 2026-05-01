@@ -223,7 +223,7 @@ export default function WeeklyPage() {
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
             textTransform: "uppercase", color: "#F97316", marginBottom: "2px" }}>
-            Module 06 · Weekly Plan
+            Weekly Plan
           </p>
           <h1 style={{ fontSize: "18px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
             Week {weekNum} · {dateRange}

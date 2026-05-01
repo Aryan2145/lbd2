@@ -100,7 +100,7 @@ export default function HabitsPage() {
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
             textTransform: "uppercase", color: "#F97316", marginBottom: "3px" }}>
-            Module 04 · Habits
+            Habits
           </p>
           <h1 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
             Habit Tracker

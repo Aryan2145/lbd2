@@ -423,7 +423,7 @@ export default function DashboardPage() {
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em",
             textTransform: "uppercase", color: "#F97316", margin: 0 }}>
-            Command Center · Module 06
+            Command Center
           </p>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1C1917", margin: "4px 0 0", letterSpacing: "-0.02em" }}>
             {greeting}, Aryan.

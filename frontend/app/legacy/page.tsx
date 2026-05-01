@@ -13,32 +13,32 @@ const ROLES = [
   {
     id: "spouse",
     title: "Partner",
-    question: "How do I want to be remembered as a partner?",
+    question: "Your partner is sitting alone in a coffee shop, thinking about you. What do you want to be true in their mind in that moment?",
   },
   {
     id: "child",
     title: "Children",
-    question: "What values do I want my children to say I embodied?",
+    question: "Your child is now a parent themselves, putting their own child to sleep and thinking about you. What do you want them to be feeling about you?",
   },
   {
     id: "parent",
     title: "Parents",
-    question: "How do I honor my parents through my actions?",
+    question: "Your mother or father is sitting in their favourite chair at home, quietly looking at an old photo of you. What do you want to be going through their mind?",
   },
   {
     id: "colleague",
     title: "Colleagues",
-    question: "What was my professional reputation among peers?",
+    question: "Someone who worked with you for years is in a job interview. They are asked — who is the one person who shaped how you work? What do you want them to say about you?",
   },
   {
     id: "friend",
     title: "Friends",
-    question: "What kind of friend was I during their hardest times?",
+    question: "Your friend group is having a get-together. You are the only one missing. Your name comes up. What do you want them to be saying about you?",
   },
   {
     id: "social",
-    title: "Community Leader",
-    question: "What impact did I leave on my community?",
+    title: "Community",
+    question: "A community leader is reviewing the list of people who could work on an important event. Your name shows up. The leader stops for a while, thinking about you. What do you want to be going through their mind?",
   },
 ];
 
@@ -184,26 +184,27 @@ export default function LegacyPage() {
       >
         <div>
           <p
-            className="text-[10px] font-semibold tracking-widest uppercase mb-1"
+            className="text-[10px] font-semibold tracking-widest uppercase mb-2"
             style={{ color: "#F97316" }}
           >
-            Module 01 · Identity
+            Identity
           </p>
           <h1
-            className="text-xl font-semibold leading-tight"
-            style={{ color: "#1C1917" }}
+            className="text-2xl font-bold leading-tight"
+            style={{ color: "#1C1917", letterSpacing: "-0.02em" }}
           >
-            Identity Architecture
+            Your Legacy
           </h1>
           <p
-            className="text-sm mt-1 max-w-md"
-            style={{ color: "#78716C" }}
+            className="text-sm mt-2 max-w-lg leading-relaxed"
+            style={{ color: "#44403C" }}
           >
-            Define your legacy across every role you inhabit. Your purpose
-            lives at their intersection.
+            Years from now, you are gone. What do you want the people who knew
+            you to say in their most honest moments? The pattern in their
+            answers becomes your purpose.
           </p>
           {savedIndicator && (
-            <p style={{ fontSize: 11, color: "#A8A29E", marginTop: 4 }}>Saved ✓</p>
+            <p style={{ fontSize: 11, color: "#A8A29E", marginTop: 6 }}>Saved ✓</p>
           )}
         </div>
 
