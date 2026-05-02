@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, Plus, Trash2, AlertTriangle, Pencil, Check, Flame, CheckCircle2, Circle, ChevronDown, ChevronRight, ArrowLeft, XCircle } from "lucide-react";
+import { X, Plus, Trash2, AlertTriangle, Pencil, Check, Flame, CheckCircle2, Circle, ChevronDown, ChevronRight, ArrowLeft, XCircle, CalendarDays } from "lucide-react";
 import DualSlider from "./DualSlider";
 import type { GoalData, GoalNote, LifeArea, Milestone } from "./GoalCard";
 import type { HabitData } from "@/components/habits/HabitCard";
@@ -306,11 +306,11 @@ export default function GoalDetailSheet({ goal, linkedHabits, tasks, onClose, on
 
               {/* Deadline */}
               <EditField label="Target date">
-                <input type="date" value={eDeadline} onChange={(e) => setEDeadline(e.target.value)}
-                  style={{ ...inStyle, colorScheme: "light" as React.CSSProperties["colorScheme"],
-                    borderColor: editDeadlineConflicts.length > 0 ? "#DC2626" : "#E8DDD0" }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = editDeadlineConflicts.length > 0 ? "#DC2626" : "#F97316"; }}
-                  onBlur={(e)  => { e.currentTarget.style.borderColor = editDeadlineConflicts.length > 0 ? "#DC2626" : "#E8DDD0"; }} />
+                <StyledDateInput
+                  value={eDeadline}
+                  onChange={setEDeadline}
+                  error={editDeadlineConflicts.length > 0}
+                />
                 {editDeadlineConflicts.length > 0 && (
                   <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
                     ⚠ {editDeadlineConflicts.length} milestone{editDeadlineConflicts.length > 1 ? "s are" : " is"} after this date ({editDeadlineConflicts.map(m => m.title).join(", ")}). Adjust milestones first.
@@ -405,7 +405,7 @@ export default function GoalDetailSheet({ goal, linkedHabits, tasks, onClose, on
               {milestones.length > 0 && (
                 <Section title={`Milestones (${milestones.length})`}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {milestones.map((m) => {
+                    {milestones.map((m, idx) => {
                       const mHabits = linkedHabits.filter((h) => h.linkedMilestoneId === m.id);
                       const mTasks  = tasks.filter((t) => t.linkedMilestoneId === m.id && t.linkedGoalId === goal.id);
                       return (
@@ -422,6 +422,18 @@ export default function GoalDetailSheet({ goal, linkedHabits, tasks, onClose, on
                           onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(28,25,23,0.08)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
                         >
+                          {/* Number badge */}
+                          <div style={{
+                            flexShrink: 0, width: "22px", height: "22px", borderRadius: "6px",
+                            background: m.completed
+                              ? "linear-gradient(135deg,#D97706,#B45309)"
+                              : "linear-gradient(135deg,#E8DDD0,#D5C9BC)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: "10px", fontWeight: 700,
+                            color: m.completed ? "#FFFFFF" : "#78716C",
+                          }}>
+                            {idx + 1}
+                          </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleMilestone(m.id); }}
                             style={{
@@ -664,6 +676,7 @@ export default function GoalDetailSheet({ goal, linkedHabits, tasks, onClose, on
           <MilestonePopup
             key={popupMilestoneId}
             milestone={pm}
+            milestoneIndex={milestones.findIndex((m) => m.id === popupMilestoneId) + 1}
             goal={goal}
             mTasks={pmTasks}
             mHabits={pmHabits}
@@ -731,23 +744,61 @@ const taStyle: React.CSSProperties = {
   ...inStyle, resize: "none", lineHeight: 1.5,
 };
 
+function StyledDateInput({ value, onChange, error, accentColor = "#F97316", max }: {
+  value: string;
+  onChange: (v: string) => void;
+  error?: boolean;
+  accentColor?: string;
+  max?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const borderColor = error ? "#DC2626" : focused ? accentColor : "#E8DDD0";
+  return (
+    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      <div style={{
+        position: "absolute", left: "10px", pointerEvents: "none",
+        display: "flex", alignItems: "center", zIndex: 1,
+      }}>
+        <CalendarDays size={13} color={focused ? accentColor : "#A8A29E"} style={{ transition: "color 0.15s" }} />
+      </div>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        max={max}
+        style={{
+          ...inStyle,
+          paddingLeft: "30px",
+          borderColor,
+          boxShadow: focused ? `0 0 0 3px ${accentColor}18` : "none",
+          colorScheme: "light" as React.CSSProperties["colorScheme"],
+          transition: "border-color 0.15s, box-shadow 0.15s",
+        }}
+      />
+    </div>
+  );
+}
+
 // ── Milestone popup ───────────────────────────────────────────────────────────
 type PopupView = "milestone" | "task" | "habit";
 
 function MilestonePopup({
-  milestone, goal, mTasks, mHabits,
+  milestone, milestoneIndex, goal, mTasks, mHabits,
   onClose, onUpdateGoal, onUpdateTask, onUpdateHabit, onAddTask, onAddHabit,
 }: {
-  milestone:      Milestone;
-  goal:           GoalData;
-  mTasks:         TaskData[];
-  mHabits:        HabitData[];
-  onClose:        () => void;
-  onUpdateGoal:   (g: GoalData)  => void;
-  onUpdateTask?:  (t: TaskData)  => void;
-  onUpdateHabit?: (h: HabitData) => void;
-  onAddTask?:     (goalId: string, milestoneId: string) => void;
-  onAddHabit?:    (goalId: string, milestoneId: string) => void;
+  milestone:       Milestone;
+  milestoneIndex:  number;
+  goal:            GoalData;
+  mTasks:          TaskData[];
+  mHabits:         HabitData[];
+  onClose:         () => void;
+  onUpdateGoal:    (g: GoalData)  => void;
+  onUpdateTask?:   (t: TaskData)  => void;
+  onUpdateHabit?:  (h: HabitData) => void;
+  onAddTask?:      (goalId: string, milestoneId: string) => void;
+  onAddHabit?:     (goalId: string, milestoneId: string) => void;
 }) {
   const [view,           setView]          = useState<PopupView>("milestone");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -876,15 +927,15 @@ function MilestonePopup({
                     }}
                   />
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <input
-                      type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)}
-                      style={{
-                        flex: 1, padding: "7px 10px", borderRadius: "8px",
-                        border: `1.5px solid ${!deadlineOk && editDeadline ? "#DC2626" : "#E8DDD0"}`,
-                        backgroundColor: "#FFFFFF", fontSize: "12px", color: "#1C1917",
-                        outline: "none", colorScheme: "light" as React.CSSProperties["colorScheme"], fontFamily: "inherit",
-                      }}
-                    />
+                    <div style={{ flex: 1 }}>
+                      <StyledDateInput
+                        value={editDeadline}
+                        onChange={setEditDeadline}
+                        error={!deadlineOk && !!editDeadline}
+                        accentColor="#D97706"
+                        max={goal.deadline}
+                      />
+                    </div>
                     <button onClick={() => setEditing(false)} style={{
                       padding: "7px 11px", borderRadius: "8px",
                       border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
@@ -910,7 +961,14 @@ function MilestonePopup({
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "4px", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "15px", color: "#D97706" }}>◆</span>
+                      <div style={{
+                        flexShrink: 0, width: "24px", height: "24px", borderRadius: "7px",
+                        background: "linear-gradient(135deg, #D97706, #B45309)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "11px", fontWeight: 700, color: "#FFFFFF",
+                      }}>
+                        {milestoneIndex}
+                      </div>
                       <p style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", margin: 0, lineHeight: 1.3 }}>
                         {milestone.title}
                       </p>

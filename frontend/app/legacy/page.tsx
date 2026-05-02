@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, CheckCircle, X } from "lucide-react";
 import { api } from "@/lib/api";
 import RoleCard from "@/components/legacy/RoleCard";
@@ -38,7 +38,7 @@ const ROLES = [
   {
     id: "social",
     title: "Community",
-    question: "A community leader is reviewing the list of people who could work on an important event. Your name shows up. The leader stops for a while, thinking about you. What do you want to be going through their mind?",
+    question: "A community leader is going through names for an important project. Yours comes up. They pause for a moment, thinking about you. What do you want going through their mind?",
   },
 ];
 
@@ -55,28 +55,37 @@ export default function LegacyPage() {
   const [prevState, setPrevState] = useState<SynthesisState>("idle");
   const [showAchievement, setShowAchievement] = useState(false);
   const [dismissedAchievement, setDismissedAchievement] = useState(false);
-  const [savedIndicator, setSavedIndicator] = useState(false);
-
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [savedCards, setSavedCards] = useState<Record<string, boolean>>(
+    Object.fromEntries(ROLES.map((r) => [r.id, false]))
+  );
+  const [savingCard, setSavingCard] = useState<string | null>(null);
 
   const persist = (patch: { roleTexts?: Record<string, string>; purposeText?: string; isSealed?: boolean }) => {
-    api.put("/legacy", patch).then(() => {
-      setSavedIndicator(true);
-      setTimeout(() => setSavedIndicator(false), 1500);
-    }).catch(() => {});
+    api.put("/legacy", patch).catch(() => {});
   };
 
-  const persistDebounced = (roleTexts: Record<string, string>) => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => persist({ roleTexts }), 1500);
+  const handleSaveCard = (id: string) => {
+    setSavingCard(id);
+    api.put("/legacy", { roleTexts }).then(() => {
+      setSavedCards((prev) => ({ ...prev, [id]: true }));
+      setSavingCard(null);
+    }).catch(() => setSavingCard(null));
   };
 
-  // Load saved data on mount
+  const handleReopenCard = (id: string) => {
+    setSavedCards((prev) => ({ ...prev, [id]: false }));
+  };
+
   useEffect(() => {
     api.get<{ roleTexts: Record<string,string>; purposeText: string; isSealed: boolean }>("/legacy")
       .then(data => {
-        if (data.roleTexts && Object.keys(data.roleTexts).length > 0)
+        if (data.roleTexts && Object.keys(data.roleTexts).length > 0) {
           setRoleTexts(prev => ({ ...prev, ...data.roleTexts }));
+          const wc = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+          setSavedCards(prev => Object.fromEntries(
+            ROLES.map((r) => [r.id, prev[r.id] || wc(data.roleTexts[r.id] ?? "") >= 10])
+          ));
+        }
         if (data.purposeText) {
           setPurposeText(data.purposeText);
           setSynthesisState(data.isSealed ? "sealed" : "ready");
@@ -87,16 +96,9 @@ export default function LegacyPage() {
   const isRoleComplete = (id: string) => wordCount(roleTexts[id]) >= 10;
   const completedCount = ROLES.filter((r) => isRoleComplete(r.id)).length;
   const allComplete = completedCount === ROLES.length;
-  const canSynthesize =
-    allComplete &&
-    (synthesisState === "idle" || synthesisState === "streaming");
 
   const handleRoleChange = (id: string, value: string) => {
-    setRoleTexts((prev) => {
-      const next = { ...prev, [id]: value };
-      persistDebounced(next);
-      return next;
-    });
+    setRoleTexts((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleSynthesize = async () => {
@@ -163,10 +165,8 @@ export default function LegacyPage() {
   const progressPct = (completedCount / ROLES.length) * 100;
 
   return (
-    <div
-      className="min-h-full"
-      style={{ backgroundColor: "#FAF5EE" }}
-    >
+    <div className="min-h-full" style={{ backgroundColor: "#FAF5EE" }}>
+
       {/* Achievement Toast */}
       {showAchievement && (
         <AchievementToast
@@ -179,74 +179,70 @@ export default function LegacyPage() {
 
       {/* Page Header */}
       <div
-        className="px-8 pt-7 pb-6 flex items-start justify-between"
-        style={{ borderBottom: "1px solid #EDE5D8" }}
+        className="px-page"
+        style={{
+          paddingTop: "22px",
+          paddingBottom: "18px",
+          borderBottom: "1px solid #EDE5D8",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
       >
         <div>
           <p
-            className="text-[10px] font-semibold tracking-widest uppercase mb-2"
-            style={{ color: "#F97316" }}
+            style={{
+              fontSize: "10px",
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#F97316",
+              marginBottom: "4px",
+            }}
           >
             Identity
           </p>
           <h1
-            className="text-2xl font-bold leading-tight"
-            style={{ color: "#1C1917", letterSpacing: "-0.02em" }}
+            style={{
+              fontSize: "22px",
+              fontWeight: 700,
+              color: "#1C1917",
+              letterSpacing: "-0.02em",
+              margin: 0,
+              lineHeight: 1.2,
+            }}
           >
             Your Legacy
           </h1>
-          <p
-            className="text-sm mt-2 max-w-lg leading-relaxed"
-            style={{ color: "#44403C" }}
-          >
-            Years from now, you are gone. What do you want the people who knew
-            you to say in their most honest moments? The pattern in their
-            answers becomes your purpose.
-          </p>
-          {savedIndicator && (
-            <p style={{ fontSize: 11, color: "#A8A29E", marginTop: 6 }}>Saved ✓</p>
-          )}
         </div>
 
-        {/* Progress ring */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="text-right">
-            <p className="text-[11px]" style={{ color: "#78716C" }}>
+        {/* Progress counter + ring */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+
+          <div style={{ textAlign: "right" }}>
+            <p style={{ fontSize: "11px", color: "#57534E", marginBottom: "2px" }}>
               Roles complete
             </p>
             <p
-              className="text-2xl font-semibold leading-none mt-0.5 transition-colors duration-300"
               style={{
+                fontSize: "22px",
+                fontWeight: 600,
                 color: allComplete ? "#F97316" : "#1C1917",
+                lineHeight: 1,
+                transition: "color 0.3s",
               }}
             >
               {completedCount}
-              <span
-                className="text-sm font-normal ml-0.5"
-                style={{ color: "#A8A29E" }}
-              >
+              <span style={{ fontSize: "14px", fontWeight: 400, color: "#57534E" }}>
                 /6
               </span>
             </p>
           </div>
-
-          <div className="relative w-12 h-12">
-            <svg viewBox="0 0 48 48" className="w-12 h-12 -rotate-90">
+          <div style={{ position: "relative", width: "44px", height: "44px" }}>
+            <svg viewBox="0 0 48 48" style={{ width: "44px", height: "44px", transform: "rotate(-90deg)" }}>
+              <circle cx="24" cy="24" r="20" fill="none" strokeWidth="3.5" stroke="#EDE5D8" />
               <circle
-                cx="24"
-                cy="24"
-                r="20"
-                fill="none"
-                strokeWidth="3.5"
-                stroke="#EDE5D8"
-              />
-              <circle
-                cx="24"
-                cy="24"
-                r="20"
-                fill="none"
-                strokeWidth="3.5"
-                stroke="#F97316"
+                cx="24" cy="24" r="20" fill="none" strokeWidth="3.5" stroke="#F97316"
                 strokeLinecap="round"
                 strokeDasharray={`${(progressPct / 100) * 125.6} 125.6`}
                 style={{ transition: "stroke-dasharray 0.5s ease" }}
@@ -256,23 +252,57 @@ export default function LegacyPage() {
         </div>
       </div>
 
-      {/* Two-column layout */}
-      <div className="flex gap-6 px-8 py-6 items-start">
-        {/* Left: Role cards */}
-        <div className="flex-1 min-w-0 space-y-3">
-          {ROLES.map((role, i) => (
-            <RoleCard
-              key={role.id}
-              index={i + 1}
-              role={role}
-              value={roleTexts[role.id]}
-              onChange={(v) => handleRoleChange(role.id, v)}
-              isComplete={isRoleComplete(role.id)}
-            />
-          ))}
+      {/* Full-width quote banner */}
+      <div
+        className="px-6 sm:px-12"
+        style={{
+          paddingTop: "32px",
+          paddingBottom: "32px",
+          borderBottom: "1px solid #EDE5D8",
+          backgroundColor: "#FDFAF7",
+          textAlign: "center",
+        }}
+      >
+        <p
+          style={{
+            fontSize: "18px",
+            color: "#44403C",
+            lineHeight: 1.75,
+            margin: 0,
+            fontWeight: 400,
+          }}
+        >
+          Years from now, you are gone. What do you want the people who knew you to say in their most honest moments?{" "}
+          <span style={{ color: "#1C1917", fontWeight: 700 }}>
+            The pattern in their answers becomes your purpose.
+          </span>
+        </p>
+      </div>
+
+      {/* Main content: 3×2 grid + Your North Star column */}
+      <div className="flex flex-col xl:flex-row gap-6 px-4 sm:px-6 lg:px-8 py-6 pb-8 items-start">
+
+        {/* Left: 3×2 role cards grid */}
+        <div style={{ flex: 1, minWidth: 0, width: "100%" }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {ROLES.map((role, i) => (
+              <RoleCard
+                key={role.id}
+                index={i + 1}
+                role={role}
+                value={roleTexts[role.id]}
+                onChange={(v) => handleRoleChange(role.id, v)}
+                isComplete={isRoleComplete(role.id)}
+                isSaved={savedCards[role.id]}
+                isSaving={savingCard === role.id}
+                onSave={() => handleSaveCard(role.id)}
+                onReopen={() => handleReopenCard(role.id)}
+              />
+            ))}
+          </div>
 
           {/* Synthesize button */}
-          <div className="pt-1 pb-2">
+          <div style={{ paddingTop: "16px" }}>
             <SynthesizeButton
               allComplete={allComplete}
               remaining={ROLES.length - completedCount}
@@ -282,8 +312,20 @@ export default function LegacyPage() {
           </div>
         </div>
 
-        {/* Right: Purpose box (sticky) */}
-        <div className="w-[360px] flex-shrink-0 sticky top-6 space-y-0">
+        {/* Right: Your North Star (4th column) */}
+        <div className="w-full xl:w-80 xl:flex-shrink-0 xl:sticky xl:top-6">
+          <p
+            style={{
+              fontSize: "10px",
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#F97316",
+              marginBottom: "12px",
+            }}
+          >
+            Your North Star
+          </p>
           <PurposeBox
             state={synthesisState}
             text={purposeText}
@@ -402,7 +444,7 @@ function AchievementToast({ onClose }: { onClose: () => void }) {
         <p className="text-sm font-semibold" style={{ color: "#1C1917" }}>
           Identity Defined
         </p>
-        <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>
+        <p className="text-xs mt-0.5" style={{ color: "#57534E" }}>
           Your North Star is sealed. This is your first major milestone.
         </p>
       </div>

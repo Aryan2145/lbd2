@@ -69,8 +69,8 @@ export default function BucketListPage() {
       display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Header */}
-      <div style={{
-        padding: "18px 36px 14px", borderBottom: "1px solid #EDE5D8",
+      <div className="px-page" style={{
+        paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
         backgroundColor: "#FAF5EE",
       }}>
@@ -103,7 +103,7 @@ export default function BucketListPage() {
       </div>
 
       {/* Kanban Board */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className="flex-col sm:flex-row" style={{ flex: 1, display: "flex", overflow: "auto" }}>
         {columns.map(([status, entries]) => {
           const meta   = COLUMN_META[status];
           const isOver = dragoverCol === status;
@@ -256,12 +256,12 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
         borderRadius: "12px",
         border: `1px solid ${areaMeta.color}35`,
         borderLeft: `3px solid ${areaMeta.color}`,
-        padding: "12px 14px",
         cursor: isDragging ? "grabbing" : "pointer",
         opacity: isDragging ? 0.4 : 1,
         boxShadow: isDragging ? "none" : "0 1px 4px rgba(28,25,23,0.06)",
         transition: "box-shadow 0.2s, opacity 0.15s",
         userSelect: "none",
+        overflow: "hidden",
       }}
       onMouseEnter={(e) => {
         if (!isDragging)
@@ -272,6 +272,18 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
           isDragging ? "none" : "0 1px 4px rgba(28,25,23,0.06)";
       }}
     >
+      {/* Image banner */}
+      {entry.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={entry.imageUrl}
+          alt=""
+          style={{ width: "100%", height: "auto", display: "block" }}
+        />
+      )}
+
+      {/* Card content */}
+      <div style={{ padding: "12px 14px" }}>
       {/* Area badge + date */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
         <span style={{
@@ -369,6 +381,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
           )}
           <GripVertical size={13} color={`${areaMeta.color}50`} />
         </div>
+      </div>
       </div>
     </div>
   );

@@ -415,8 +415,8 @@ export default function DashboardPage() {
       {/* ─────────────────────────────────────────────────────────────────────
           HERO STRIP — Identity + Greeting + Mode
       ───────────────────────────────────────────────────────────────────── */}
-      <div style={{
-        padding: "20px 28px 18px", borderBottom: "1px solid #EDE5D8",
+      <div className="px-page-md" style={{
+        paddingTop: "20px", paddingBottom: "18px", borderBottom: "1px solid #EDE5D8",
         background: "linear-gradient(135deg, #FFFAF3 0%, #FAF5EE 60%)",
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24,
       }}>
@@ -510,8 +510,7 @@ export default function DashboardPage() {
       {/* ─────────────────────────────────────────────────────────────────────
           VITALS — 5 KPI cards
       ───────────────────────────────────────────────────────────────────── */}
-      <div style={{ padding: "18px 28px 0",
-        display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+      <div className="px-page-md grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" style={{ paddingTop: "18px" }}>
 
         {/* Momentum */}
         <div className="dash-card" style={kpiCard}>
@@ -599,9 +598,7 @@ export default function DashboardPage() {
       {/* ─────────────────────────────────────────────────────────────────────
           MAIN GRID — Cockpit (left) + Compass (right)
       ───────────────────────────────────────────────────────────────────── */}
-      <div style={{ padding: "18px 28px",
-        display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr)", gap: 16,
-      }}>
+      <div className="px-page-md grid grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-4" style={{ paddingTop: "18px", paddingBottom: "18px" }}>
 
         {/* ─── LEFT: COCKPIT ─── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

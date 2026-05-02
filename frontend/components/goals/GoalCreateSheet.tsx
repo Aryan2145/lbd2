@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Sparkles, Plus, Trash2 } from "lucide-react";
+import { X, Sparkles, Plus, Trash2, CalendarDays } from "lucide-react";
 import type { LifeArea, GoalData, Milestone } from "./GoalCard";
 import { AREA_META } from "./GoalCard";
 
@@ -227,13 +227,10 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
 
                   {/* Deadline */}
                   <Field label="Target date">
-                    <input
-                      type="date"
+                    <DateInput
                       value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      style={{ ...inputStyle, colorScheme: "light" }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-                      onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }}
+                      onChange={setDeadline}
+                      error={goalDeadlineWarning.length > 0}
                     />
                     {goalDeadlineWarning.length > 0 && (
                       <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
@@ -276,17 +273,14 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
                 onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }}
                 onKeyDown={(e) => { if (e.key === "Enter") addMilestone(); }}
               />
-              <input
-                type="date"
-                value={mDeadline}
-                onChange={(e) => setMDeadline(e.target.value)}
-                style={{
-                  ...inputStyle, width: "130px", flexShrink: 0, colorScheme: "light",
-                  borderColor: mDeadlineError ? "#DC2626" : "#E8DDD0",
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = mDeadlineError ? "#DC2626" : "#D97706"; }}
-                onBlur={(e)  => { e.currentTarget.style.borderColor = mDeadlineError ? "#DC2626" : "#E8DDD0"; }}
-              />
+              <div style={{ width: "148px", flexShrink: 0 }}>
+                <DateInput
+                  value={mDeadline}
+                  onChange={setMDeadline}
+                  error={!!mDeadlineError}
+                  accentColor="#D97706"
+                />
+              </div>
               <button
                 onClick={addMilestone}
                 disabled={!mTitle.trim() || !mDeadline || !!mDeadlineError}
@@ -309,13 +303,20 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
             {milestones.length > 0 && (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  {milestones.map((m) => (
+                  {milestones.map((m, idx) => (
                     <div key={m.id} style={{
                       display: "flex", alignItems: "center", gap: "8px",
                       padding: "7px 10px", borderRadius: "8px",
                       backgroundColor: "#FFFBEB", border: "1px solid #FCD34D",
                     }}>
-                      <span style={{ fontSize: "10px" }}>◆</span>
+                      <div style={{
+                        flexShrink: 0, width: "20px", height: "20px", borderRadius: "6px",
+                        background: "linear-gradient(135deg, #D97706, #B45309)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "10px", fontWeight: 700, color: "#FFFFFF",
+                      }}>
+                        {idx + 1}
+                      </div>
                       <span style={{ flex: 1, fontSize: "12px", fontWeight: 600, color: "#1C1917",
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {m.title}
@@ -422,6 +423,43 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
         {label}
       </label>
       {children}
+    </div>
+  );
+}
+
+function DateInput({ value, onChange, error, accentColor = "#F97316", max }: {
+  value: string;
+  onChange: (v: string) => void;
+  error?: boolean;
+  accentColor?: string;
+  max?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const borderColor = error ? "#DC2626" : focused ? accentColor : "#E8DDD0";
+  return (
+    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      <div style={{
+        position: "absolute", left: "10px", pointerEvents: "none", display: "flex",
+        alignItems: "center", zIndex: 1,
+      }}>
+        <CalendarDays size={13} color={focused ? accentColor : "#A8A29E"} style={{ transition: "color 0.15s" }} />
+      </div>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        max={max}
+        style={{
+          ...inputStyle,
+          paddingLeft: "30px",
+          borderColor,
+          boxShadow: focused ? `0 0 0 3px ${accentColor}18` : "none",
+          colorScheme: "light" as React.CSSProperties["colorScheme"],
+          transition: "border-color 0.15s, box-shadow 0.15s",
+        }}
+      />
     </div>
   );
 }

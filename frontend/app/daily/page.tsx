@@ -98,9 +98,9 @@ export default function DailyPage() {
     }}>
 
       {/* Header */}
-      <div style={{
-        padding: "12px 28px 10px", borderBottom: `1px solid ${hBorder}`,
-        display: "flex", alignItems: "center", gap: "16px",
+      <div className="px-page-md" style={{
+        paddingTop: "12px", paddingBottom: "10px", borderBottom: `1px solid ${hBorder}`,
+        display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap",
         flexShrink: 0, backgroundColor: hBg,
       }}>
         {/* Title */}
@@ -168,7 +168,7 @@ export default function DailyPage() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+      <div style={{ flex: 1, overflow: "auto", display: "flex" }}>
         {tab === "plan" ? (
           <MorningPlan
             date={viewDate}

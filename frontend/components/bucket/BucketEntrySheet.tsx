@@ -16,14 +16,21 @@ interface Props {
   initialStatus?: BucketStatus;
 }
 
-function processImageUrl(url: string): string {
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)\//);
-  if (match) return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-  return url;
+// Same logic as vision board — converts Drive share links to embeddable CDN URL
+function toDriveImgUrl(raw: string): string {
+  if (!raw || (!raw.includes("drive.google.com") && !raw.includes("docs.google.com"))) return raw;
+  let id: string | null = null;
+  const fileMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) id = fileMatch[1];
+  if (!id) {
+    const idMatch = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idMatch) id = idMatch[1];
+  }
+  return id ? `https://lh3.googleusercontent.com/d/${id}` : raw;
 }
 
 function generatePrompt(title: string, description: string, lifeArea: LifeArea): string {
-  return `A stunning, cinematic, aspirational photograph representing the dream: "${title || "a life aspiration"}". ${description ? description + " " : ""}The scene evokes ${lifeArea} at its finest — emotionally resonant, life-affirming, and beautifully composed. Golden hour natural lighting, photorealistic, high resolution, aspirational mood.`;
+  return `Wide landscape photograph, 16:9 aspect ratio, representing the dream: "${title || "a life aspiration"}". ${description ? description + " " : ""}Evokes ${lifeArea} at its finest — emotionally resonant, life-affirming, beautifully composed wide shot. Golden hour natural lighting, photorealistic, high resolution, cinematic aspirational mood. Horizontal orientation only.`;
 }
 
 export default function BucketEntrySheet({
@@ -59,7 +66,7 @@ export default function BucketEntrySheet({
   const currentStatus = editEntry?.status ?? initialStatus;
   const colMeta       = COLUMN_META[currentStatus];
   const canSave       = title.trim().length > 0;
-  const processedSrc  = imageUrl ? processImageUrl(imageUrl) : "";
+  const processedSrc  = imageUrl ? toDriveImgUrl(imageUrl) : "";
 
   async function handleCopyPrompt() {
     try {
@@ -76,7 +83,7 @@ export default function BucketEntrySheet({
       title:            title.trim(),
       description:      description.trim(),
       lifeArea,
-      imageUrl:         imageUrl.trim(),
+      imageUrl:         toDriveImgUrl(imageUrl.trim()),
       targetDate:       targetDate.trim(),
       status:           currentStatus,
       createdAt:        editEntry?.createdAt ?? Date.now(),
@@ -95,7 +102,7 @@ export default function BucketEntrySheet({
 
       <div style={{
         position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-        width: "100%", maxWidth: "580px",
+        width: "100%", maxWidth: "680px",
         backgroundColor: "#FFFFFF", borderRadius: "20px 20px 0 0",
         zIndex: 51, boxShadow: "0 -8px 40px rgba(28,25,23,0.18)",
         display: "flex", flexDirection: "column", maxHeight: "92vh",
@@ -208,14 +215,14 @@ export default function BucketEntrySheet({
             )}
           </div>
 
-          {/* Vision image URL */}
+          {/* Vision Image */}
           <div style={{ marginBottom: "16px" }}>
             <label style={lbl}>
               <Image size={9} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
               Vision Image
               <span style={{ fontSize: "9px", fontWeight: 500, color: "#A8A29E",
                 textTransform: "none", letterSpacing: 0, marginLeft: 6 }}>
-                Google Drive share link or direct URL
+                Google Drive share link or direct image URL
               </span>
             </label>
             <input
@@ -225,16 +232,18 @@ export default function BucketEntrySheet({
               className="weekly-input"
               style={inp}
             />
-            {imageUrl && !imgError && (
-              <div style={{ marginTop: 8, height: 110, borderRadius: 10, overflow: "hidden",
-                border: "1px solid #E8DDD0" }}>
+            {processedSrc && !imgError && (
+              <div style={{ marginTop: 8, borderRadius: 10, overflow: "hidden",
+                border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={processedSrc} alt="" onError={() => setImgError(true)}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  style={{ width: "100%", height: "auto", maxHeight: "240px",
+                    display: "block", objectFit: "contain" }} />
               </div>
             )}
-            {imageUrl && imgError && (
+            {processedSrc && imgError && (
               <p style={{ fontSize: "10px", color: "#EF4444", marginTop: 4 }}>
-                Could not load image. Use a public Google Drive link or direct image URL.
+                Could not load image. Make sure the file is shared as &ldquo;Anyone with the link&rdquo; on Google Drive.
               </p>
             )}
           </div>

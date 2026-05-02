@@ -95,7 +95,7 @@ export default function HabitsPage() {
     <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
 
       {/* Header */}
-      <div style={{ padding: "18px 36px 14px", borderBottom: "1px solid #EDE5D8",
+      <div className="px-page" style={{ paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
@@ -128,8 +128,8 @@ export default function HabitsPage() {
       </div>
 
       {/* Today's progress banner */}
-      <div style={{
-        padding: "14px 36px", borderBottom: "1px solid #EDE5D8",
+      <div className="px-page" style={{
+        paddingTop: "14px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", gap: "20px",
         backgroundColor: todayPct === 100 ? "#F0FDF4" : "#FFFFFF",
         transition: "background-color 0.4s",
@@ -173,7 +173,7 @@ export default function HabitsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div style={{ padding: "12px 36px", borderBottom: "1px solid #EDE5D8",
+      <div className="px-page" style={{ paddingTop: "12px", paddingBottom: "12px", borderBottom: "1px solid #EDE5D8",
         display: "flex", gap: "6px", overflowX: "auto" }}>
         {FILTERS.map((f) => (
           <button key={f.value} onClick={() => setFilter(f.value)} style={{
@@ -202,7 +202,7 @@ export default function HabitsPage() {
       </div>
 
       {/* Habit grid */}
-      <div style={{ padding: "24px 36px" }}>
+      <div className="px-page" style={{ paddingTop: "24px", paddingBottom: "24px" }}>
         {filtered.length === 0 ? (
           <EmptyState area={filter !== "today" && filter !== "all" ? filter as LifeArea : null}
             onAdd={() => setCreateOpen(true)} />

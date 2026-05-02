@@ -38,12 +38,16 @@ function mapGoal(g: any): GoalData {
       timestamp: new Date(n.createdAt).getTime(),
     })),
     createdAt: new Date(g.createdAt).getTime(),
-    milestones: [],
+    milestones: Array.isArray(g.milestones) ? g.milestones : [],
   };
 }
 
 function goalToApi(g: GoalData) {
-  return { statement: g.statement, outcome: g.outcome || null, metric: g.metric || null, deadline: g.deadline, area: g.area, progress: g.progress, velocity: g.velocity || null };
+  return {
+    statement: g.statement, outcome: g.outcome || null, metric: g.metric || null,
+    deadline: g.deadline, area: g.area, progress: g.progress, velocity: g.velocity || null,
+    milestones: g.milestones ?? [],
+  };
 }
 
 function mapHabit(h: any): HabitData {
@@ -53,20 +57,29 @@ function mapHabit(h: any): HabitData {
     cue: "", reward: "", type: h.type, target: h.target ?? 1,
     unit: h.unit ?? "", completions: h.completions ?? [],
     measurements: h.measurements ?? {},
-    linkedGoalId: "", linkedMilestoneId: "",
+    linkedGoalId: h.linkedGoalId ?? "",
+    linkedMilestoneId: h.linkedMilestoneId ?? "",
     createdAt: new Date(h.createdAt).getTime(),
   };
 }
 
 function habitToApi(h: HabitData) {
-  return { name: h.name, area: h.area, frequency: h.frequency, customDays: h.customDays, type: h.type, target: h.target, unit: h.unit || null, completions: h.completions, measurements: h.measurements };
+  return {
+    name: h.name, area: h.area, frequency: h.frequency, customDays: h.customDays,
+    type: h.type, target: h.target, unit: h.unit || null,
+    completions: h.completions, measurements: h.measurements,
+    linkedGoalId: h.linkedGoalId || null,
+    linkedMilestoneId: h.linkedMilestoneId || null,
+  };
 }
 
 function mapTask(t: any): TaskData {
   return {
     id: t.id, kind: t.kind ?? "one-time", title: t.title, description: "",
     deadline: t.deadline, quadrant: (Q_FROM_DB[t.quadrant] ?? t.quadrant) as any,
-    status: t.status as any, linkedGoalId: t.linkedGoalId ?? "",
+    status: t.status as any,
+    linkedGoalId: t.linkedGoalId ?? "",
+    linkedMilestoneId: t.linkedMilestoneId ?? "",
     closedAt: t.closedAt != null ? Number(t.closedAt) : undefined,
     variance: t.variance ?? undefined,
     createdAt: new Date(t.createdAt).getTime(),
@@ -74,7 +87,13 @@ function mapTask(t: any): TaskData {
 }
 
 function taskToApi(t: TaskData) {
-  return { title: t.title, deadline: t.deadline, quadrant: t.quadrant, status: t.status, linkedGoalId: t.linkedGoalId || null, kind: t.kind ?? "one-time", closedAt: t.closedAt ?? null, variance: t.variance ?? null };
+  return {
+    title: t.title, deadline: t.deadline, quadrant: t.quadrant,
+    status: t.status, kind: t.kind ?? "one-time",
+    linkedGoalId: t.linkedGoalId || null,
+    linkedMilestoneId: t.linkedMilestoneId || null,
+    closedAt: t.closedAt ?? null, variance: t.variance ?? null,
+  };
 }
 
 function mapEventGroup(g: any): EventGroup {
@@ -102,7 +121,19 @@ function mapWeeklyReview(r: any): WeeklyReview {
 }
 
 function mapBucketEntry(e: any): BucketEntry {
-  return { id: e.id, title: e.title, description: "", lifeArea: e.lifeArea, imageUrl: "", targetDate: e.targetDate ?? "", status: e.status as BucketStatus, createdAt: new Date(e.createdAt).getTime() };
+  return {
+    id:               e.id,
+    title:            e.title,
+    description:      e.description ?? "",
+    lifeArea:         e.lifeArea,
+    imageUrl:         e.imageUrl ?? "",
+    targetDate:       e.targetDate ?? "",
+    status:           e.status as BucketStatus,
+    createdAt:        new Date(e.createdAt).getTime(),
+    achievedAt:       e.achievedAt ? Number(e.achievedAt) : undefined,
+    memoryPhotoUrl:   e.memoryPhotoUrl ?? undefined,
+    changeReflection: e.changeReflection ?? undefined,
+  };
 }
 
 function mapTicket(t: any): SupportTicket {
@@ -428,13 +459,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Bucket
     addBucketEntry: (e) => {
       setBucketEntries(prev => [...prev, e]);
-      api.post<any>('/bucket', { title: e.title, lifeArea: e.lifeArea, status: e.status, targetDate: e.targetDate })
+      api.post<any>('/bucket', {
+        title: e.title, description: e.description, lifeArea: e.lifeArea,
+        imageUrl: e.imageUrl, status: e.status, targetDate: e.targetDate,
+        achievedAt: e.achievedAt, memoryPhotoUrl: e.memoryPhotoUrl, changeReflection: e.changeReflection,
+      })
         .then(created => setBucketEntries(prev => prev.map(x => x.id === e.id ? mapBucketEntry(created) : x)))
         .catch(() => setBucketEntries(prev => prev.filter(x => x.id !== e.id)));
     },
     updateBucketEntry: (e) => {
       setBucketEntries(prev => prev.map(x => x.id === e.id ? e : x));
-      api.patch(`/bucket/${e.id}`, { title: e.title, lifeArea: e.lifeArea, status: e.status, targetDate: e.targetDate }).catch(console.error);
+      api.patch(`/bucket/${e.id}`, {
+        title: e.title, description: e.description, lifeArea: e.lifeArea,
+        imageUrl: e.imageUrl, status: e.status, targetDate: e.targetDate,
+        achievedAt: e.achievedAt, memoryPhotoUrl: e.memoryPhotoUrl, changeReflection: e.changeReflection,
+      }).catch(console.error);
     },
     deleteBucketEntry: (id) => {
       setBucketEntries(prev => prev.filter(x => x.id !== id));

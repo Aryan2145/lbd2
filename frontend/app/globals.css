@@ -159,3 +159,17 @@ body {
 .bucket-flip-back { transform: rotateY(180deg); }
 
 .legacy-glow { animation: legacyGlow 2.5s ease-in-out infinite; }
+
+/* ── Responsive page-level horizontal padding ── */
+.px-page {
+  padding-left: 2.25rem;   /* 36px */
+  padding-right: 2.25rem;
+}
+.px-page-md {
+  padding-left: 1.75rem;   /* 28px */
+  padding-right: 1.75rem;
+}
+@media (max-width: 640px) {
+  .px-page    { padding-left: 1rem; padding-right: 1rem; }
+  .px-page-md { padding-left: 1rem; padding-right: 1rem; }
+}

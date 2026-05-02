@@ -215,10 +215,10 @@ export default function WeeklyPage() {
       )}
 
       {/* ── Header ── */}
-      <div style={{
-        padding: "16px 28px 12px", borderBottom: "1px solid #EDE5D8",
+      <div className="px-page-md" style={{
+        paddingTop: "16px", paddingBottom: "12px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        flexShrink: 0, backgroundColor: "#FAF5EE",
+        flexShrink: 0, backgroundColor: "#FAF5EE", flexWrap: "wrap", gap: "8px",
       }}>
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
@@ -284,7 +284,7 @@ export default function WeeklyPage() {
       </div>
 
       {/* ── Content ── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className="flex-col md:flex-row" style={{ flex: 1, display: "flex", overflow: "auto" }}>
 
         <WeekSidebar
           weekStart={weekStart}

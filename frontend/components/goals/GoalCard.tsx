@@ -203,125 +203,40 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
 
       {/* Deadline */}
       <p style={{ fontSize: "10px", fontWeight: 500, color: overdue ? "#DC2626" : "#78716C",
-        marginBottom: milestones.length > 0 || linkedHabits.length > 0 ? "10px" : "0" }}>
+        marginBottom: milestones.length > 0 || linkedTasks.length > 0 || linkedHabits.length > 0 ? "10px" : "0" }}>
         {overdue ? `${Math.abs(daysLeft)} days overdue`
           : daysLeft === 0 ? "Due today"
           : `${daysLeft} days remaining`}
       </p>
 
-      {/* Milestones section */}
-      {milestones.length > 0 && (
+      {/* Summary footer */}
+      {(milestones.length > 0 || linkedTasks.length > 0 || linkedHabits.length > 0) && (
         <div style={{ borderTop: `1px solid ${area.color}20`, paddingTop: "8px",
-          marginBottom: linkedHabits.length > 0 ? "10px" : "0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px" }}>
-            <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.06em",
-              textTransform: "uppercase", color: "#D97706" }}>
-              Milestones
-            </span>
-            <span style={{ fontSize: "9px", fontWeight: 700, color: "#D97706",
+          display: "flex", alignItems: "center", gap: "6px" }}>
+          {milestones.length > 0 && (
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "#D97706",
               backgroundColor: "#FFFBEB", border: "1px solid #FCD34D",
-              padding: "0px 5px", borderRadius: "20px" }}>
-              {milestones.length}
+              padding: "2px 8px", borderRadius: "20px" }}>
+              {milestones.length}m
             </span>
-          </div>
-          <div style={{ maxHeight: "88px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "3px" }}>
-            {milestones.map((m) => {
-              const hCount = linkedHabits.filter((h) => h.linkedMilestoneId === m.id).length;
-              const tCount = linkedTasks.filter((t) => t.linkedMilestoneId === m.id).length;
-              return (
-                <div key={m.id} style={{
-                  display: "flex", alignItems: "center", gap: "5px",
-                  minHeight: "28px", padding: "2px 4px",
-                }}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const updated = milestones.map((ms) =>
-                        ms.id === m.id ? { ...ms, completed: !ms.completed } : ms
-                      );
-                      onUpdate({ ...goal, milestones: updated });
-                    }}
-                    style={{
-                      width: "14px", height: "14px", borderRadius: "3px", flexShrink: 0,
-                      border: `1.5px solid ${m.completed ? "#D97706" : "#D5C9BC"}`,
-                      backgroundColor: m.completed ? "#D97706" : "#FFFFFF",
-                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
-                    {m.completed && (
-                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                        <path d="M1 4l2 2 4-4" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </button>
-                  <span style={{
-                    flex: 1, fontSize: "10px", fontWeight: 500,
-                    color: m.completed ? "#A8A29E" : "#1C1917",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    textDecoration: m.completed ? "line-through" : "none",
-                  }}>
-                    {m.title}
-                  </span>
-                  <span style={{ fontSize: "9px", color: "#A8A29E", whiteSpace: "nowrap", flexShrink: 0 }}>
-                    {fmtMilestoneDate(m.deadline)}
-                  </span>
-                  {hCount > 0 && (
-                    <span style={{
-                      fontSize: "8px", fontWeight: 700, color: "#2563EB",
-                      backgroundColor: "#EFF6FF", padding: "1px 4px", borderRadius: "3px",
-                      flexShrink: 0,
-                    }}>
-                      H {hCount}
-                    </span>
-                  )}
-                  {tCount > 0 && (
-                    <span style={{
-                      fontSize: "8px", fontWeight: 700, color: "#7C3AED",
-                      backgroundColor: "#F5F3FF", padding: "1px 4px", borderRadius: "3px",
-                      flexShrink: 0,
-                    }}>
-                      T {tCount}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Linked habits */}
-      {linkedHabits.length > 0 && (
-        <div style={{ borderTop: `1px solid ${area.color}20`, paddingTop: "10px",
-          display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-          {linkedHabits.slice(0, 5).map((h) => {
-            const hMeta   = HABIT_AREA_META[h.area];
-            const hDone   = isHabitDoneOnDate(h, today);
-            const hStreak = calcStreak(h);
-            return (
-              <div key={h.id} style={{
-                display: "flex", alignItems: "center", gap: "4px",
-                padding: "3px 8px", borderRadius: "20px",
-                backgroundColor: hDone ? "#F0FDF4" : "#F5F0EB",
-                border: `1px solid ${hDone ? "#86EFAC" : "#E8DDD0"}`,
-              }}>
-                <div style={{ width: "6px", height: "6px", borderRadius: "50%",
-                  backgroundColor: hMeta.color, flexShrink: 0 }} />
-                <span style={{ fontSize: "10px", fontWeight: 600,
-                  color: hDone ? "#16A34A" : "#78716C", whiteSpace: "nowrap" }}>
-                  {h.name}
-                </span>
-                {hStreak > 0 && (
-                  <span style={{ fontSize: "9px", color: "#F97316", fontWeight: 700 }}>
-                    🔥{hStreak}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-          {linkedHabits.length > 5 && (
-            <span style={{ fontSize: "10px", color: "#A8A29E" }}>+{linkedHabits.length - 5} more</span>
           )}
+          {linkedTasks.length > 0 && (
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "#7C3AED",
+              backgroundColor: "#F5F0FF", border: "1px solid #DDD6FE",
+              padding: "2px 8px", borderRadius: "20px" }}>
+              {linkedTasks.length}t
+            </span>
+          )}
+          {linkedHabits.length > 0 && (
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "#2563EB",
+              backgroundColor: "#EFF6FF", border: "1px solid #BFDBFE",
+              padding: "2px 8px", borderRadius: "20px" }}>
+              {linkedHabits.length}h
+            </span>
+          )}
+          <span style={{ marginLeft: "auto", fontSize: "10px", color: "#A8A29E" }}>
+            tap for details →
+          </span>
         </div>
       )}
     </div>

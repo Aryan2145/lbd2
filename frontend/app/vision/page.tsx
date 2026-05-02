@@ -4,27 +4,18 @@ import { useState, useEffect, useRef } from "react";
 import WheelOfLife from "@/components/vision/WheelOfLife";
 import PolaroidCard, { type AreaData } from "@/components/vision/PolaroidCard";
 import AreaEditSheet from "@/components/vision/AreaEditSheet";
-import { Edit2, RotateCcw, Sparkles, Loader2 } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { AREA_META } from "@/components/goals/GoalCard";
 import type { LifeArea } from "@/components/goals/GoalCard";
 import { api } from "@/lib/api";
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const CY       = 440;    // vertical center of wheel in canvas
-const WHEEL_PX = 340;    // wheel display diameter — prominent
-const RADAR_R  = Math.round(108 * (WHEEL_PX / 280)); // ≈ 131px from center to edge
+const CY       = 420;
+const WHEEL_PX = 320;
+const RADAR_R  = Math.round(108 * (WHEEL_PX / 280)); // ~124px
 
-// Card initial offsets from CX — deliberately spread wide to use full screen width
-// Side cards (Relationships/Wealth) are pushed far left/right into the empty red-marked areas
-const REL_POS = [
-  { dx:    0, dy: -330 },   // 0 Professional  — top center
-  { dx:  430, dy: -180 },   // 1 Contribution  — top right
-  { dx:  490, dy:   65 },   // 2 Wealth        — right (uses that empty space!)
-  { dx:  370, dy:  280 },   // 3 Spiritual     — bottom right
-  { dx: -370, dy:  280 },   // 4 Personal Growth — bottom left
-  { dx: -490, dy:   65 },   // 5 Relationships — left  (uses that empty space!)
-  { dx: -430, dy: -180 },   // 6 Health        — top left
-];
+// Card is 176×~220px — half-diagonal ≈ 141px. Add buffer → keep 290px from wheel center.
+const MIN_CARD_DIST = RADAR_R + 165;
 
 const AREAS_META = [
   { id: "professional",  name: "Professional",   rotation:  1.5 },
@@ -36,237 +27,179 @@ const AREAS_META = [
   { id: "health",        name: "Health",          rotation:  1.0 },
 ];
 
+// Default offsets from wheel center (dx, dy). Cards spread around the wheel.
+const DEFAULT_OFFSETS: [number, number][] = [
+  [    0, -320 ],  // Professional  — top
+  [  420, -170 ],  // Contribution  — top-right
+  [  470,   60 ],  // Wealth        — right
+  [  360,  265 ],  // Spiritual     — bottom-right
+  [ -360,  265 ],  // Personal      — bottom-left
+  [ -470,   60 ],  // Relationships — left
+  [ -420, -170 ],  // Health        — top-left
+];
+
 const N = AREAS_META.length;
+const CANVAS_H = CY + 395; // bottom card center at CY+265, half-height ~110, +20 padding
 
-const DEFAULT_PURPOSE = "I live to build a legacy so deeply rooted in love and discipline that my family carries its warmth for generations.";
+type RelPos = { dx: number; dy: number };
 
-type Pos = { x: number; y: number };
+const DEFAULT_REL_POS: Record<string, RelPos> = Object.fromEntries(
+  AREAS_META.map((m, i) => [m.id, { dx: DEFAULT_OFFSETS[i][0], dy: DEFAULT_OFFSETS[i][1] }])
+);
 
-const EMPTY_AREA: AreaData[] = AREAS_META.map((m) => ({
+const EMPTY_AREAS: AreaData[] = AREAS_META.map((m) => ({
   id: m.id, name: m.name, text: "", score: 5, imageUrl: "",
 }));
 
+// Push a card away from the wheel center if it's too close
+function clampAwayFromWheel(dx: number, dy: number): RelPos {
+  const dist = Math.hypot(dx, dy);
+  if (dist === 0) return { dx: 0, dy: -MIN_CARD_DIST };
+  if (dist < MIN_CARD_DIST) {
+    const scale = MIN_CARD_DIST / dist;
+    return { dx: dx * scale, dy: dy * scale };
+  }
+  return { dx, dy };
+}
+
+function savePosToLS(pos: Record<string, RelPos>) {
+  try { localStorage.setItem("lbd_vision_relpos_v2", JSON.stringify(pos)); } catch {}
+}
+
+function loadPosFromLS(): Record<string, RelPos> | null {
+  try {
+    const raw = localStorage.getItem("lbd_vision_relpos_v2");
+    return raw ? (JSON.parse(raw) as Record<string, RelPos>) : null;
+  } catch { return null; }
+}
+
 export default function VisionPage() {
-  const [areas, setAreas]                   = useState<AreaData[]>(EMPTY_AREA);
-  const [editingIdx, setEditing]            = useState<number | null>(null);
-  const [saving, setSaving]                 = useState(false);
-  const [purposeStatement, setPurpose]      = useState(DEFAULT_PURPOSE);
-  const [editingPurpose, setEditingPurpose] = useState(false);
-  const [isGenerating, setIsGenerating]     = useState(false);
-  const [generateError, setGenerateError]   = useState<string | null>(null);
-  const [CX, setCX]                         = useState(0);
-  const [positions, setPositions]           = useState<Record<string, Pos>>({});
-  const [dragging, setDragging]             = useState<{
-    id: string; offX: number; offY: number; startX: number; startY: number;
+  const [areas, setAreas]        = useState<AreaData[]>(EMPTY_AREAS);
+  const [editingIdx, setEditing] = useState<number | null>(null);
+  const [saving, setSaving]      = useState(false);
+  const [CX, setCX]              = useState(0);
+  // Mobile-only state
+  const [mobileTab, setMobileTab]       = useState<"visions" | "wheel">("visions");
+  const [wheelDetail, setWheelDetail]   = useState<number | null>(null);
+  const [wheelHover, setWheelHover]     = useState<number | null>(null);
+  const [relPos, setRelPos]      = useState<Record<string, RelPos>>(DEFAULT_REL_POS);
+  const [dragging, setDragging]  = useState<{
+    id: string;
+    startMouseX: number; startMouseY: number;
+    startDx: number; startDy: number;
   } | null>(null);
 
-  const containerRef      = useRef<HTMLDivElement>(null);
-  const initialized       = useRef(false);
-  const positionsRef      = useRef<Record<string, Pos>>({});
-  const positionsRestored = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
 
-  useEffect(() => { positionsRef.current = positions; }, [positions]);
-
-  // One-time init: measure width → set CX + default card positions
+  // Measure container and track CX on resize
   useEffect(() => {
-    const init = () => {
-      if (initialized.current || !containerRef.current) return;
+    const measure = () => {
+      if (!containerRef.current) return;
       const w = containerRef.current.getBoundingClientRect().width;
-      if (w === 0) return;
-      const cx = w / 2;
-      setCX(cx);
-      const pos: Record<string, Pos> = {};
-      AREAS_META.forEach((m, i) => {
-        pos[m.id] = { x: cx + REL_POS[i].dx, y: CY + REL_POS[i].dy };
-      });
-      setPositions(pos);
-      initialized.current = true;
+      if (w > 0) {
+        setCX(w / 2);
+        initializedRef.current = true;
+      }
     };
-    init();
-    const ro = new ResizeObserver(init);
+    measure();
+    const ro = new ResizeObserver(measure);
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, []);
 
-  // Keep wheel centered on window resize (cards stay where user left them)
+  // Load saved data
   useEffect(() => {
-    const onResize = () => {
-      if (containerRef.current)
-        setCX(containerRef.current.getBoundingClientRect().width / 2);
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  // Load persisted vision data on mount
-  useEffect(() => {
-    api.get<{ areas: AreaData[]; purposeStatement?: string }>("/vision").then((data) => {
-      if (data.areas && data.areas.length > 0) {
-        setAreas((prev) =>
-          prev.map((a) => data.areas.find((d: AreaData) => d.id === a.id) ?? a)
-        );
+    api.get<{ areas: AreaData[] }>("/vision").then((data) => {
+      if (data.areas?.length) {
+        setAreas((prev) => prev.map((a) => data.areas.find((d: AreaData) => d.id === a.id) ?? a));
       }
-      if (data.purposeStatement) setPurpose(data.purposeStatement);
     }).catch(() => {});
+
+    const saved = loadPosFromLS();
+    if (saved) setRelPos((prev) => ({ ...prev, ...saved }));
   }, []);
 
-  // Restore card positions from localStorage once CX is known
-  useEffect(() => {
-    if (CX === 0 || positionsRestored.current) return;
-    positionsRestored.current = true;
-    try {
-      const raw = localStorage.getItem("lbd_vision_positions");
-      if (!raw) return;
-      const saved = JSON.parse(raw) as Record<string, { dx: number; dy: number }>;
-      setPositions((prev) => {
-        const next = { ...prev };
-        for (const [id, off] of Object.entries(saved)) {
-          next[id] = { x: CX + off.dx, y: CY + off.dy };
-        }
-        return next;
-      });
-    } catch {}
-  }, [CX]);
-
-  const savePositionsToLS = (pos: Record<string, Pos>, cx: number) => {
-    try {
-      const rel: Record<string, { dx: number; dy: number }> = {};
-      for (const [id, p] of Object.entries(pos)) {
-        rel[id] = { dx: Math.round(p.x - cx), dy: Math.round(p.y - CY) };
-      }
-      localStorage.setItem("lbd_vision_positions", JSON.stringify(rel));
-    } catch {}
-  };
-
-  // ── Drag logic ─────────────────────────────────────────────────────────────
+  // ── Drag ────────────────────────────────────────────────────────────────────
   const startDrag = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
-    const rect = containerRef.current!.getBoundingClientRect();
-    const pos  = positions[id] ?? { x: CX, y: CY };
-    setDragging({
-      id,
-      offX:   e.clientX - rect.left  - pos.x,
-      offY:   e.clientY - rect.top   - pos.y,
-      startX: e.clientX,
-      startY: e.clientY,
-    });
+    const r = relPos[id] ?? DEFAULT_REL_POS[id];
+    setDragging({ id, startMouseX: e.clientX, startMouseY: e.clientY, startDx: r.dx, startDy: r.dy });
   };
 
   useEffect(() => {
     if (!dragging) return;
     const onMove = (e: MouseEvent) => {
-      const rect = containerRef.current!.getBoundingClientRect();
-      setPositions((prev) => ({
+      setRelPos((prev) => ({
         ...prev,
         [dragging.id]: {
-          x: e.clientX - rect.left - dragging.offX,
-          y: e.clientY - rect.top  - dragging.offY,
+          dx: dragging.startDx + (e.clientX - dragging.startMouseX),
+          dy: dragging.startDy + (e.clientY - dragging.startMouseY),
         },
       }));
     };
     const onUp = (e: MouseEvent) => {
-      const moved = Math.hypot(e.clientX - dragging.startX, e.clientY - dragging.startY);
+      const moved = Math.hypot(e.clientX - dragging.startMouseX, e.clientY - dragging.startMouseY);
       if (moved < 6) {
         setEditing(AREAS_META.findIndex((m) => m.id === dragging.id));
       } else {
-        savePositionsToLS(positionsRef.current, CX);
+        setRelPos((prev) => {
+          const r = prev[dragging.id];
+          const clamped = clampAwayFromWheel(r.dx, r.dy);
+          const next = { ...prev, [dragging.id]: clamped };
+          savePosToLS(next);
+          return next;
+        });
       }
       setDragging(null);
     };
     window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup",   onUp);
+    window.addEventListener("mouseup", onUp);
     return () => {
       window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup",   onUp);
+      window.removeEventListener("mouseup", onUp);
     };
   }, [dragging]);
 
-  // Reset cards to default positions
   const resetPositions = () => {
-    const pos: Record<string, Pos> = {};
-    AREAS_META.forEach((m, i) => {
-      pos[m.id] = { x: CX + REL_POS[i].dx, y: CY + REL_POS[i].dy };
-    });
-    setPositions(pos);
-    localStorage.removeItem("lbd_vision_positions");
+    setRelPos(DEFAULT_REL_POS);
+    localStorage.removeItem("lbd_vision_relpos_v2");
   };
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+  // ── Derived ─────────────────────────────────────────────────────────────────
   const scores      = areas.map((a) => a.score);
   const avgScore    = (scores.reduce((s, v) => s + v, 0) / N).toFixed(1);
   const filledCount = areas.filter((a) => a.text.trim().length > 0).length;
-
-  // Line from wheel edge toward card center
-  const lineFor = (id: string) => {
-    const pos = positions[id];
-    if (!pos) return null;
-    const dx = pos.x - CX, dy = pos.y - CY;
-    const d  = Math.hypot(dx, dy);
-    if (d === 0) return null;
-    return {
-      x1: CX + (RADAR_R + 10) * (dx / d),
-      y1: CY + (RADAR_R + 10) * (dy / d),
-      x2: pos.x, y2: pos.y,
-    };
-  };
 
   const handleSave = (u: AreaData) => {
     const updated = areas.map((a) => (a.id === u.id ? u : a));
     setAreas(updated);
     setSaving(true);
-    api.put("/vision", { areas: updated, purposeStatement }).finally(() => setSaving(false));
+    api.put("/vision", { areas: updated }).finally(() => setSaving(false));
   };
 
-  const handlePurposeSave = (text: string) => {
-    const trimmed = text.trim() || DEFAULT_PURPOSE;
-    setPurpose(trimmed);
-    setEditingPurpose(false);
-    api.put("/vision", { areas, purposeStatement: trimmed }).catch(() => {});
-  };
-
-  const handleGenerate = async () => {
-    if (isGenerating) return; // hard guard — ignore extra clicks
-    setIsGenerating(true);
-    setGenerateError(null);
-    setPurpose("");
-    try {
-      const res = await fetch("/api/generate-purpose", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ areas: areas.map(a => ({ id: a.id, name: a.name, text: a.text })) }),
-      });
-      if (res.status === 429) {
-        const { message } = await res.json();
-        setGenerateError(message ?? "Too many requests, please wait.");
-        setPurpose(DEFAULT_PURPOSE);
-        return;
-      }
-      if (!res.ok || !res.body) throw new Error("Generation failed.");
-      const reader  = res.body.getReader();
-      const decoder = new TextDecoder();
-      let generated = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        generated += decoder.decode(value, { stream: true });
-        setPurpose(generated);
-      }
-      api.put("/vision", { areas, purposeStatement: generated }).catch(() => {});
-    } catch {
-      setGenerateError("Something went wrong. Please try again.");
-      setPurpose(DEFAULT_PURPOSE);
-    } finally {
-      setIsGenerating(false);
-    }
+  // SVG connector line: from wheel edge → card center
+  const lineFor = (id: string) => {
+    const r = relPos[id];
+    if (!r || CX === 0) return null;
+    const d = Math.hypot(r.dx, r.dy);
+    if (d === 0) return null;
+    return {
+      x1: CX + (RADAR_R + 10) * (r.dx / d),
+      y1: CY + (RADAR_R + 10) * (r.dy / d),
+      x2: CX + r.dx,
+      y2: CY + r.dy,
+    };
   };
 
   return (
     <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
 
-      {/* ── Header ─────────────────────────────────────────────────── */}
-      <div style={{
-        padding: "18px 36px 14px", borderBottom: "1px solid #EDE5D8",
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="px-page" style={{
+        paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexWrap: "wrap", gap: "8px",
       }}>
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
@@ -276,20 +209,17 @@ export default function VisionPage() {
           <h1 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
             Vision Canvas
           </h1>
-          <p style={{ fontSize: "12px", color: "#57534E", marginTop: "3px" }}>
+          <p className="hidden lg:block" style={{ fontSize: "12px", color: "#57534E", marginTop: "3px" }}>
             Drag cards to arrange your board. Click any card to edit.
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          {saving && (
-            <span style={{ fontSize: "11px", color: "#57534E" }}>Saving…</span>
-          )}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+          {saving && <span style={{ fontSize: "11px", color: "#57534E" }}>Saving…</span>}
           <button
+            className="hidden lg:flex items-center"
             onClick={resetPositions}
-            title="Reset card positions"
             style={{
-              display: "flex", alignItems: "center", gap: "5px",
-              padding: "6px 12px", borderRadius: "8px",
+              gap: "5px", padding: "6px 12px", borderRadius: "8px",
               border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
               fontSize: "11px", color: "#57534E", cursor: "pointer",
             }}
@@ -301,16 +231,251 @@ export default function VisionPage() {
         </div>
       </div>
 
-      {/* ── Canvas ─────────────────────────────────────────────────── */}
+      {/* ── Mobile layout (< lg) ─────────────────────────────────────────── */}
+      <div className="block lg:hidden" style={{ backgroundColor: "#FAF5EE", minHeight: "calc(100vh - 56px)" }}>
+
+        {/* Tab switcher */}
+        <div style={{
+          display: "flex", padding: "12px 16px 0", gap: "8px",
+          borderBottom: "1px solid #EDE5D8", backgroundColor: "#FFFFFF",
+        }}>
+          {(["visions", "wheel"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => { setMobileTab(tab); setWheelDetail(null); }}
+              style={{
+                padding: "9px 20px",
+                borderRadius: "10px 10px 0 0",
+                fontSize: "13px",
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+                backgroundColor: mobileTab === tab ? "#FAF5EE" : "transparent",
+                color: mobileTab === tab ? "#F97316" : "#78716C",
+                borderBottom: mobileTab === tab ? "2px solid #F97316" : "2px solid transparent",
+                transition: "all 0.15s",
+              }}
+            >
+              {tab === "visions" ? "Visions" : "Wheel of Life"}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Visions tab ── */}
+        {mobileTab === "visions" && (
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            gap: "20px", padding: "24px 20px 40px",
+          }}>
+            {AREAS_META.map((meta, i) => (
+              <div key={meta.id} style={{ width: "100%", maxWidth: "340px" }}>
+                <PolaroidCard
+                  area={areas[i]}
+                  rotation={0}
+                  onClick={() => setEditing(i)}
+                  accentColor={AREA_META[meta.id as LifeArea]?.color ?? "#F97316"}
+                  accentBg={AREA_META[meta.id as LifeArea]?.bg ?? "#FFF7ED"}
+                  cardWidth="100%"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Wheel of Life tab ── */}
+        {mobileTab === "wheel" && (
+          <div style={{ padding: "0 0 40px" }}>
+
+            {/* Detail view — slide in when an area is selected */}
+            {wheelDetail !== null ? (
+              <div style={{ padding: "16px" }}>
+                {/* Back */}
+                <button
+                  onClick={() => setWheelDetail(null)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "6px",
+                    background: "none", border: "none", cursor: "pointer",
+                    fontSize: "13px", fontWeight: 600,
+                    color: "#57534E", padding: "4px 0", marginBottom: "20px",
+                  }}
+                >
+                  ← Back to Wheel
+                </button>
+
+                {/* Area card */}
+                {(() => {
+                  const meta   = AREAS_META[wheelDetail];
+                  const area   = areas[wheelDetail];
+                  const accent = AREA_META[meta.id as LifeArea]?.color ?? "#F97316";
+                  const bg     = AREA_META[meta.id as LifeArea]?.bg    ?? "#FFF7ED";
+                  return (
+                    <div style={{
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: "16px",
+                      border: `1.5px solid ${accent}33`,
+                      overflow: "hidden",
+                    }}>
+                      {/* Accent top bar */}
+                      <div style={{ height: 4, background: accent }} />
+
+                      <div style={{ padding: "20px" }}>
+                        {/* Header */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                          <div>
+                            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em",
+                              textTransform: "uppercase", color: accent, marginBottom: "2px" }}>
+                              Life Area
+                            </p>
+                            <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
+                              {area.name}
+                            </h2>
+                          </div>
+                          {/* Score badge */}
+                          <div style={{
+                            width: 56, height: 56, borderRadius: "50%",
+                            backgroundColor: bg,
+                            border: `2px solid ${accent}44`,
+                            display: "flex", flexDirection: "column",
+                            alignItems: "center", justifyContent: "center",
+                          }}>
+                            <span style={{ fontSize: "18px", fontWeight: 700, color: accent, lineHeight: 1 }}>
+                              {area.score}
+                            </span>
+                            <span style={{ fontSize: "9px", color: "#78716C" }}>/10</span>
+                          </div>
+                        </div>
+
+                        {/* Score bar */}
+                        <div style={{ marginBottom: "20px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between",
+                            fontSize: "11px", color: "#78716C", marginBottom: "6px" }}>
+                            <span>Current score</span>
+                            <span style={{ fontWeight: 600, color: accent }}>{area.score}/10</span>
+                          </div>
+                          <div style={{ height: 6, backgroundColor: "#F2EAE0", borderRadius: 3, overflow: "hidden" }}>
+                            <div style={{
+                              height: "100%", borderRadius: 3,
+                              width: `${(area.score / 10) * 100}%`,
+                              background: accent,
+                              transition: "width 0.4s ease",
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Vision text */}
+                        <div style={{
+                          backgroundColor: bg, borderRadius: "10px",
+                          padding: "14px", marginBottom: "20px",
+                          minHeight: "80px",
+                        }}>
+                          <p style={{ fontSize: "10px", fontWeight: 700, color: accent,
+                            textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" }}>
+                            10-Year Vision
+                          </p>
+                          {area.text ? (
+                            <p style={{ fontSize: "13px", color: "#1C1917", lineHeight: 1.6, margin: 0 }}>
+                              {area.text}
+                            </p>
+                          ) : (
+                            <p style={{ fontSize: "13px", color: "#A8A29E", fontStyle: "italic", margin: 0 }}>
+                              No vision added yet. Tap Edit to add yours.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Edit button */}
+                        <button
+                          onClick={() => { setWheelDetail(null); setEditing(wheelDetail); }}
+                          style={{
+                            width: "100%", padding: "12px",
+                            borderRadius: "10px", border: "none",
+                            background: accent,
+                            color: "#FFFFFF", fontSize: "13px", fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {area.text ? "Edit Vision" : "Add Vision"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+            ) : (
+              /* Wheel view */
+              <div>
+                <div style={{ display: "flex", justifyContent: "center", padding: "24px 16px 8px" }}>
+                  <WheelOfLife
+                    scores={scores}
+                    size={300}
+                    interactive
+                    activeIndex={wheelHover}
+                    onAreaClick={(i) => { setWheelHover(i); setWheelDetail(i); }}
+                  />
+                </div>
+
+                {/* Score list */}
+                <div style={{ padding: "12px 16px 0" }}>
+                  <p style={{ fontSize: "10px", fontWeight: 700, color: "#78716C",
+                    textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
+                    Scores
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {AREAS_META.map((meta, i) => {
+                      const accent = AREA_META[meta.id as LifeArea]?.color ?? "#F97316";
+                      return (
+                        <button
+                          key={meta.id}
+                          onClick={() => setWheelDetail(i)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "10px",
+                            backgroundColor: "#FFFFFF", borderRadius: "10px",
+                            padding: "10px 12px",
+                            border: "1px solid #EDE5D8",
+                            cursor: "pointer", textAlign: "left",
+                          }}
+                        >
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917",
+                            flex: 1, minWidth: 0, overflow: "hidden",
+                            textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {meta.name}
+                          </span>
+                          <div style={{ flexShrink: 0, width: 80 }}>
+                            <div style={{ height: 4, backgroundColor: "#F2EAE0", borderRadius: 2, overflow: "hidden" }}>
+                              <div style={{
+                                height: "100%", borderRadius: 2,
+                                width: `${(areas[i].score / 10) * 100}%`,
+                                background: accent,
+                              }} />
+                            </div>
+                          </div>
+                          <span style={{ fontSize: "11px", fontWeight: 700, color: accent,
+                            flexShrink: 0, minWidth: "30px", textAlign: "right" }}>
+                            {areas[i].score}/10
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Desktop canvas (≥ lg) ────────────────────────────────────────── */}
       <div
         ref={containerRef}
+        className="hidden lg:block"
         style={{
-          position: "relative", width: "100%", height: 860,
+          position: "relative", width: "100%", height: CANVAS_H,
           userSelect: "none",
           cursor: dragging ? "grabbing" : "default",
         }}
       >
-        {/* Connecting lines SVG */}
+        {/* Connector lines */}
         <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%",
           pointerEvents: "none", overflow: "visible" }}>
           {AREAS_META.map((m, i) => {
@@ -319,11 +484,13 @@ export default function VisionPage() {
             const active = areas[i].text.trim().length > 0;
             return (
               <g key={m.id}>
-                <line x1={L.x1} y1={L.y1} x2={L.x2} y2={L.y2}
+                <line
+                  x1={L.x1} y1={L.y1} x2={L.x2} y2={L.y2}
                   stroke={active ? "#F97316" : "#C9B89A"}
                   strokeWidth={active ? 1.5 : 1}
                   strokeDasharray={active ? "none" : "6,5"}
-                  strokeOpacity={active ? 0.45 : 0.5} />
+                  strokeOpacity={active ? 0.45 : 0.5}
+                />
                 <circle cx={L.x2} cy={L.y2} r={4.5}
                   fill={active ? "#F97316" : "#C9A84C"} opacity={0.45} />
               </g>
@@ -331,7 +498,7 @@ export default function VisionPage() {
           })}
         </svg>
 
-        {/* Wheel of Life — fixed at center, prominent */}
+        {/* Wheel of Life */}
         {CX > 0 && (
           <div style={{
             position: "absolute",
@@ -343,9 +510,7 @@ export default function VisionPage() {
             <WheelOfLife scores={scores} size={WHEEL_PX} />
             <div style={{ position: "absolute", bottom: -32, left: "50%",
               transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <p style={{ fontSize: "10px", color: "#44403C", marginBottom: "2px" }}>
-                Current Balance
-              </p>
+              <p style={{ fontSize: "10px", color: "#44403C", marginBottom: "2px" }}>Current Balance</p>
               <p style={{ fontSize: "14px", fontWeight: 700, color: "#78716C" }}>
                 {avgScore}{" "}
                 <span style={{ fontWeight: 400, color: "#57534E", fontSize: "12px" }}>/ 10</span>
@@ -355,9 +520,9 @@ export default function VisionPage() {
         )}
 
         {/* Draggable polaroid cards */}
-        {AREAS_META.map((meta, i) => {
-          const pos = positions[meta.id];
-          if (!pos) return null;
+        {CX > 0 && AREAS_META.map((meta, i) => {
+          const r = relPos[meta.id];
+          if (!r) return null;
           const isThis = dragging?.id === meta.id;
           return (
             <div
@@ -365,7 +530,8 @@ export default function VisionPage() {
               onMouseDown={(e) => startDrag(meta.id, e)}
               style={{
                 position: "absolute",
-                left: pos.x, top: pos.y,
+                left: CX + r.dx,
+                top:  CY + r.dy,
                 transform: "translate(-50%, -50%)",
                 zIndex: isThis ? 20 : 5,
                 cursor: isThis ? "grabbing" : "grab",
@@ -385,80 +551,6 @@ export default function VisionPage() {
             </div>
           );
         })}
-
-        {/* Purpose statement footer */}
-        <div style={{
-          position: "absolute", bottom: 16, left: "50%",
-          transform: "translateX(-50%)", width: "min(820px, 90%)",
-          textAlign: "center", borderTop: "1px solid #E8DDD0",
-          paddingTop: "12px",
-        }}>
-          {generateError && (
-            <p style={{ fontSize: "11px", color: "#B91C1C", marginBottom: "6px" }}>
-              {generateError}
-            </p>
-          )}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-            {editingPurpose ? (
-              <textarea
-                autoFocus
-                defaultValue={purposeStatement}
-                rows={2}
-                onBlur={(e) => handlePurposeSave(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePurposeSave(e.currentTarget.value); }
-                  if (e.key === "Escape") setEditingPurpose(false);
-                }}
-                style={{
-                  flex: 1, maxWidth: "740px", fontSize: "13px", color: "#57534E",
-                  fontStyle: "italic", lineHeight: 1.65, textAlign: "center",
-                  border: "1.5px solid #F97316", borderRadius: "8px",
-                  padding: "6px 10px", backgroundColor: "#FDFAF7",
-                  outline: "none", resize: "none", fontFamily: "inherit",
-                  caretColor: "#F97316",
-                }}
-              />
-            ) : (
-              <p style={{ fontSize: "13px", color: "#57534E", fontStyle: "italic",
-                lineHeight: 1.65, maxWidth: "640px",
-                opacity: isGenerating ? 0.5 : 1, transition: "opacity 0.2s" }}>
-                {purposeStatement ? `“${purposeStatement}”` : " "}
-              </p>
-            )}
-            {/* Edit button */}
-            <button
-              onClick={() => !isGenerating && setEditingPurpose(true)}
-              disabled={isGenerating}
-              title="Edit purpose statement"
-              style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "6px",
-                backgroundColor: "#F5F0EB", border: "none",
-                cursor: isGenerating ? "not-allowed" : "pointer", opacity: isGenerating ? 0.4 : 1,
-                display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              <Edit2 size={10} color="#A8A29E" />
-            </button>
-            {/* Generate with AI button */}
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              title="Generate purpose statement with AI"
-              style={{
-                flexShrink: 0, display: "flex", alignItems: "center", gap: "5px",
-                padding: "5px 10px", borderRadius: "7px",
-                background: isGenerating ? "#F5F0EB" : "linear-gradient(135deg,#F97316,#EA580C)",
-                border: "none", cursor: isGenerating ? "not-allowed" : "pointer",
-                fontSize: "10px", fontWeight: 600,
-                color: isGenerating ? "#57534E" : "#fff",
-                transition: "opacity 0.2s",
-              }}
-            >
-              {isGenerating
-                ? <><Loader2 size={10} className="animate-spin" /> Generating…</>
-                : <><Sparkles size={10} /> Generate with AI</>
-              }
-            </button>
-          </div>
-        </div>
       </div>
 
       <AreaEditSheet

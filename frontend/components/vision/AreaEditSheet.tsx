@@ -81,7 +81,7 @@ export default function AreaEditSheet({
           right: 0,
           top: 0,
           bottom: 0,
-          width: "400px",
+          width: "min(400px, 100vw)",
           backgroundColor: "#FFFFFF",
           borderLeft: "1px solid #E8DDD0",
           boxShadow: "-8px 0 40px rgba(28,25,23,0.1)",

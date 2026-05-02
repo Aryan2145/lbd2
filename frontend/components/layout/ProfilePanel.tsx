@@ -55,7 +55,7 @@ export default function ProfilePanel({ onClose, profile, onSave, onChangePasswor
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
       <div style={{
         position: "absolute", top: "46px", right: 0,
-        width: "300px", maxHeight: "540px",
+        width: "min(300px, calc(100vw - 16px))", maxHeight: "540px",
         backgroundColor: "#FFFFFF", borderRadius: "16px",
         border: "1px solid #E8DDD0", boxShadow: "0 8px 32px rgba(0,0,0,0.13)",
         zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden",

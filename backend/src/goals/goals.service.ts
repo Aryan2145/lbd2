@@ -10,9 +10,13 @@ export class GoalsService {
   }
 
   create(userId: string, data: any) {
-    const { statement, outcome, metric, deadline, area, progress, velocity } = data;
+    const { statement, outcome, metric, deadline, area, progress, velocity, milestones } = data;
     return this.prisma.goal.create({
-      data: { userId, statement, outcome: outcome || null, metric: metric || null, deadline, area, progress: progress ?? 0, velocity: velocity ?? null },
+      data: {
+        userId, statement, outcome: outcome || null, metric: metric || null,
+        deadline, area, progress: progress ?? 0, velocity: velocity ?? null,
+        milestones: milestones ?? [],
+      },
       include: { notes: true },
     });
   }
@@ -26,6 +30,7 @@ export class GoalsService {
     if (data.area       !== undefined) fields.area       = data.area;
     if (data.progress   !== undefined) fields.progress   = data.progress;
     if (data.velocity   !== undefined) fields.velocity   = data.velocity   ?? null;
+    if (data.milestones !== undefined) fields.milestones = data.milestones;
     return this.prisma.goal.update({ where: { id }, data: fields });
   }
 

@@ -14,19 +14,34 @@ export class BucketService {
   }
 
   async create(userId: string, data: any) {
-    const { title, lifeArea, status, targetDate } = data;
+    const { title, description, lifeArea, imageUrl, status, targetDate, achievedAt, memoryPhotoUrl, changeReflection } = data;
     const row = await this.prisma.bucketEntry.create({
-      data: { userId, title, lifeArea, status: TO_DB[status] ?? 'dream', targetDate: targetDate || null },
+      data: {
+        userId, title,
+        description: description ?? '',
+        lifeArea,
+        imageUrl: imageUrl ?? '',
+        status: TO_DB[status] ?? 'dream',
+        targetDate: targetDate || null,
+        achievedAt: achievedAt ? BigInt(Math.floor(Number(achievedAt))) : null,
+        memoryPhotoUrl: memoryPhotoUrl || null,
+        changeReflection: changeReflection || null,
+      },
     });
     return { ...row, status: FROM_DB[row.status] ?? row.status };
   }
 
   async update(id: string, data: any) {
     const fields: any = {};
-    if (data.title      !== undefined) fields.title      = data.title;
-    if (data.lifeArea   !== undefined) fields.lifeArea   = data.lifeArea;
-    if (data.status     !== undefined) fields.status     = TO_DB[data.status] ?? data.status;
-    if (data.targetDate !== undefined) fields.targetDate = data.targetDate || null;
+    if (data.title            !== undefined) fields.title            = data.title;
+    if (data.description      !== undefined) fields.description      = data.description ?? '';
+    if (data.lifeArea         !== undefined) fields.lifeArea         = data.lifeArea;
+    if (data.imageUrl         !== undefined) fields.imageUrl         = data.imageUrl ?? '';
+    if (data.status           !== undefined) fields.status           = TO_DB[data.status] ?? data.status;
+    if (data.targetDate       !== undefined) fields.targetDate       = data.targetDate || null;
+    if (data.achievedAt       !== undefined) fields.achievedAt       = data.achievedAt ? BigInt(Math.floor(Number(data.achievedAt))) : null;
+    if (data.memoryPhotoUrl   !== undefined) fields.memoryPhotoUrl   = data.memoryPhotoUrl || null;
+    if (data.changeReflection !== undefined) fields.changeReflection = data.changeReflection || null;
     const row = await this.prisma.bucketEntry.update({ where: { id }, data: fields });
     return { ...row, status: FROM_DB[row.status] ?? row.status };
   }

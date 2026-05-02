@@ -98,8 +98,8 @@ export default function NotificationPanel({ onClose, tasks, habits, weekPlans, d
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
       <div style={{
-        position: "absolute", top: "46px", right: "42px",
-        width: "340px", maxHeight: "460px",
+        position: "absolute", top: "46px", right: 0,
+        width: "min(340px, calc(100vw - 16px))", maxHeight: "460px",
         backgroundColor: "#FFFFFF", borderRadius: "16px",
         border: "1px solid #E8DDD0", boxShadow: "0 8px 32px rgba(0,0,0,0.13)",
         zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden",

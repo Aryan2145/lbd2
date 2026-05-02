@@ -94,7 +94,7 @@ export default function TasksPage() {
       display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Header */}
-      <div style={{ padding: "16px 28px 12px", borderBottom: "1px solid #EDE5D8",
+      <div className="px-page-md" style={{ paddingTop: "16px", paddingBottom: "12px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
@@ -125,8 +125,8 @@ export default function TasksPage() {
       </div>
 
       {/* Toolbar */}
-      <div style={{ padding: "10px 28px", borderBottom: "1px solid #EDE5D8",
-        display: "flex", alignItems: "center", gap: "6px", flexShrink: 0, flexWrap: "nowrap" }}>
+      <div className="px-page-md" style={{ paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
+        display: "flex", alignItems: "center", gap: "6px", flexShrink: 0, flexWrap: "wrap" }}>
 
         {!searchOpen && VIEWS.map(({ value, icon: Icon, label }) => {
           // RECURRING_DISABLED: const badge = value === "closed" ? closed.length : value === "templates" ? templates.length : null;

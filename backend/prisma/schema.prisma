@@ -110,7 +110,8 @@ model Goal {
   progress  Int      @default(0)
   velocity  Int?
 
-  notes     GoalNote[]
+  notes      GoalNote[]
+  milestones Json     @default("[]")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -149,9 +150,12 @@ model Habit {
   unit       String?
 
   // binary habits: ISO date strings of completed days
-  completions  String[]
+  completions       String[]
   // measurable habits: { "YYYY-MM-DD": value }
-  measurements Json         @default("{}")
+  measurements      Json     @default("{}")
+
+  linkedGoalId      String?
+  linkedMilestoneId String?
 
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
@@ -173,8 +177,9 @@ model Task {
   deadline     String     // YYYY-MM-DD
   quadrant     Quadrant
   status       TaskStatus @default(open)
-  linkedGoalId String?    // references Goal.id (no FK — goal may be deleted)
-  kind         String     @default("standalone")
+  linkedGoalId      String?
+  linkedMilestoneId String?
+  kind              String     @default("standalone")
   closedAt     BigInt?    // epoch ms
   variance     Int?       // days late (+) or early (-)
 
@@ -340,10 +345,15 @@ model BucketEntry {
   userId     String
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  title      String
-  lifeArea   LifeArea
-  status     BucketStatus @default(dream)
-  targetDate String?      // YYYY-MM-DD
+  title            String
+  description      String   @default("")
+  lifeArea         LifeArea
+  imageUrl         String   @default("")
+  status           BucketStatus @default(dream)
+  targetDate       String?  // YYYY-MM-DD
+  achievedAt       BigInt?  // epoch ms
+  memoryPhotoUrl   String?
+  changeReflection String?
 
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
