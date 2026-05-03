@@ -1,34 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Flame, Repeat2, CheckCheck } from "lucide-react";
-import HabitCard, { toLocalDate, isScheduledDay, calcStreak, isHabitDoneOnDate, type HabitData, type LifeArea } from "@/components/habits/HabitCard";
+import { useState, useRef, useEffect } from "react";
+import { Plus, Flame, Repeat2, CheckCheck, Check, Search, X, ChevronDown } from "lucide-react";
+import HabitCard, { toLocalDate, isScheduledDay, calcStreak, isHabitDoneOnDate, AREA_META, type HabitData, type LifeArea } from "@/components/habits/HabitCard";
 import HabitCreateSheet from "@/components/habits/HabitCreateSheet";
 import HabitDetailSheet from "@/components/habits/HabitDetailSheet";
 import { useAppStore } from "@/lib/AppStore";
 
-const FILTERS = [
-  { value: "today",         label: "Today"          },
-  { value: "all",           label: "All habits"     },
-  { value: "professional",  label: "Professional"   },
-  { value: "wealth",        label: "Wealth"         },
-  { value: "health",        label: "Health"         },
-  { value: "spiritual",     label: "Spiritual"      },
-  { value: "personal",      label: "Personal Growth"},
-  { value: "relationships", label: "Relationships"  },
-  { value: "contribution",  label: "Contribution"   },
-] as const;
-
-type FilterValue = typeof FILTERS[number]["value"];
-
-function applyFilter(habits: HabitData[], f: FilterValue): HabitData[] {
-  if (f === "all")   return habits;
-  if (f === "today") {
-    const dow = new Date().getDay();
-    return habits.filter((h) => isScheduledDay(h.frequency, h.customDays, dow));
-  }
-  return habits.filter((h) => h.area === f);
-}
+const ALL_AREAS: LifeArea[] = [
+  "professional", "wealth", "health", "spiritual", "personal", "relationships", "contribution",
+];
 
 export default function HabitsPage() {
   const {
@@ -37,9 +18,39 @@ export default function HabitsPage() {
     toggleHabitDay, setHabitMeasurement, stepHabitToday,
   } = useAppStore();
 
-  const [filter,      setFilter]      = useState<FilterValue>("today");
-  const [createOpen,  setCreateOpen]  = useState(false);
-  const [detailHabit, setDetailHabit] = useState<HabitData | null>(null);
+  const [selectedAreas, setSelectedAreas] = useState<Set<LifeArea>>(new Set(ALL_AREAS));
+  const [todayOnly,     setTodayOnly]     = useState(false);
+  const [createOpen,   setCreateOpen]  = useState(false);
+  const [detailHabit,  setDetailHabit] = useState<HabitData | null>(null);
+  const [searchQuery,  setSearchQuery] = useState("");
+  const [searchOpen,   setSearchOpen]  = useState(false);
+  const searchRef    = useRef<HTMLInputElement>(null);
+  const filterDropRef = useRef<HTMLDivElement>(null);
+  const [filterDropOpen, setFilterDropOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (filterDropRef.current && !filterDropRef.current.contains(e.target as Node))
+        setFilterDropOpen(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, []);
+
+  function clearSearch() { setSearchQuery(""); setSearchOpen(false); }
+
+  const q = searchQuery.trim().toLowerCase();
+  const searchResults = q
+    ? habits.filter((h) =>
+        h.name.toLowerCase().includes(q) ||
+        h.description.toLowerCase().includes(q)
+      )
+    : [];
+  const showSearch = q.length > 0;
 
   const todayDow   = new Date().getDay();
   const todayStr   = toLocalDate();
@@ -49,7 +60,19 @@ export default function HabitsPage() {
   const topStreak  = Math.max(0, ...habits.map(calcStreak));
   const activeCount = habits.filter((h) => calcStreak(h) > 0).length;
 
-  const filtered = applyFilter(habits, filter);
+  function toggleArea(area: LifeArea) {
+    setSelectedAreas((prev) => {
+      const next = new Set(prev);
+      if (next.has(area)) next.delete(area); else next.add(area);
+      return next;
+    });
+  }
+
+  const filtered = habits.filter((h) => {
+    if (todayOnly && !isScheduledDay(h.frequency, h.customDays, todayDow)) return false;
+    if (selectedAreas.size < ALL_AREAS.length && !selectedAreas.has(h.area as LifeArea)) return false;
+    return true;
+  });
 
   const handleToggle = (id: string) => {
     toggleHabitDay(id, todayStr);
@@ -172,39 +195,167 @@ export default function HabitsPage() {
         )}
       </div>
 
-      {/* Filter tabs */}
-      <div className="px-page" style={{ paddingTop: "12px", paddingBottom: "12px", borderBottom: "1px solid #EDE5D8",
-        display: "flex", gap: "6px", overflowX: "auto" }}>
-        {FILTERS.map((f) => (
-          <button key={f.value} onClick={() => setFilter(f.value)} style={{
-            padding: "5px 13px", borderRadius: "20px", whiteSpace: "nowrap",
+      {/* Filter bar */}
+      <div className="px-page" style={{ paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
+        display: "flex", alignItems: "center", gap: "8px" }}>
+
+        {/* Filter dropdown — same style as Goals Life Areas */}
+        <div style={{ position: "relative", flexShrink: 0 }} ref={filterDropRef}>
+          <button onClick={() => setFilterDropOpen(!filterDropOpen)} style={{
+            display: "flex", alignItems: "center", gap: "6px",
+            padding: "6px 12px", borderRadius: "8px", whiteSpace: "nowrap",
+            border: `1.5px solid ${(todayOnly || selectedAreas.size < ALL_AREAS.length) ? "#F97316" : "#E8DDD0"}`,
+            backgroundColor: (todayOnly || selectedAreas.size < ALL_AREAS.length) ? "#FFF7ED" : "#FFFFFF",
             fontSize: "11px", fontWeight: 600,
-            border: `1.5px solid ${filter === f.value ? "#F97316" : "#E8DDD0"}`,
-            backgroundColor: filter === f.value ? "#FFF7ED" : "#FFFFFF",
-            color: filter === f.value ? "#F97316" : "#78716C",
-            cursor: "pointer", transition: "all 0.15s",
+            color: (todayOnly || selectedAreas.size < ALL_AREAS.length) ? "#F97316" : "#78716C",
+            cursor: "pointer",
           }}>
-            {f.label}
-            {f.value === "today" && (
-              <span style={{
-                marginLeft: "5px", display: "inline-block",
-                width: "16px", height: "16px", lineHeight: "16px",
-                borderRadius: "50%",
-                backgroundColor: filter === "today" ? "#F97316" : "#E8DDD0",
-                color: filter === "today" ? "#FFFFFF" : "#A8A29E",
-                fontSize: "9px", fontWeight: 700, textAlign: "center",
-              }}>
-                {dueToday.length}
+            Life Areas
+            {selectedAreas.size < ALL_AREAS.length && (
+              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "#F97316",
+                color: "#FFFFFF", borderRadius: "10px", padding: "1px 5px" }}>
+                {selectedAreas.size}
               </span>
             )}
+            <ChevronDown size={11} style={{ transition: "transform 0.15s",
+              transform: filterDropOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
           </button>
-        ))}
+
+          {filterDropOpen && (
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
+              backgroundColor: "#FFFFFF", border: "1px solid #E8DDD0", borderRadius: "12px",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.10)", padding: "6px", minWidth: "200px" }}>
+
+              {/* Today toggle */}
+              <button onClick={() => setTodayOnly(!todayOnly)} style={{
+                width: "100%", display: "flex", alignItems: "center", gap: "8px",
+                padding: "6px 8px", borderRadius: "6px", border: "none",
+                backgroundColor: todayOnly ? "#FFF7ED" : "transparent", cursor: "pointer",
+              }}>
+                <span style={{ width: 14, height: 14, borderRadius: "3px", flexShrink: 0,
+                  border: `2px solid ${todayOnly ? "#F97316" : "#C8BFB5"}`,
+                  backgroundColor: todayOnly ? "#F97316" : "#FFFFFF",
+                  display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {todayOnly && <Check size={8} color="#FFFFFF" strokeWidth={3} />}
+                </span>
+                <span style={{ fontSize: "12px", fontWeight: 600,
+                  color: todayOnly ? "#EA580C" : "#78716C" }}>Today only</span>
+                <span style={{ marginLeft: "auto", fontSize: "9px", fontWeight: 700,
+                  backgroundColor: todayOnly ? "#F97316" : "#E8DDD0",
+                  color: todayOnly ? "#FFFFFF" : "#78716C",
+                  borderRadius: "10px", padding: "1px 5px" }}>
+                  {dueToday.length}
+                </span>
+              </button>
+
+              <div style={{ height: "1px", backgroundColor: "#F0EAE0", margin: "4px 0" }} />
+
+              <button
+                onClick={() => setSelectedAreas(selectedAreas.size === ALL_AREAS.length ? new Set() : new Set(ALL_AREAS))}
+                style={{ width: "100%", padding: "5px 8px", borderRadius: "6px", border: "none",
+                  backgroundColor: "transparent", cursor: "pointer", textAlign: "left",
+                  fontSize: "10px", fontWeight: 700, color: "#F97316" }}>
+                {selectedAreas.size === ALL_AREAS.length ? "Deselect All" : "Select All"}
+              </button>
+              <div style={{ height: "1px", backgroundColor: "#F0EAE0", margin: "4px 0" }} />
+
+              {ALL_AREAS.map((area) => {
+                const sel = selectedAreas.has(area); const meta = AREA_META[area];
+                return (
+                  <button key={area} onClick={() => toggleArea(area)} style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: "8px",
+                    padding: "6px 8px", borderRadius: "6px", border: "none",
+                    backgroundColor: sel ? "#FFF7ED" : "transparent", cursor: "pointer",
+                  }}>
+                    <span style={{ width: 14, height: 14, borderRadius: "3px", flexShrink: 0,
+                      border: `2px solid ${sel ? meta.color : "#C8BFB5"}`,
+                      backgroundColor: sel ? meta.color : "#FFFFFF",
+                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {sel && <Check size={8} color="#FFFFFF" strokeWidth={3} />}
+                    </span>
+                    <span style={{ fontSize: "12px", fontWeight: 600,
+                      color: sel ? "#EA580C" : "#78716C" }}>
+                      {meta.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        <div style={{ width: "240px", flexShrink: 0, display: "flex" }}>
+          {searchOpen ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%" }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <Search size={12} color="#78716C" style={{
+                  position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+                <input
+                  ref={searchRef}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search habits..."
+                  className="search-input"
+                  style={{
+                    width: "100%", padding: "7px 10px 7px 28px", borderRadius: "8px",
+                    backgroundColor: "#FFFFFF", fontSize: "12px", color: "#1C1917",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              <button onClick={clearSearch} style={{
+                flexShrink: 0, width: "30px", height: "30px", borderRadius: "8px",
+                border: "1px solid #EDE5D8", backgroundColor: "#FFFFFF",
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}>
+                <X size={13} color="#78716C" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setSearchOpen(true)} style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "6px",
+              padding: "7px 10px", borderRadius: "8px",
+              border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+              fontSize: "12px", color: "#1C1917", cursor: "pointer",
+            }}>
+              <Search size={12} color="#78716C" />
+              <span style={{ color: "#78716C" }}>Search habits...</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Habit grid */}
       <div className="px-page" style={{ paddingTop: "24px", paddingBottom: "24px" }}>
-        {filtered.length === 0 ? (
-          <EmptyState area={filter !== "today" && filter !== "all" ? filter as LifeArea : null}
+        {showSearch ? (
+          <>
+            <p style={{ fontSize: "12px", color: "#78716C", marginBottom: "16px" }}>
+              <span style={{ fontWeight: 700, color: "#1C1917" }}>{searchResults.length}</span>{" "}
+              result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchQuery}&rdquo;
+            </p>
+            {searchResults.length === 0 ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "200px" }}>
+                <p style={{ fontSize: "13px", color: "#A8A29E" }}>No habits match your search</p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "14px" }}>
+                {searchResults.map((h) => (
+                  <HabitCard
+                    key={h.id}
+                    habit={h}
+                    onClick={() => setDetailHabit(habits.find((x) => x.id === h.id) ?? h)}
+                    onToggleToday={handleToggle}
+                    onStep={handleStep}
+                    onToggleDate={handleToggleDate}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : filtered.length === 0 ? (
+          <EmptyState area={selectedAreas.size === 1 ? [...selectedAreas][0] : null}
             onAdd={() => setCreateOpen(true)} />
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "14px" }}>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Target, Check } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Plus, Target, Check, Search, X, ChevronDown } from "lucide-react";
 import GoalCard, { type GoalData, type LifeArea, AREA_META } from "@/components/goals/GoalCard";
 import GoalCreateSheet from "@/components/goals/GoalCreateSheet";
 import GoalDetailSheet from "@/components/goals/GoalDetailSheet";
@@ -37,7 +37,40 @@ export default function GoalsPage() {
 
   const [selectedAreas, setSelectedAreas] = useState<Set<LifeArea>>(new Set(ALL_AREAS));
   const [statusFilter,  setStatusFilter]  = useState<StatusFilter>("all");
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen,    setCreateOpen]    = useState(false);
+  const [searchQuery,   setSearchQuery]   = useState("");
+  const [searchOpen,    setSearchOpen]    = useState(false);
+  const searchRef      = useRef<HTMLInputElement>(null);
+  const areaDropRef    = useRef<HTMLDivElement>(null);
+  const statusDropRef  = useRef<HTMLDivElement>(null);
+  const [areaDropOpen,   setAreaDropOpen]   = useState(false);
+  const [statusDropOpen, setStatusDropOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (areaDropRef.current && !areaDropRef.current.contains(e.target as Node))
+        setAreaDropOpen(false);
+      if (statusDropRef.current && !statusDropRef.current.contains(e.target as Node))
+        setStatusDropOpen(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, []);
+
+  function clearSearch() { setSearchQuery(""); setSearchOpen(false); }
+
+  const q = searchQuery.trim().toLowerCase();
+  const searchResults = q
+    ? goals.filter((g) =>
+        g.statement.toLowerCase().includes(q) ||
+        g.outcome.toLowerCase().includes(q)
+      )
+    : [];
+  const showSearch = q.length > 0;
   const [detailGoal, setDetailGoal] = useState<GoalData | null>(null);
   const [taskPrefill,  setTaskPrefill]  = useState<{ goalId: string; milestoneId: string } | null>(null);
   const [habitPrefill, setHabitPrefill] = useState<{ goalId: string; milestoneId: string } | null>(null);
@@ -106,123 +139,195 @@ export default function GoalsPage() {
         </div>
       </div>
 
-      {/* Filter panel — desktop */}
-      <div className="hidden lg:block px-page" style={{ paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "7px" }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase",
-            letterSpacing: "0.08em", color: "#78716C" }}>Life Areas</span>
-          <button
-            onClick={() => setSelectedAreas(selectedAreas.size === ALL_AREAS.length ? new Set() : new Set(ALL_AREAS))}
-            style={{ fontSize: "11px", fontWeight: 600, color: "#F97316",
-              background: "none", border: "none", cursor: "pointer", padding: "2px 0" }}>
-            {selectedAreas.size === ALL_AREAS.length ? "Deselect All" : "Select All"}
-          </button>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "5px", marginBottom: "9px" }}>
-          {ALL_AREAS.map((area) => {
-            const sel = selectedAreas.has(area); const meta = AREA_META[area];
-            return (
-              <button key={area} onClick={() => toggleArea(area)} style={{
-                display: "flex", alignItems: "center", gap: "7px", padding: "6px 10px",
-                borderRadius: "10px", backgroundColor: sel ? "#FFF7ED" : "#FAFAFA",
-                border: `1.5px solid ${sel ? "#FED7AA" : "#E8DDD0"}`, cursor: "pointer", textAlign: "left",
-              }}>
-                <span style={{ width: 16, height: 16, borderRadius: "4px", flexShrink: 0,
-                  border: `2px solid ${sel ? meta.color : "#C8BFB5"}`,
-                  backgroundColor: sel ? meta.color : "#FFFFFF",
-                  display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {sel && <Check size={9} color="#FFFFFF" strokeWidth={3} />}
-                </span>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: sel ? "#EA580C" : "#78716C" }}>
-                  {meta.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", gap: "5px" }}>
-          {STATUS_OPTIONS.map(({ value, label }) => (
-            <button key={value} onClick={() => setStatusFilter(value)} style={{
-              display: "flex", alignItems: "center", gap: "5px",
-              padding: "5px 13px", borderRadius: "20px", whiteSpace: "nowrap",
-              fontSize: "11px", fontWeight: 600,
-              border: `1.5px solid ${statusFilter === value ? "#F97316" : "#E8DDD0"}`,
-              backgroundColor: statusFilter === value ? "#FFF7ED" : "#FFFFFF",
-              color: statusFilter === value ? "#F97316" : "#78716C", cursor: "pointer",
-            }}>
-              {label}
-              {value === "at-risk" && staleCount > 0 && (
-                <span style={{ width: "15px", height: "15px", lineHeight: "15px", borderRadius: "50%",
-                  backgroundColor: "#F97316", color: "#FFFFFF", fontSize: "9px", fontWeight: 700,
-                  textAlign: "center", display: "inline-block", flexShrink: 0 }}>{staleCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Unified filter bar */}
+      <div className="px-page" style={{ paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
+        display: "flex", alignItems: "center", gap: "8px" }}>
 
-      {/* Filter panel — mobile */}
-      <div className="lg:hidden" style={{ borderBottom: "1px solid #EDE5D8" }}>
-        {/* Area chips row */}
-        <div className="px-page" style={{ paddingTop: "8px", paddingBottom: "6px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-            <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase",
-              letterSpacing: "0.08em", color: "#78716C" }}>Life Areas</span>
-            <button
-              onClick={() => setSelectedAreas(selectedAreas.size === ALL_AREAS.length ? new Set() : new Set(ALL_AREAS))}
-              style={{ fontSize: "11px", fontWeight: 600, color: "#F97316",
-                background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-              {selectedAreas.size === ALL_AREAS.length ? "Deselect All" : "Select All"}
-            </button>
-          </div>
-          <div style={{ display: "flex", gap: "5px", overflowX: "auto", paddingBottom: "2px" }}>
-            {ALL_AREAS.map((area) => {
-              const sel = selectedAreas.has(area); const meta = AREA_META[area];
-              return (
-                <button key={area} onClick={() => toggleArea(area)} style={{
-                  display: "flex", alignItems: "center", gap: "5px", flexShrink: 0,
-                  padding: "5px 9px", borderRadius: "20px",
-                  backgroundColor: sel ? "#FFF7ED" : "#FAFAFA",
-                  border: `1.5px solid ${sel ? "#FED7AA" : "#E8DDD0"}`, cursor: "pointer",
-                }}>
-                  <span style={{ width: 13, height: 13, borderRadius: "3px", flexShrink: 0,
-                    border: `2px solid ${sel ? meta.color : "#C8BFB5"}`,
-                    backgroundColor: sel ? meta.color : "#FFFFFF",
-                    display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {sel && <Check size={7} color="#FFFFFF" strokeWidth={3} />}
-                  </span>
-                  <span style={{ fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap",
-                    color: sel ? "#EA580C" : "#78716C" }}>{meta.label}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* Life Areas dropdown */}
+        <div style={{ position: "relative", flexShrink: 0 }} ref={areaDropRef}>
+          <button onClick={() => { setAreaDropOpen(!areaDropOpen); setStatusDropOpen(false); }} style={{
+            display: "flex", alignItems: "center", gap: "6px",
+            padding: "6px 12px", borderRadius: "8px", whiteSpace: "nowrap",
+            border: `1.5px solid ${selectedAreas.size < ALL_AREAS.length ? "#F97316" : "#E8DDD0"}`,
+            backgroundColor: selectedAreas.size < ALL_AREAS.length ? "#FFF7ED" : "#FFFFFF",
+            fontSize: "11px", fontWeight: 600,
+            color: selectedAreas.size < ALL_AREAS.length ? "#F97316" : "#78716C", cursor: "pointer",
+          }}>
+            Life Areas
+            {selectedAreas.size < ALL_AREAS.length && (
+              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "#F97316",
+                color: "#FFFFFF", borderRadius: "10px", padding: "1px 5px" }}>
+                {selectedAreas.size}
+              </span>
+            )}
+            <ChevronDown size={11} style={{ transition: "transform 0.15s",
+              transform: areaDropOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+          </button>
+
+          {areaDropOpen && (
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
+              backgroundColor: "#FFFFFF", border: "1px solid #E8DDD0", borderRadius: "12px",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.10)", padding: "6px", minWidth: "200px" }}>
+              <button
+                onClick={() => setSelectedAreas(selectedAreas.size === ALL_AREAS.length ? new Set() : new Set(ALL_AREAS))}
+                style={{ width: "100%", padding: "5px 8px", borderRadius: "6px", border: "none",
+                  backgroundColor: "transparent", cursor: "pointer", textAlign: "left",
+                  fontSize: "10px", fontWeight: 700, color: "#F97316" }}>
+                {selectedAreas.size === ALL_AREAS.length ? "Deselect All" : "Select All"}
+              </button>
+              <div style={{ height: "1px", backgroundColor: "#F0EAE0", margin: "4px 0" }} />
+              {ALL_AREAS.map((area) => {
+                const sel = selectedAreas.has(area); const meta = AREA_META[area];
+                return (
+                  <button key={area} onClick={() => toggleArea(area)} style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: "8px",
+                    padding: "6px 8px", borderRadius: "6px", border: "none",
+                    backgroundColor: sel ? "#FFF7ED" : "transparent", cursor: "pointer",
+                  }}>
+                    <span style={{ width: 14, height: 14, borderRadius: "3px", flexShrink: 0,
+                      border: `2px solid ${sel ? meta.color : "#C8BFB5"}`,
+                      backgroundColor: sel ? meta.color : "#FFFFFF",
+                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {sel && <Check size={8} color="#FFFFFF" strokeWidth={3} />}
+                    </span>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: sel ? "#EA580C" : "#78716C" }}>
+                      {meta.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-        {/* Status row */}
-        <div className="px-page" style={{ paddingBottom: "8px", display: "flex", gap: "5px" }}>
-          {STATUS_OPTIONS.map(({ value, label }) => (
-            <button key={value} onClick={() => setStatusFilter(value)} style={{
-              display: "flex", alignItems: "center", gap: "4px",
-              padding: "4px 11px", borderRadius: "20px", whiteSpace: "nowrap",
-              fontSize: "11px", fontWeight: 600,
-              border: `1.5px solid ${statusFilter === value ? "#F97316" : "#E8DDD0"}`,
-              backgroundColor: statusFilter === value ? "#FFF7ED" : "#FFFFFF",
-              color: statusFilter === value ? "#F97316" : "#78716C", cursor: "pointer",
+
+        {/* Status dropdown */}
+        <div style={{ position: "relative", flexShrink: 0 }} ref={statusDropRef}>
+          <button onClick={() => { setStatusDropOpen(!statusDropOpen); setAreaDropOpen(false); }} style={{
+            display: "flex", alignItems: "center", gap: "6px",
+            padding: "6px 12px", borderRadius: "8px", whiteSpace: "nowrap",
+            border: `1.5px solid ${statusFilter !== "all" ? "#F97316" : "#E8DDD0"}`,
+            backgroundColor: statusFilter !== "all" ? "#FFF7ED" : "#FFFFFF",
+            fontSize: "11px", fontWeight: 600,
+            color: statusFilter !== "all" ? "#F97316" : "#78716C", cursor: "pointer",
+          }}>
+            {STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label}
+            {statusFilter === "at-risk" && staleCount > 0 && (
+              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "#F97316",
+                color: "#FFFFFF", borderRadius: "10px", padding: "1px 5px" }}>
+                {staleCount}
+              </span>
+            )}
+            <ChevronDown size={11} style={{ transition: "transform 0.15s",
+              transform: statusDropOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+          </button>
+
+          {statusDropOpen && (
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
+              backgroundColor: "#FFFFFF", border: "1px solid #E8DDD0", borderRadius: "12px",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.10)", padding: "6px", minWidth: "160px" }}>
+              {STATUS_OPTIONS.map(({ value, label }) => (
+                <button key={value} onClick={() => { setStatusFilter(value); setStatusDropOpen(false); }} style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: "8px",
+                  padding: "7px 8px", borderRadius: "6px", border: "none",
+                  backgroundColor: statusFilter === value ? "#FFF7ED" : "transparent", cursor: "pointer",
+                }}>
+                  <span style={{ width: 13, height: 13, borderRadius: "50%", flexShrink: 0,
+                    border: `2px solid ${statusFilter === value ? "#F97316" : "#D5C9BC"}`,
+                    backgroundColor: statusFilter === value ? "#F97316" : "#FFFFFF",
+                    display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {statusFilter === value && (
+                      <div style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#FFFFFF" }} />
+                    )}
+                  </span>
+                  <span style={{ fontSize: "12px", fontWeight: 600,
+                    color: statusFilter === value ? "#EA580C" : "#78716C" }}>
+                    {label}
+                  </span>
+                  {value === "at-risk" && staleCount > 0 && (
+                    <span style={{ marginLeft: "auto", fontSize: "9px", fontWeight: 700,
+                      backgroundColor: "#F97316", color: "#FFFFFF",
+                      borderRadius: "10px", padding: "1px 5px" }}>
+                      {staleCount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Search bar */}
+        <div style={{ width: "240px", flexShrink: 0, display: "flex" }}>
+          {searchOpen ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%" }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <Search size={12} color="#78716C" style={{
+                  position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+                <input
+                  ref={searchRef}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search goals..."
+                  className="search-input"
+                  style={{
+                    width: "100%", padding: "7px 10px 7px 28px", borderRadius: "8px",
+                    backgroundColor: "#FFFFFF", fontSize: "12px", color: "#1C1917",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              <button onClick={clearSearch} style={{
+                flexShrink: 0, width: "30px", height: "30px", borderRadius: "8px",
+                border: "1px solid #EDE5D8", backgroundColor: "#FFFFFF",
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}>
+                <X size={13} color="#78716C" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setSearchOpen(true)} style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "6px",
+              padding: "7px 10px", borderRadius: "8px",
+              border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+              fontSize: "12px", color: "#1C1917", cursor: "pointer",
             }}>
-              {label}
-              {value === "at-risk" && staleCount > 0 && (
-                <span style={{ width: "14px", height: "14px", lineHeight: "14px", borderRadius: "50%",
-                  backgroundColor: "#F97316", color: "#FFFFFF", fontSize: "9px", fontWeight: 700,
-                  textAlign: "center", display: "inline-block", flexShrink: 0 }}>{staleCount}</span>
-              )}
+              <Search size={12} color="#78716C" />
+              <span style={{ color: "#78716C" }}>Search goals...</span>
             </button>
-          ))}
+          )}
         </div>
       </div>
 
       {/* Goal grid */}
       <div className="px-page" style={{ paddingTop: "24px", paddingBottom: "24px" }}>
-        {selectedAreas.size === 0 ? (
+        {showSearch ? (
+          <>
+            <p style={{ fontSize: "12px", color: "#78716C", marginBottom: "16px" }}>
+              <span style={{ fontWeight: 700, color: "#1C1917" }}>{searchResults.length}</span>{" "}
+              result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchQuery}&rdquo;
+            </p>
+            {searchResults.length === 0 ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "200px" }}>
+                <p style={{ fontSize: "13px", color: "#A8A29E" }}>No goals match your search</p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+                {searchResults.map((g) => (
+                  <GoalCard
+                    key={g.id}
+                    goal={g}
+                    linkedHabits={linkedHabitsFor(g.id)}
+                    linkedTasks={linkedTasksFor(g.id)}
+                    onUpdate={handleUpdate}
+                    onClick={() => setDetailGoal(g)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : selectedAreas.size === 0 ? (
           <NoAreaState />
         ) : filtered.length === 0 ? (
           <EmptyState onAdd={() => setCreateOpen(true)} />

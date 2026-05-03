@@ -25,6 +25,7 @@ export default function BucketListPage() {
   const [achievingEntry, setAchievingEntry] = useState<BucketEntry | null>(null);
   const [draggingId,     setDraggingId]     = useState<string | null>(null);
   const [dragoverCol,    setDragoverCol]    = useState<BucketStatus | null>(null);
+  const [mobileTab,      setMobileTab]      = useState<BucketStatus>("dreaming");
 
   const columns: [BucketStatus, BucketEntry[]][] = COLUMN_ORDER.map((s) => [
     s, bucketEntries.filter((e) => e.status === s),
@@ -66,44 +67,81 @@ export default function BucketListPage() {
 
   return (
     <div style={{ height: "100%", backgroundColor: "#FAF5EE",
-      display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      display: "flex", flexDirection: "column", overflow: "hidden", maxWidth: "100vw" }}>
 
       {/* Header */}
       <div className="px-page" style={{
         paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
-        backgroundColor: "#FAF5EE",
+        backgroundColor: "#FAF5EE", gap: "12px",
       }}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
             textTransform: "uppercase", color: "#F97316", marginBottom: "3px" }}>
             Bucket List
           </p>
-          <h1 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
+          <h1 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917", margin: 0,
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             Life Experiences Board
           </h1>
-          <p style={{ fontSize: "12px", color: "#78716C", marginTop: "3px" }}>
+          <p className="hidden sm:block" style={{ fontSize: "12px", color: "#78716C", marginTop: "3px" }}>
             Dreams, intentions, and legacy moments — drag to progress.
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-          <Stat label="Dreaming" value={`${countOf("dreaming")}`} color={COLUMN_META.dreaming.accent} />
-          <Stat label="Planning" value={`${countOf("planning")}`} color={COLUMN_META.planning.accent} />
-          <Stat label="Achieved" value={`${countOf("achieved")}`} color={COLUMN_META.achieved.accent} />
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
+          <div className="hidden sm:flex" style={{ alignItems: "center", gap: "24px" }}>
+            <Stat label="Dreaming" value={`${countOf("dreaming")}`} color={COLUMN_META.dreaming.accent} />
+            <Stat label="Planning" value={`${countOf("planning")}`} color={COLUMN_META.planning.accent} />
+            <Stat label="Achieved" value={`${countOf("achieved")}`} color={COLUMN_META.achieved.accent} />
+          </div>
           <button onClick={() => openCreate("dreaming")} style={{
             display: "flex", alignItems: "center", gap: "6px",
             padding: "9px 16px", borderRadius: "10px", border: "none",
             background: "linear-gradient(135deg, #F97316, #EA580C)",
             fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
-            boxShadow: "0 2px 8px rgba(249,115,22,0.3)",
+            boxShadow: "0 2px 8px rgba(249,115,22,0.3)", whiteSpace: "nowrap",
           }}>
             <Plus size={14} /> New Dream
           </button>
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className="flex-col sm:flex-row" style={{ flex: 1, display: "flex", overflow: "auto" }}>
+      {/* Mobile tab bar */}
+      <div className="flex lg:hidden" style={{
+        borderBottom: "1px solid #EDE5D8",
+        backgroundColor: "#FAF5EE", flexShrink: 0,
+      }}>
+        {COLUMN_ORDER.map((status) => {
+          const meta   = COLUMN_META[status];
+          const active = mobileTab === status;
+          return (
+            <button key={status} onClick={() => setMobileTab(status)} style={{
+              flex: 1, minWidth: 0, padding: "10px 4px", border: "none", cursor: "pointer",
+              backgroundColor: "transparent",
+              borderBottom: `2.5px solid ${active ? meta.accent : "transparent"}`,
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "3px",
+              transition: "border-color 0.15s", overflow: "hidden",
+            }}>
+              <span style={{ fontSize: "12px", fontWeight: 700,
+                color: active ? meta.accent : "#78716C" }}>
+                {meta.label}
+              </span>
+              <span style={{
+                fontSize: "10px", fontWeight: 700,
+                color: active ? meta.accent : "#A8A29E",
+                backgroundColor: active ? meta.accent + "18" : "transparent",
+                padding: "0 7px", borderRadius: "20px",
+                border: `1px solid ${active ? meta.accent + "30" : "transparent"}`,
+              }}>
+                {countOf(status)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Desktop: original 3-column kanban — untouched */}
+      <div className="hidden lg:flex flex-col sm:flex-row" style={{ flex: 1, overflow: "auto" }}>
         {columns.map(([status, entries]) => {
           const meta   = COLUMN_META[status];
           const isOver = dragoverCol === status;
@@ -212,6 +250,82 @@ export default function BucketListPage() {
         })}
       </div>
 
+      {/* Mobile: single active column */}
+      {(() => {
+        const status  = mobileTab;
+        const meta    = COLUMN_META[status];
+        const entries = columns.find(([s]) => s === status)?.[1] ?? [];
+        return (
+          <div className="flex flex-col lg:hidden" style={{
+            flex: 1, minHeight: 0,
+            backgroundColor: meta.colBg,
+          }}>
+            {/* sub-header */}
+            <div style={{
+              padding: "10px 16px 8px", flexShrink: 0,
+              borderBottom: `1px solid ${meta.border}`,
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: "8px",
+            }}>
+              <p style={{ fontSize: "11px", color: "#78716C", margin: 0,
+                minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {meta.subtitle}
+              </p>
+              <button
+                onClick={() => openCreate(status === "achieved" ? "dreaming" : status)}
+                style={{
+                  display: "flex", alignItems: "center", gap: "4px",
+                  padding: "5px 12px", borderRadius: "8px", flexShrink: 0,
+                  border: `1.5px solid ${meta.accent}40`, backgroundColor: "#FFFFFF",
+                  fontSize: "11px", fontWeight: 700, color: meta.accent, cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}>
+                <Plus size={11} />
+                {status === "achieved" ? "New Dream" : `Add to ${meta.label}`}
+              </button>
+            </div>
+            {/* scrollable cards */}
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px",
+              display: "flex", flexDirection: "column", gap: "12px" }}>
+              {entries.length === 0 ? (
+                <div style={{
+                  padding: "40px 20px", textAlign: "center",
+                  border: `1.5px dashed ${meta.border}`,
+                  borderRadius: "14px", marginTop: "8px",
+                  backgroundColor: "rgba(255,255,255,0.5)",
+                }}>
+                  <p style={{ fontSize: "12px", color: "#A8A29E", lineHeight: 1.6, margin: "0 0 12px" }}>
+                    {status === "dreaming" && "Add your first dream — no date required."}
+                    {status === "planning" && "Move a dream here when you're ready to plan it."}
+                    {status === "achieved" && "Your legacy archive will appear here."}
+                  </p>
+                  <button onClick={() => openCreate(status === "achieved" ? "dreaming" : status)} style={{
+                    padding: "6px 18px", borderRadius: "8px",
+                    border: `1.5px solid ${meta.accent}40`,
+                    backgroundColor: "rgba(255,255,255,0.8)",
+                    fontSize: "12px", fontWeight: 600, color: meta.accent, cursor: "pointer",
+                  }}>+ Add</button>
+                </div>
+              ) : entries.map((entry) => (
+                <BucketCard
+                  key={entry.id}
+                  entry={entry}
+                  isDragging={draggingId === entry.id}
+                  onEdit={() => openEdit(entry)}
+                  onDragStart={() => setDraggingId(entry.id)}
+                  onDragEnd={() => { setDraggingId(null); setDragoverCol(null); }}
+                  onMoveForward={() => {
+                    if (entry.status === "dreaming") updateBucketEntry({ ...entry, status: "planning" });
+                    else setAchievingEntry(entry);
+                  }}
+                  onMoveBack={() => updateBucketEntry({ ...entry, status: "dreaming" })}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       <BucketEntrySheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
@@ -275,113 +389,111 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
       {/* Image banner */}
       {entry.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={entry.imageUrl}
-          alt=""
-          style={{ width: "100%", height: "auto", display: "block" }}
-        />
+        <img src={entry.imageUrl} alt=""
+          style={{ width: "100%", height: "auto", display: "block" }} />
       )}
 
       {/* Card content */}
       <div style={{ padding: "12px 14px" }}>
-      {/* Area badge + date */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
-        <span style={{
-          fontSize: "9px", fontWeight: 700, letterSpacing: "0.06em",
-          textTransform: "uppercase", color: areaMeta.color,
-          backgroundColor: "#FFFFFF", border: `1px solid ${areaMeta.color}40`,
-          padding: "2px 7px", borderRadius: "20px",
-        }}>
-          {LIFE_AREA_LABELS[entry.lifeArea]}
-        </span>
-        {entry.targetDate && (
-          <span style={{ display: "flex", alignItems: "center", gap: "3px",
-            fontSize: "9px", color: "#78716C", fontWeight: 500 }}>
-            <Calendar size={9} color="#78716C" />
-            {formatTargetDate(entry.targetDate)}
+
+        {/* Area badge + date */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
+          <span style={{
+            fontSize: "9px", fontWeight: 700, letterSpacing: "0.06em",
+            textTransform: "uppercase", color: areaMeta.color,
+            backgroundColor: "#FFFFFF", border: `1px solid ${areaMeta.color}40`,
+            padding: "2px 7px", borderRadius: "20px",
+          }}>
+            {LIFE_AREA_LABELS[entry.lifeArea]}
           </span>
-        )}
-      </div>
+          {entry.targetDate && (
+            <span style={{ display: "flex", alignItems: "center", gap: "3px",
+              fontSize: "9px", color: "#78716C", fontWeight: 500 }}>
+              <Calendar size={9} color="#78716C" />
+              {formatTargetDate(entry.targetDate)}
+            </span>
+          )}
+        </div>
 
-      {/* Title */}
-      <p style={{
-        fontSize: "13px", fontWeight: 700, color: areaMeta.color,
-        lineHeight: 1.35, margin: "0 0 5px",
-        display: "-webkit-box", WebkitLineClamp: 2,
-        WebkitBoxOrient: "vertical" as const, overflow: "hidden",
-      }}>
-        {entry.title}
-      </p>
-
-      {/* Description / reflection */}
-      {(entry.status === "achieved" && entry.changeReflection
-        ? entry.changeReflection
-        : entry.description) && (
+        {/* Title */}
         <p style={{
-          fontSize: "11px", color: "#57534E", lineHeight: 1.5,
-          margin: "0 0 6px",
+          fontSize: "13px", fontWeight: 700, color: areaMeta.color,
+          lineHeight: 1.35, margin: "0 0 5px",
           display: "-webkit-box", WebkitLineClamp: 2,
           WebkitBoxOrient: "vertical" as const, overflow: "hidden",
         }}>
-          {entry.status === "achieved" && entry.changeReflection
-            ? entry.changeReflection
-            : entry.description}
+          {entry.title}
         </p>
-      )}
 
-      {/* Achieved stamp */}
-      {entry.status === "achieved" && entry.achievedAt && (
-        <p style={{ fontSize: "10px", color: COLUMN_META.achieved.accent, fontWeight: 700, margin: "0 0 6px" }}>
-          Achieved {fmtAchievedDate(entry.achievedAt)}
-        </p>
-      )}
-
-      {/* Footer */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        paddingTop: "8px", borderTop: `1px solid ${areaMeta.color}20`,
-      }}>
-        <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{
-            ...actionBtn,
-            border: `1px solid ${areaMeta.color}40`,
-            backgroundColor: "#FFFFFF",
+        {/* Description / reflection */}
+        {(entry.status === "achieved" && entry.changeReflection
+          ? entry.changeReflection
+          : entry.description) && (
+          <p style={{
+            fontSize: "11px", color: "#57534E", lineHeight: 1.5,
+            margin: "0 0 6px",
+            display: "-webkit-box", WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as const, overflow: "hidden",
           }}>
-            <Pencil size={11} color={areaMeta.color} />
-          </button>
-          {entry.status === "planning" && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onMoveBack(); }}
-              title="Move back to Dreaming"
-              style={{
-                ...actionBtn,
-                border: `1px solid ${areaMeta.color}40`,
-                backgroundColor: "#FFFFFF",
-              }}
-            >
-              <ArrowLeft size={11} color={areaMeta.color} />
-            </button>
-          )}
-        </div>
+            {entry.status === "achieved" && entry.changeReflection
+              ? entry.changeReflection
+              : entry.description}
+          </p>
+        )}
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {entry.status !== "achieved" && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onMoveForward(); }}
-              style={{
-                display: "flex", alignItems: "center", gap: "4px",
-                padding: "4px 10px", borderRadius: "7px",
-                border: `1.5px solid ${meta.accent}35`,
-                backgroundColor: meta.bg,
-                fontSize: "10px", fontWeight: 700, color: meta.accent, cursor: "pointer",
-              }}
-            >
-              {entry.status === "dreaming" ? "Plan It" : "Mark Achieved"}
+        {/* Achieved stamp */}
+        {entry.status === "achieved" && entry.achievedAt && (
+          <p style={{ fontSize: "10px", color: COLUMN_META.achieved.accent, fontWeight: 700, margin: "0 0 6px" }}>
+            Achieved {fmtAchievedDate(entry.achievedAt)}
+          </p>
+        )}
+
+        {/* Footer */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          paddingTop: "8px", borderTop: `1px solid ${areaMeta.color}20`,
+        }}>
+          <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{
+              ...actionBtn,
+              border: `1px solid ${areaMeta.color}40`,
+              backgroundColor: "#FFFFFF",
+            }}>
+              <Pencil size={11} color={areaMeta.color} />
             </button>
-          )}
-          <GripVertical size={13} color={`${areaMeta.color}50`} />
+            {entry.status === "planning" && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveBack(); }}
+                title="Move back to Dreaming"
+                style={{
+                  ...actionBtn,
+                  border: `1px solid ${areaMeta.color}40`,
+                  backgroundColor: "#FFFFFF",
+                }}
+              >
+                <ArrowLeft size={11} color={areaMeta.color} />
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {entry.status !== "achieved" && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveForward(); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: "4px",
+                  padding: "4px 10px", borderRadius: "7px",
+                  border: `1.5px solid ${meta.accent}35`,
+                  backgroundColor: meta.bg,
+                  fontSize: "10px", fontWeight: 700, color: meta.accent, cursor: "pointer",
+                }}
+              >
+                {entry.status === "dreaming" ? "Plan It" : "Mark Achieved"}
+              </button>
+            )}
+            <GripVertical size={13} color={`${areaMeta.color}50`} />
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );

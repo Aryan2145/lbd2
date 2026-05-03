@@ -34,19 +34,25 @@ export default function ClosedView({ tasks, onReopen }: Props) {
             ["incomplete", "Missed",       incompleteCount],
           ] as [Filter, string, number][]).map(([val, label, count]) => (
             <button key={val} onClick={() => setFilter(val)} style={{
+              display: "flex", alignItems: "center", gap: "4px",
               padding: "5px 12px", borderRadius: "20px",
               border: `1.5px solid ${filter === val ? "#F97316" : "#E8DDD0"}`,
               backgroundColor: filter === val ? "#FFF7ED" : "#FFFFFF",
               color: filter === val ? "#F97316" : "#78716C",
               fontSize: "11px", fontWeight: 600, cursor: "pointer",
             }}>
-              {label} · {count}
+              {label}
+              <span style={{
+                fontSize: "9px", fontWeight: 700,
+                backgroundColor: filter === val ? "#F97316" : "#E8DDD0",
+                color: filter === val ? "#FFFFFF" : "#78716C",
+                borderRadius: "10px", padding: "1px 5px",
+              }}>
+                {count}
+              </span>
             </button>
           ))}
         </div>
-        <p style={{ fontSize: "11px", color: "#A8A29E" }}>
-          Click <RotateCcw size={10} style={{ display: "inline", verticalAlign: "middle" }} /> to reopen a task
-        </p>
       </div>
 
       {/* List */}

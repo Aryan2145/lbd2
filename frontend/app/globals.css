@@ -27,6 +27,7 @@
 
 html, body {
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -87,6 +88,13 @@ body {
 /* Placeholder contrast helpers */
 .weekly-input::placeholder { color: #9CA3AF; }
 .weekly-textarea::placeholder { color: #78716C; font-weight: 500;}
+.search-input { border: 1px solid #E8DDD0; }
+.search-input:focus { border-color: #F97316; outline: none; }
+.search-input::placeholder { color: #78716C; }
+
+/* Hide scrollbar while keeping scroll behavior */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none; }
 
 /* Utility classes */
 .shimmer-bg {

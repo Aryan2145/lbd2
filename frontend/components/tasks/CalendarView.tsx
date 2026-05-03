@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, ChevronRight as Caret } from "lucide-react";
 import { toTaskDate, Q_META, fmtDeadline, type TaskData } from "@/components/tasks/TaskCard";
 import TaskDetailSheet from "@/components/tasks/TaskDetailSheet";
@@ -39,7 +39,13 @@ export default function CalendarView({ tasks, goals, onComplete, onMiss, onReope
   const [selectedDate, setSelectedDate] = useState<string>(toTaskDate(today));
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
 
-  const todayISO = toTaskDate(today);
+  const todayISO       = toTaskDate(today);
+  const taskSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth >= 1024) return;
+    taskSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedDate]);
 
   function prevMonth() {
     if (month === 0) { setYear((y) => y - 1); setMonth(11); }
@@ -56,16 +62,14 @@ export default function CalendarView({ tasks, goals, onComplete, onMiss, onReope
     tasksByDate.get(t.deadline)!.push(t);
   }
 
-  const cells         = getCalendarCells(year, month);
-  const selectedTasks = tasksByDate.get(selectedDate) ?? [];
-  const openSelected  = selectedTasks.filter((t) => t.status === "open");
+  const cells          = getCalendarCells(year, month);
+  const selectedTasks  = tasksByDate.get(selectedDate) ?? [];
+  const openSelected   = selectedTasks.filter((t) => t.status === "open");
   const closedSelected = selectedTasks.filter((t) => t.status !== "open");
 
-  return (
-    <div style={{ display: "flex", gap: "16px", height: "100%" }}>
-
-      {/* ── Calendar grid ── */}
-      <div style={{ flex: "0 0 420px", display: "flex", flexDirection: "column" }}>
+  function renderGrid() {
+    return (
+      <>
         {/* Month nav */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
           <button onClick={prevMonth} style={navBtn}>
@@ -143,10 +147,13 @@ export default function CalendarView({ tasks, goals, onComplete, onMiss, onReope
             </div>
           ))}
         </div>
-      </div>
+      </>
+    );
+  }
 
-      {/* ── Day detail panel ── */}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+  function renderTasks() {
+    return (
+      <>
         <div style={{ marginBottom: "12px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8" }}>
           <p style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>
             {selectedDate === todayISO ? "Today · " : ""}
@@ -156,12 +163,13 @@ export default function CalendarView({ tasks, goals, onComplete, onMiss, onReope
           <p style={{ fontSize: "11px", color: "#A8A29E", marginTop: "2px" }}>
             {selectedTasks.length === 0
               ? "No tasks"
-              : `${selectedTasks.length} task${selectedTasks.length !== 1 ? "s" : ""} — click any task for details`}
+              : `${selectedTasks.length} task${selectedTasks.length !== 1 ? "s" : ""} — tap any task for details`}
           </p>
         </div>
 
         {selectedTasks.length === 0 ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "32px 0" }}>
             <p style={{ fontSize: "12px", color: "#A8A29E" }}>No tasks on this day</p>
           </div>
         ) : (
@@ -186,9 +194,32 @@ export default function CalendarView({ tasks, goals, onComplete, onMiss, onReope
             )}
           </div>
         )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* Mobile: calendar stacked above task list */}
+      <div className="flex flex-col lg:hidden no-scrollbar" style={{ height: "100%", overflowY: "auto", gap: "0", scrollbarWidth: "none" }}>
+        <div style={{ flexShrink: 0 }}>
+          {renderGrid()}
+        </div>
+        <div ref={taskSectionRef} style={{ marginTop: "20px", paddingTop: "16px", borderTop: "2px solid #EDE5D8" }}>
+          {renderTasks()}
+        </div>
       </div>
 
-      {/* Task detail sheet */}
+      {/* Desktop: original side-by-side layout — untouched */}
+      <div className="hidden lg:flex" style={{ gap: "16px", height: "100%" }}>
+        <div style={{ flex: "0 0 420px", display: "flex", flexDirection: "column" }}>
+          {renderGrid()}
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          {renderTasks()}
+        </div>
+      </div>
+
       <TaskDetailSheet
         task={selectedTask}
         goals={goals}
@@ -197,11 +228,10 @@ export default function CalendarView({ tasks, goals, onComplete, onMiss, onReope
         onMiss={onMiss}
         onReopen={onReopen}
       />
-    </div>
+    </>
   );
 }
 
-// Compact clickable task row
 function TaskRow({ task, onClick }: { task: TaskData; onClick: () => void }) {
   const m          = Q_META[task.quadrant];
   const isComplete = task.status === "complete";
@@ -213,10 +243,7 @@ function TaskRow({ task, onClick }: { task: TaskData; onClick: () => void }) {
       border: `1.5px solid ${m.border}`,
       backgroundColor: m.bg,
     }}>
-      {/* Quadrant dot */}
       <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: m.color, flexShrink: 0 }} />
-
-      {/* Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
           fontSize: "13px", fontWeight: 600, color: isComplete ? "#9CA3AF" : "#1C1917",
@@ -229,18 +256,14 @@ function TaskRow({ task, onClick }: { task: TaskData; onClick: () => void }) {
           {m.label} · {fmtDeadline(task.deadline)}
         </p>
       </div>
-
-      {/* Status badge */}
       <span style={{
-        fontSize: "9px", fontWeight: 700, padding: "2px 8px", borderRadius: "20px",
-        flexShrink: 0,
+        fontSize: "9px", fontWeight: 700, padding: "2px 8px", borderRadius: "20px", flexShrink: 0,
         color: isComplete ? "#16A34A" : task.status === "incomplete" ? "#9CA3AF" : m.color,
         backgroundColor: isComplete ? "#F0FDF4" : task.status === "incomplete" ? "#F9FAFB" : m.bg,
         border: `1px solid ${isComplete ? "#BBF7D0" : task.status === "incomplete" ? "#E5E7EB" : m.border}`,
       }}>
         {isComplete ? "Done" : task.status === "incomplete" ? "Missed" : "Open"}
       </span>
-
       <Caret size={13} color="#C4B5A8" style={{ flexShrink: 0 }} />
     </div>
   );
