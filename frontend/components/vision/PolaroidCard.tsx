@@ -18,6 +18,7 @@ interface PolaroidCardProps {
   accentColor?: string;
   accentBg?:    string;
   cardWidth?:   number | string;
+  variant?:     "polaroid" | "canvas";
 }
 
 export default function PolaroidCard({
@@ -28,9 +29,91 @@ export default function PolaroidCard({
   accentColor = "#F97316",
   accentBg    = "#FFF7ED",
   cardWidth   = "176px",
+  variant     = "polaroid",
 }: PolaroidCardProps) {
   const hasContent = area.text.trim().length > 0;
   const w = typeof cardWidth === "number" ? `${cardWidth}px` : cardWidth;
+
+  if (variant === "canvas") {
+    return (
+      <div
+        onClick={onClick}
+        className="group cursor-pointer select-none"
+        style={{
+          transform: `rotate(${rotation}deg)`,
+          transformOrigin: "center center",
+          width: w,
+          transition: "transform 0.25s ease, box-shadow 0.25s ease",
+          backgroundColor: "#FFFFFF",
+          borderRadius: "8px",
+          overflow: "hidden",
+          boxShadow: "0 4px 16px rgba(28,25,23,0.12)",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLDivElement).style.transform = `rotate(${rotation * 0.3}deg) scale(1.04)`;
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 10px 28px rgba(28,25,23,0.22)";
+          (e.currentTarget as HTMLDivElement).style.zIndex = "10";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLDivElement).style.transform = `rotate(${rotation}deg) scale(1)`;
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(28,25,23,0.12)";
+          (e.currentTarget as HTMLDivElement).style.zIndex = "";
+        }}
+      >
+        {/* Thin bezel on top + sides, image fills 4:3 */}
+        <div style={{ padding: "5px 5px 0" }}>
+          <div style={{
+            width: "100%", aspectRatio: "4/3", borderRadius: "4px",
+            overflow: "hidden", position: "relative",
+            backgroundColor: "#F2EAE0",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {area.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={area.imageUrl} alt={area.name}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                  <ImageIcon size={28} style={{ color: "#D5C9BC" }} />
+                  <span style={{ fontSize: "10px", color: "#78716C" }}>Add vision image</span>
+                </div>
+                <div style={{
+                  position: "absolute", inset: 0,
+                  backgroundColor: "rgba(250,245,238,0.45)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <div style={{
+                    width: "36px", height: "36px", borderRadius: "50%",
+                    backgroundColor: accentColor,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Plus size={16} color="#fff" />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Thicker bottom strip — name + score */}
+        <div style={{
+          padding: "10px 10px 11px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          backgroundColor: accentBg,
+          borderTop: `2px solid ${accentColor}22`,
+        }}>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: accentColor, lineHeight: 1.2 }}>
+            {area.name}
+          </span>
+          <span style={{ fontSize: "13px", fontWeight: 700, color: accentColor, flexShrink: 0 }}>
+            {area.score}
+            <span style={{ fontSize: "9px", fontWeight: 500, color: "#78716C" }}>/10</span>
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

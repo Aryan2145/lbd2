@@ -14,8 +14,9 @@ const CY       = 420;
 const WHEEL_PX = 320;
 const RADAR_R  = Math.round(108 * (WHEEL_PX / 280)); // ~124px
 
-// Card is 176×~220px — half-diagonal ≈ 141px. Add buffer → keep 290px from wheel center.
-const MIN_CARD_DIST = RADAR_R + 165;
+// Card is 240×~215px (4:3 image + bottom strip) — half-diagonal ≈ 161px. Buffer → 300px from wheel center.
+const MIN_CARD_DIST = RADAR_R + 180;
+const CANVAS_CARD_W = 240;
 
 const AREAS_META = [
   { id: "professional",  name: "Professional",   rotation:  1.5 },
@@ -547,6 +548,8 @@ export default function VisionPage() {
                 onClick={() => {}}
                 accentColor={AREA_META[meta.id as LifeArea]?.color ?? "#F97316"}
                 accentBg={AREA_META[meta.id as LifeArea]?.bg ?? "#FFF7ED"}
+                cardWidth={CANVAS_CARD_W}
+                variant="canvas"
               />
             </div>
           );
