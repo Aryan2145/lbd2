@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, LayoutGrid, AlignJustify, CalendarDays, X, Settings2, Link2, Link2Off, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, AlignJustify, CalendarDays, X, Settings2, Link2, Link2Off, CheckCircle, Plus, Check, Pencil } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import { api } from "@/lib/api";
 import WeekSidebar        from "@/components/weekly/WeekSidebar";
 import WeeklyGrid         from "@/components/weekly/WeeklyGrid";
 import AgendaView         from "@/components/weekly/AgendaView";
+import MobileWeekView     from "@/components/weekly/MobileWeekView";
 import EventCreateSheet   from "@/components/weekly/EventCreateSheet";
 import WeeklyReviewSheet  from "@/components/weekly/WeeklyReviewSheet";
 import TaskDetailSheet    from "@/components/tasks/TaskDetailSheet";
@@ -62,6 +63,12 @@ export default function WeeklyPage() {
   const [weekStart,    setWeekStart]    = useState(() => getWeekStart());
   const [weekView,     setWeekView]     = useState<WeekView>("grid");
   const [sheetOpen,    setSheetOpen]    = useState(false);
+  const [mobileOutcomeDraft,   setMobileOutcomeDraft]   = useState("");
+  const [mobileAddingOutcome,  setMobileAddingOutcome]  = useState(false);
+  const [mobileEditIdx,        setMobileEditIdx]        = useState<number | null>(null);
+  const [mobileEditDraft,      setMobileEditDraft]      = useState("");
+  const [mobileExpandedIdx,    setMobileExpandedIdx]    = useState<number | null>(null);
+  const mobileOutcomeInputRef = useRef<HTMLInputElement>(null);
   const [editEvent,    setEditEvent]    = useState<WeekEvent | null>(null);
   const [newEventDate, setNewEventDate] = useState("");
   const [newEventTime, setNewEventTime] = useState("");
@@ -125,7 +132,7 @@ export default function WeeklyPage() {
   const weekEnd   = addWeeks(weekStart, 1);
 
   const plan = weekPlans.find((p) => p.weekStart === weekStart) ?? {
-    weekStart, priorities: [], outcomes: [], dayNotes: {}, dayThemes: {},
+    weekStart, priorities: [], outcomes: [], doneOutcomes: [], dayNotes: {}, dayThemes: {},
   };
 
   const thisWeekEvents = weekEvents.filter((e) => e.date >= weekStart && e.date < weekEnd);
@@ -153,6 +160,33 @@ export default function WeeklyPage() {
     setEditEvent(ev);
     setNewEventDate("");
     setNewEventTime("");
+  }
+
+  function saveMobileOutcome() {
+    const val = mobileOutcomeDraft.trim();
+    if (val) upsertWeekPlan({ ...plan, outcomes: [...plan.outcomes, val] });
+    setMobileOutcomeDraft("");
+    setMobileAddingOutcome(false);
+  }
+
+  function saveMobileOutcomeEdit(idx: number) {
+    const trimmed = mobileEditDraft.trim();
+    if (trimmed) {
+      const updated = [...plan.outcomes];
+      // also update doneOutcomes if the text changed
+      const old = updated[idx];
+      updated[idx] = trimmed;
+      const done = (plan.doneOutcomes ?? []).map(t => t === old ? trimmed : t);
+      upsertWeekPlan({ ...plan, outcomes: updated, doneOutcomes: done });
+    }
+    setMobileEditIdx(null);
+    setMobileEditDraft("");
+  }
+
+  function toggleOutcomeDone(text: string) {
+    const done = plan.doneOutcomes ?? [];
+    const next = done.includes(text) ? done.filter(t => t !== text) : [...done, text];
+    upsertWeekPlan({ ...plan, doneOutcomes: next });
   }
 
   const isCurrentWeek = weekStart === getWeekStart();
@@ -214,115 +248,368 @@ export default function WeeklyPage() {
         </div>
       )}
 
-      {/* ── Header ── */}
-      <div className="px-page-md" style={{
-        paddingTop: "16px", paddingBottom: "12px", borderBottom: "1px solid #EDE5D8",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        flexShrink: 0, backgroundColor: "#FAF5EE", flexWrap: "wrap", gap: "8px",
-      }}>
-        <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
-            textTransform: "uppercase", color: "#F97316", marginBottom: "2px" }}>
-            Weekly Plan
-          </p>
-          <h1 style={{ fontSize: "18px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
-            Week {weekNum} · {dateRange}
-          </h1>
+      {/* ══════════════════════════════════════════════════
+           MOBILE LAYOUT  (hidden on lg+)
+      ══════════════════════════════════════════════════ */}
+      <div className="flex flex-col lg:hidden" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
+
+        {/* Mobile header */}
+        <div style={{
+          padding: "12px 16px 10px",
+          borderBottom: "1px solid #EDE5D8",
+          backgroundColor: "#FFFFFF",
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          <div>
+            <p style={{ fontSize: "9px", fontWeight: 700, textTransform: "uppercase",
+              letterSpacing: "0.1em", color: "#F97316", marginBottom: "1px" }}>
+              Weekly Plan
+            </p>
+            <p style={{ fontSize: "15px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
+              Week {weekNum} · {dateRange}
+            </p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {!isCurrentWeek && (
+              <button onClick={() => setWeekStart(getWeekStart())} style={{
+                padding: "5px 10px", borderRadius: "8px",
+                border: "1px solid #FED7AA", backgroundColor: "#FFF7ED",
+                fontSize: "11px", fontWeight: 700, color: "#F97316", cursor: "pointer",
+              }}>
+                Today
+              </button>
+            )}
+            <button onClick={() => setWeekStart((w) => addWeeks(w, -1))} style={navBtn}>
+              <ChevronLeft size={16} color="#44403C" />
+            </button>
+            <button onClick={() => setWeekStart((w) => addWeeks(w, 1))} style={navBtn}>
+              <ChevronRight size={16} color="#44403C" />
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {/* Google Calendar embed button */}
-          <button
-            onClick={() => { setGcalOpen(true); setEditingUrl(false); }}
-            title="View Google Calendar"
-            style={{
-              display: "flex", alignItems: "center", gap: "6px",
-              padding: "5px 13px", borderRadius: "8px",
-              border: "1.5px solid #C8BFB5", backgroundColor: "#FFFFFF",
-              fontSize: "11px", fontWeight: 700, color: "#57534E", cursor: "pointer",
-            }}
-          >
-            <CalendarDays size={13} color="#F97316" /> Google Calendar
-          </button>
-
-          {/* View toggle */}
-          <div style={{ display: "flex", borderRadius: "9px", border: "1.5px solid #C8BFB5",
-            overflow: "hidden", backgroundColor: "#FFFFFF" }}>
-            {([
-              ["grid",   <LayoutGrid   size={14} />, "Time Grid"],
-              ["agenda", <AlignJustify size={14} />, "Agenda"],
-            ] as [WeekView, React.ReactNode, string][]).map(([v, icon, label]) => (
-              <button key={v} onClick={() => setWeekView(v)} style={{
-                display: "flex", alignItems: "center", gap: "5px",
-                padding: "5px 12px", border: "none",
-                backgroundColor: weekView === v ? "#F97316" : "#FFFFFF",
-                color: weekView === v ? "#FFFFFF" : "#57534E",
-                fontSize: "11px", fontWeight: 700, cursor: "pointer",
+        {/* Key Outcomes strip */}
+        <div style={{
+          backgroundColor: "#FFFFFF",
+          borderBottom: "1px solid #EDE5D8",
+          flexShrink: 0,
+        }}>
+          {/* Header row */}
+          <div style={{
+            padding: "8px 16px 6px",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <p style={{
+                fontSize: "9px", fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: "0.08em", color: "#78716C", margin: 0,
               }}>
-                {icon} {label}
-              </button>
-            ))}
+                Key Outcomes
+              </p>
+              {plan.outcomes.length > 0 && (
+                <span style={{
+                  fontSize: "9px", fontWeight: 700,
+                  backgroundColor: "#EDE5D8", color: "#78716C",
+                  borderRadius: "10px", padding: "1px 5px",
+                }}>
+                  {plan.outcomes.length}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setMobileAddingOutcome(true);
+                setTimeout(() => mobileOutcomeInputRef.current?.focus(), 30);
+              }}
+              style={{
+                display: "flex", alignItems: "center", gap: "3px",
+                padding: "3px 8px", borderRadius: "6px",
+                border: "1px solid #FED7AA", backgroundColor: "#FFF7ED",
+                fontSize: "10px", fontWeight: 600, color: "#F97316", cursor: "pointer",
+              }}
+            >
+              <Plus size={11} color="#F97316" /> Add
+            </button>
           </div>
 
-          {/* Week navigation */}
-          <button onClick={() => setWeekStart((w) => addWeeks(w, -1))} style={navBtn}>
-            <ChevronLeft size={16} color="#44403C" />
-          </button>
-          <button onClick={() => setWeekStart(getWeekStart())} style={{
-            ...navBtn, width: "auto", padding: "6px 16px",
-            fontSize: "12px", fontWeight: 700,
-            color: isCurrentWeek ? "#57534E" : "#F97316",
-            borderColor: isCurrentWeek ? "#C8BFB5" : "#FED7AA",
-            backgroundColor: isCurrentWeek ? "#FFFFFF" : "#FFF7ED",
-          }}>
-            Today
-          </button>
-          <button onClick={() => setWeekStart((w) => addWeeks(w, 1))} style={navBtn}>
-            <ChevronRight size={16} color="#44403C" />
-          </button>
+          {/* Scrollable list — 3 rows visible, then scrolls */}
+          <div style={{ maxHeight: "75px", overflowY: "auto", padding: "0 16px 8px" }}>
+            {plan.outcomes.length === 0 && !mobileAddingOutcome && (
+              <p style={{ fontSize: "11px", color: "#A8A29E", fontStyle: "italic", margin: 0 }}>
+                No outcomes set for this week
+              </p>
+            )}
+            {plan.outcomes.map((out, idx) => {
+              const done     = (plan.doneOutcomes ?? []).includes(out);
+              const expanded = mobileExpandedIdx === idx;
+              const editing  = mobileEditIdx === idx;
+              return (
+                <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "5px", minHeight: "20px" }}>
+
+                  {/* Tick toggle */}
+                  <button
+                    onClick={() => toggleOutcomeDone(out)}
+                    style={{
+                      flexShrink: 0, width: 16, height: 16, borderRadius: "50%",
+                      border: `2px solid ${done ? "#16A34A" : "#C4B5A8"}`,
+                      backgroundColor: done ? "#16A34A" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer", padding: 0,
+                    }}
+                  >
+                    {done && <Check size={9} color="#FFFFFF" />}
+                  </button>
+
+                  {editing ? (
+                    <input
+                      autoFocus
+                      value={mobileEditDraft}
+                      onChange={(e) => setMobileEditDraft(e.target.value)}
+                      onBlur={() => saveMobileOutcomeEdit(idx)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveMobileOutcomeEdit(idx);
+                        if (e.key === "Escape") { setMobileEditIdx(null); setMobileEditDraft(""); }
+                      }}
+                      style={{
+                        flex: 1, padding: "3px 7px", borderRadius: 6,
+                        border: "1.5px solid #F97316", backgroundColor: "#FFFFFF",
+                        fontSize: "13px", color: "#1C1917", outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  ) : (
+                    <span
+                      onClick={() => setMobileExpandedIdx(expanded ? null : idx)}
+                      title={expanded ? undefined : out}
+                      style={{
+                        flex: 1,
+                        fontSize: "13px",
+                        color: done ? "#A8A29E" : "#1C1917",
+                        lineHeight: 1.4,
+                        textDecoration: done ? "line-through" : "none",
+                        cursor: "pointer",
+                        overflow: "hidden",
+                        textOverflow: expanded ? "unset" : "ellipsis",
+                        whiteSpace: expanded ? "normal" : "nowrap",
+                        wordBreak: expanded ? "break-word" : undefined,
+                      }}
+                    >
+                      {out}
+                    </span>
+                  )}
+
+                  {/* Edit / confirm button */}
+                  {editing ? (
+                    <button
+                      onClick={() => saveMobileOutcomeEdit(idx)}
+                      style={{
+                        flexShrink: 0, width: 20, height: 20, border: "none",
+                        backgroundColor: "transparent", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+                      }}
+                    >
+                      <Check size={12} color="#16A34A" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setMobileEditIdx(idx); setMobileEditDraft(out); setMobileExpandedIdx(null); }}
+                      style={{
+                        flexShrink: 0, width: 20, height: 20, border: "none",
+                        backgroundColor: "transparent", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+                      }}
+                    >
+                      <Pencil size={10} color="#A8A29E" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            {mobileAddingOutcome && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "5px" }}>
+                <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: "50%", border: "2px solid #C4B5A8" }} />
+                <input
+                  ref={mobileOutcomeInputRef}
+                  value={mobileOutcomeDraft}
+                  onChange={(e) => setMobileOutcomeDraft(e.target.value)}
+                  onBlur={saveMobileOutcome}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveMobileOutcome();
+                    if (e.key === "Escape") { setMobileAddingOutcome(false); setMobileOutcomeDraft(""); }
+                  }}
+                  placeholder="Enter outcome…"
+                  style={{
+                    flex: 1, padding: "3px 7px", borderRadius: 6,
+                    border: "1.5px solid #F97316", backgroundColor: "#FFFFFF",
+                    fontSize: "13px", color: "#1C1917", outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ── Content ── */}
-      <div className="flex-col md:flex-row" style={{ flex: 1, display: "flex", overflow: "auto" }}>
-
-        <WeekSidebar
+        {/* Mobile week list */}
+        <MobileWeekView
           weekStart={weekStart}
-          plan={plan}
+          weekEvents={thisWeekEvents}
+          tasks={tasks}
           eventGroups={eventGroups}
-          overdueTasks={overdueTasks}
-          onUpdatePlan={upsertWeekPlan}
-          onAddGroup={addEventGroup}
-          onUpdateGroup={updateEventGroup}
-          onDeleteGroup={deleteEventGroup}
-          hasReview={currentReview !== null}
-          onOpenReview={() => setReviewOpen(true)}
+          onCreateEvent={openCreateSheet}
+          onEditEvent={openEditSheet}
+          onTaskClick={setSelectedTask}
         />
 
-        {weekView === "grid" ? (
-          <WeeklyGrid
+        {/* FAB */}
+        <button
+          onClick={() => {
+            const t   = toTaskDate();
+            const end = addWeeks(weekStart, 1);
+            openCreateSheet(t >= weekStart && t < end ? t : weekStart, "09:00");
+          }}
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            right: "20px",
+            width: "52px",
+            height: "52px",
+            borderRadius: "16px",
+            border: "none",
+            background: "linear-gradient(135deg, #F97316, #EA580C)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 4px 20px rgba(249,115,22,0.45)",
+            zIndex: 20,
+          }}
+        >
+          <Plus size={24} color="#FFFFFF" />
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════════
+           DESKTOP LAYOUT  (hidden below lg)
+      ══════════════════════════════════════════════════ */}
+      <div className="hidden lg:flex" style={{ flex: 1, flexDirection: "column", overflow: "hidden" }}>
+
+        {/* ── Desktop Header ── */}
+        <div className="px-page-md" style={{
+          paddingTop: "16px", paddingBottom: "12px", borderBottom: "1px solid #EDE5D8",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexShrink: 0, backgroundColor: "#FAF5EE", flexWrap: "wrap", gap: "8px",
+        }}>
+          <div>
+            <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
+              textTransform: "uppercase", color: "#F97316", marginBottom: "2px" }}>
+              Weekly Plan
+            </p>
+            <h1 style={{ fontSize: "18px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
+              Week {weekNum} · {dateRange}
+            </h1>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {/* Google Calendar embed button */}
+            <button
+              onClick={() => { setGcalOpen(true); setEditingUrl(false); }}
+              title="View Google Calendar"
+              style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                padding: "5px 13px", borderRadius: "8px",
+                border: "1.5px solid #C8BFB5", backgroundColor: "#FFFFFF",
+                fontSize: "11px", fontWeight: 700, color: "#57534E", cursor: "pointer",
+              }}
+            >
+              <CalendarDays size={13} color="#F97316" /> Google Calendar
+            </button>
+
+            {/* View toggle */}
+            <div style={{ display: "flex", borderRadius: "9px", border: "1.5px solid #C8BFB5",
+              overflow: "hidden", backgroundColor: "#FFFFFF" }}>
+              {([
+                ["grid",   <LayoutGrid   size={14} />, "Time Grid"],
+                ["agenda", <AlignJustify size={14} />, "Agenda"],
+              ] as [WeekView, React.ReactNode, string][]).map(([v, icon, label]) => (
+                <button key={v} onClick={() => setWeekView(v)} style={{
+                  display: "flex", alignItems: "center", gap: "5px",
+                  padding: "5px 12px", border: "none",
+                  backgroundColor: weekView === v ? "#F97316" : "#FFFFFF",
+                  color: weekView === v ? "#FFFFFF" : "#57534E",
+                  fontSize: "11px", fontWeight: 700, cursor: "pointer",
+                }}>
+                  {icon} {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Week navigation */}
+            <button onClick={() => setWeekStart((w) => addWeeks(w, -1))} style={navBtn}>
+              <ChevronLeft size={16} color="#44403C" />
+            </button>
+            <button onClick={() => setWeekStart(getWeekStart())} style={{
+              ...navBtn, width: "auto", padding: "6px 16px",
+              fontSize: "12px", fontWeight: 700,
+              color: isCurrentWeek ? "#57534E" : "#F97316",
+              borderColor: isCurrentWeek ? "#C8BFB5" : "#FED7AA",
+              backgroundColor: isCurrentWeek ? "#FFFFFF" : "#FFF7ED",
+            }}>
+              Today
+            </button>
+            <button onClick={() => setWeekStart((w) => addWeeks(w, 1))} style={navBtn}>
+              <ChevronRight size={16} color="#44403C" />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Desktop Content ── */}
+        <div className="flex-col md:flex-row" style={{ flex: 1, display: "flex", overflow: "auto" }}>
+
+          <WeekSidebar
             weekStart={weekStart}
-            weekEvents={thisWeekEvents}
-            tasks={tasks}
-            habits={habits}
-            eventGroups={eventGroups}
             plan={plan}
-            onCreateEvent={openCreateSheet}
-            onEditEvent={openEditSheet}
-            onUpdatePlan={upsertWeekPlan}
-            onTaskClick={setSelectedTask}
-          />
-        ) : (
-          <AgendaView
-            weekStart={weekStart}
-            weekEvents={thisWeekEvents}
-            tasks={tasks}
             eventGroups={eventGroups}
-            onCreateEvent={openCreateSheet}
-            onEditEvent={openEditSheet}
-            onTaskClick={setSelectedTask}
+            weekEvents={weekEvents}
+            overdueTasks={overdueTasks}
+            onUpdatePlan={upsertWeekPlan}
+            onAddGroup={addEventGroup}
+            onUpdateGroup={updateEventGroup}
+            onDeleteGroup={deleteEventGroup}
+            hasReview={currentReview !== null}
+            onOpenReview={() => setReviewOpen(true)}
           />
-        )}
+
+          {weekView === "grid" ? (
+            <WeeklyGrid
+              weekStart={weekStart}
+              weekEvents={thisWeekEvents}
+              tasks={tasks}
+              habits={habits}
+              eventGroups={eventGroups}
+              plan={plan}
+              onCreateEvent={openCreateSheet}
+              onEditEvent={openEditSheet}
+              onUpdatePlan={upsertWeekPlan}
+              onTaskClick={setSelectedTask}
+            />
+          ) : (
+            <AgendaView
+              weekStart={weekStart}
+              weekEvents={thisWeekEvents}
+              tasks={tasks}
+              eventGroups={eventGroups}
+              onCreateEvent={openCreateSheet}
+              onEditEvent={openEditSheet}
+              onTaskClick={setSelectedTask}
+            />
+          )}
+        </div>
+
       </div>
 
       <EventCreateSheet

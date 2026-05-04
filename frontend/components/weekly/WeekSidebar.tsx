@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, X, Check, Pencil, Trash2, AlertTriangle, Calendar } from "lucide-react";
-import type { WeekPlan, EventGroup } from "@/lib/weeklyTypes";
+import { Plus, X, Check, Pencil, Trash2, AlertTriangle, Calendar, Archive, ChevronDown, RotateCcw } from "lucide-react";
+import type { WeekPlan, EventGroup, WeekEvent } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import { ClipboardList } from "lucide-react";
 import type { TaskData } from "@/components/tasks/TaskCard";
@@ -12,6 +12,7 @@ interface Props {
   weekStart:    string;
   plan:         WeekPlan;
   eventGroups:  EventGroup[];
+  weekEvents:   WeekEvent[];
   overdueTasks: TaskData[];
   onUpdatePlan:    (p: WeekPlan) => void;
   onAddGroup:      (g: EventGroup) => void;
@@ -43,16 +44,11 @@ function weekLabel(weekStart: string): { num: number; range: string } {
 }
 
 export default function WeekSidebar({
-  weekStart, plan, eventGroups, overdueTasks,
+  weekStart, plan, eventGroups, weekEvents, overdueTasks,
   onUpdatePlan, onAddGroup, onUpdateGroup, onDeleteGroup,
   hasReview, onOpenReview,
 }: Props) {
   const { num, range } = weekLabel(weekStart);
-
-  // Priorities editing
-  const [editPriIdx, setEditPriIdx] = useState<number | null>(null);
-  const [priDraft,   setPriDraft]   = useState("");
-  const priInputRef = useRef<HTMLInputElement>(null);
 
   // Outcomes editing
   const [editOutIdx, setEditOutIdx] = useState<number | null>(null);
@@ -64,34 +60,9 @@ export default function WeekSidebar({
   const [newGroupName,  setNewGroupName]    = useState("");
   const [newGroupColor, setNewGroupColor]   = useState(GROUP_COLORS[0]);
   const [editGroupId,   setEditGroupId]     = useState<string | null>(null);
+  const [archiveOpen,   setArchiveOpen]     = useState(false);
 
-  useEffect(() => { if (editPriIdx !== null) priInputRef.current?.focus(); }, [editPriIdx]);
   useEffect(() => { if (editOutIdx !== null) outInputRef.current?.focus(); }, [editOutIdx]);
-
-  function savePriority() {
-    if (editPriIdx === null) return;
-    const updated = [...plan.priorities];
-    const val = priDraft.trim();
-    if (val) { updated[editPriIdx] = val; }
-    else     { updated.splice(editPriIdx, 1); }
-    onUpdatePlan({ ...plan, priorities: updated });
-    setEditPriIdx(null);
-  }
-
-  function addPriority() {
-    if (plan.priorities.length >= 5) return;
-    const updated = [...plan.priorities, ""];
-    onUpdatePlan({ ...plan, priorities: updated });
-    setEditPriIdx(updated.length - 1);
-    setPriDraft("");
-  }
-
-  function deletePriority(idx: number) {
-    const updated = [...plan.priorities];
-    updated.splice(idx, 1);
-    onUpdatePlan({ ...plan, priorities: updated });
-    setEditPriIdx(null);
-  }
 
   function saveOutcome() {
     if (editOutIdx === null) return;
@@ -155,64 +126,6 @@ export default function WeekSidebar({
 
       <div style={{ flex: 1, padding: "12px 16px", display: "flex", flexDirection: "column", gap: "16px" }}>
 
-        {/* Priorities */}
-        <section>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-            <p style={sectionTitle}>Priorities</p>
-            {plan.priorities.length < 5 && (
-              <button onClick={addPriority} style={addBtn}>
-                <Plus size={11} color="#F97316" /> Add
-              </button>
-            )}
-          </div>
-
-          {plan.priorities.length === 0 && (
-            <p style={emptyHint}>Add up to 5 weekly priorities</p>
-          )}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            {plan.priorities.map((pri, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{
-                  width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
-                  backgroundColor: "#FFF7ED", border: "1.5px solid #FED7AA",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "9px", fontWeight: 700, color: "#F97316",
-                }}>
-                  {idx + 1}
-                </span>
-                {editPriIdx === idx ? (
-                  <input
-                    ref={priInputRef}
-                    value={priDraft}
-                    onChange={(e) => setPriDraft(e.target.value)}
-                    onBlur={savePriority}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") savePriority();
-                      if (e.key === "Escape") setEditPriIdx(null);
-                    }}
-                    style={{ ...inlineInput, flex: 1 }}
-                    placeholder="Enter priority…"
-                  />
-                ) : (
-                  <p
-                    onClick={() => { setEditPriIdx(idx); setPriDraft(pri); }}
-                    style={{ flex: 1, fontSize: "12px", color: "#1C1917", cursor: "text",
-                      lineHeight: 1.4, margin: 0,
-                      padding: "3px 4px", borderRadius: 4,
-                    }}
-                  >
-                    {pri || <span style={{ color: "#C4B5A8", fontStyle: "italic" }}>Click to edit…</span>}
-                  </p>
-                )}
-                <button onClick={() => deletePriority(idx)} style={ghostBtn}>
-                  <X size={11} color="#A8A29E" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* Key Outcomes */}
         <section>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
@@ -246,10 +159,10 @@ export default function WeekSidebar({
                 ) : (
                   <p
                     onClick={() => { setEditOutIdx(idx); setOutDraft(out); }}
-                    style={{ flex: 1, fontSize: "12px", color: "#1C1917", cursor: "text",
+                    style={{ flex: 1, fontSize: "13px", color: "#1C1917", cursor: "text",
                       lineHeight: 1.4, margin: 0, padding: "3px 4px", borderRadius: 4 }}
                   >
-                    {out || <span style={{ color: "#C4B5A8", fontStyle: "italic" }}>Click to edit…</span>}
+                    {out || <span style={{ color: "#A8A29E", fontStyle: "italic" }}>Click to edit…</span>}
                   </p>
                 )}
                 <button onClick={() => deleteOutcome(idx)} style={ghostBtn}>
@@ -261,62 +174,137 @@ export default function WeekSidebar({
         </section>
 
         {/* Event Groups */}
-        <section>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-            <p style={sectionTitle}>Event Groups</p>
-            <button onClick={() => { setShowGroupForm(true); setEditGroupId(null); setNewGroupName(""); setNewGroupColor(GROUP_COLORS[0]); }} style={addBtn}>
-              <Plus size={11} color="#F97316" /> New
-            </button>
-          </div>
-
-          {showGroupForm && (
-            <div style={{ backgroundColor: "#FAF5EE", borderRadius: 10, padding: "10px", marginBottom: "8px", border: "1px solid #EDE5D8" }}>
-              <input
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="Group name…"
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && saveGroup()}
-                style={{ ...inlineInput, width: "100%", marginBottom: "8px" }}
-              />
-              <div style={{ display: "flex", gap: "5px", marginBottom: "8px" }}>
-                {GROUP_COLORS.map((c) => (
-                  <button key={c} onClick={() => setNewGroupColor(c)} style={{
-                    width: 20, height: 20, borderRadius: "50%", backgroundColor: c,
-                    border: newGroupColor === c ? "2px solid #1C1917" : "2px solid transparent",
-                    cursor: "pointer",
-                  }} />
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button onClick={saveGroup} style={{
-                  flex: 1, padding: "5px", borderRadius: 7, border: "none",
-                  background: "linear-gradient(135deg, #F97316, #EA580C)",
-                  fontSize: "11px", fontWeight: 700, color: "#FFF", cursor: "pointer",
-                }}>
-                  {editGroupId ? "Update" : "Create"}
-                </button>
-                <button onClick={() => { setShowGroupForm(false); setEditGroupId(null); }} style={{
-                  padding: "5px 10px", borderRadius: 7, border: "1px solid #E8DDD0",
-                  backgroundColor: "#FFF", fontSize: "11px", color: "#78716C", cursor: "pointer",
-                }}>
-                  Cancel
+        {(() => {
+          const activeGroups   = eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && !g.archived);
+          const archivedGroups = eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && g.archived);
+          return (
+            <section>
+              {/* Header row */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <p style={sectionTitle}>Event Groups</p>
+                  <span style={countBadge}>{activeGroups.length}</span>
+                </div>
+                <button onClick={() => { setShowGroupForm(true); setEditGroupId(null); setNewGroupName(""); setNewGroupColor(GROUP_COLORS[0]); }} style={addBtn}>
+                  <Plus size={11} color="#F97316" /> New
                 </button>
               </div>
-            </div>
-          )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID).map((g) => (
-              <div key={g.id} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "5px 4px", borderRadius: 7 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: "12px", color: "#1C1917", fontWeight: 500 }}>{g.name}</span>
-                <button onClick={() => startEditGroup(g)} style={ghostBtn}><Pencil size={11} color="#A8A29E" /></button>
-                <button onClick={() => onDeleteGroup(g.id)} style={ghostBtn}><Trash2 size={11} color="#EF4444" /></button>
+              {/* Create / Edit form */}
+              {showGroupForm && (
+                <div style={{ backgroundColor: "#FAF5EE", borderRadius: 10, padding: "10px", marginBottom: "8px", border: "1px solid #EDE5D8" }}>
+                  <input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    placeholder="Group name…"
+                    autoFocus
+                    onKeyDown={(e) => e.key === "Enter" && saveGroup()}
+                    style={{ ...inlineInput, width: "100%", marginBottom: "8px" }}
+                  />
+                  <div style={{ display: "flex", gap: "5px", marginBottom: "8px" }}>
+                    {GROUP_COLORS.map((c) => (
+                      <button key={c} onClick={() => setNewGroupColor(c)} style={{
+                        width: 20, height: 20, borderRadius: "50%", backgroundColor: c,
+                        border: newGroupColor === c ? "2px solid #1C1917" : "2px solid transparent",
+                        cursor: "pointer",
+                      }} />
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button onClick={saveGroup} style={{
+                      flex: 1, padding: "5px", borderRadius: 7, border: "none",
+                      background: "linear-gradient(135deg, #F97316, #EA580C)",
+                      fontSize: "11px", fontWeight: 700, color: "#FFF", cursor: "pointer",
+                    }}>
+                      {editGroupId ? "Update" : "Create"}
+                    </button>
+                    <button onClick={() => { setShowGroupForm(false); setEditGroupId(null); }} style={{
+                      padding: "5px 10px", borderRadius: 7, border: "1px solid #E8DDD0",
+                      backgroundColor: "#FFF", fontSize: "11px", color: "#78716C", cursor: "pointer",
+                    }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Active groups list — scrolls after 4 */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: activeGroups.length > 4 ? "144px" : undefined, overflowY: activeGroups.length > 4 ? "auto" : undefined }}>
+                {activeGroups.map((g) => {
+                  const groupHasEvents = weekEvents.some((e) => e.groupId === g.id);
+                  return (
+                    <div key={g.id} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "5px 4px", borderRadius: 7, flexShrink: 0 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: "13px", color: "#1C1917", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
+                      <button onClick={() => startEditGroup(g)} style={ghostBtn}><Pencil size={11} color="#A8A29E" /></button>
+                      {groupHasEvents ? (
+                        <button
+                          onClick={() => onUpdateGroup({ ...g, archived: true })}
+                          title="Archive group"
+                          style={ghostBtn}
+                        >
+                          <Archive size={11} color="#78716C" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onDeleteGroup(g.id)}
+                          style={ghostBtn}
+                        >
+                          <Trash2 size={11} color="#EF4444" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {activeGroups.length === 0 && (
+                  <p style={emptyHint}>No groups yet. Create one above.</p>
+                )}
               </div>
-            ))}
-          </div>
-        </section>
+
+              {/* Archived groups toggle */}
+              {archivedGroups.length > 0 && (
+                <div style={{ marginTop: "10px" }}>
+                  <button
+                    onClick={() => setArchiveOpen((o) => !o)}
+                    style={{
+                      width: "100%", display: "flex", alignItems: "center", gap: "5px",
+                      padding: "5px 4px", borderRadius: 7, border: "none",
+                      backgroundColor: "transparent", cursor: "pointer", textAlign: "left",
+                    }}
+                  >
+                    <ChevronDown size={12} color="#78716C" style={{ transition: "transform 0.2s", transform: archiveOpen ? "rotate(0deg)" : "rotate(-90deg)", flexShrink: 0 }} />
+                    <span style={{ ...sectionTitle, margin: 0 }}>Archived</span>
+                    <span style={countBadge}>{archivedGroups.length}</span>
+                  </button>
+
+                  {archiveOpen && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "4px", maxHeight: archivedGroups.length > 4 ? "144px" : undefined, overflowY: archivedGroups.length > 4 ? "auto" : undefined }}>
+                      {archivedGroups.map((g) => (
+                        <div key={g.id} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "5px 4px", borderRadius: 7, flexShrink: 0, opacity: 0.7 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, flexShrink: 0 }} />
+                          <span style={{ flex: 1, fontSize: "13px", color: "#1C1917", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
+                          <button
+                            onClick={() => onUpdateGroup({ ...g, archived: false })}
+                            title="Unarchive group"
+                            style={ghostBtn}
+                          >
+                            <RotateCcw size={11} color="#78716C" />
+                          </button>
+                          <button
+                            onClick={() => onDeleteGroup(g.id)}
+                            style={ghostBtn}
+                          >
+                            <Trash2 size={11} color="#EF4444" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         {/* Overdue tasks */}
         {overdueTasks.length > 0 && (
@@ -331,11 +319,11 @@ export default function WeekSidebar({
                   borderRadius: 6, padding: "4px 8px", border: "1px solid #FECACA",
                   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {t.title}
-                  <span style={{ color: "#9CA3AF", marginLeft: 4 }}>· {fmtDeadline(t.deadline)}</span>
+                  <span style={{ color: "#78716C", marginLeft: 4 }}>· {fmtDeadline(t.deadline)}</span>
                 </div>
               ))}
               {overdueTasks.length > 5 && (
-                <p style={{ fontSize: "10px", color: "#A8A29E", paddingLeft: 4 }}>+{overdueTasks.length - 5} more</p>
+                <p style={{ fontSize: "10px", color: "#78716C", paddingLeft: 4 }}>+{overdueTasks.length - 5} more</p>
               )}
             </div>
           </section>
@@ -373,7 +361,7 @@ export default function WeekSidebar({
           }}>
             <Calendar size={12} /> Connect Google Calendar
           </button>
-          <p style={{ fontSize: "9px", color: "#C4B5A8", textAlign: "center", marginTop: "4px" }}>Coming soon</p>
+          <p style={{ fontSize: "9px", color: "#A8A29E", textAlign: "center", marginTop: "4px" }}>Coming soon</p>
         </section>
 
       </div>
@@ -383,7 +371,7 @@ export default function WeekSidebar({
 
 const sectionTitle: React.CSSProperties = {
   fontSize: "10px", fontWeight: 700, textTransform: "uppercase",
-  letterSpacing: "0.07em", color: "#A8A29E", margin: 0,
+  letterSpacing: "0.07em", color: "#78716C", margin: 0,
 };
 
 const addBtn: React.CSSProperties = {
@@ -401,11 +389,17 @@ const ghostBtn: React.CSSProperties = {
 
 const inlineInput: React.CSSProperties = {
   padding: "4px 8px", borderRadius: 6, border: "1.5px solid #F97316",
-  backgroundColor: "#FFFFFF", fontSize: "12px", color: "#1C1917",
+  backgroundColor: "#FFFFFF", fontSize: "13px", color: "#1C1917",
   outline: "none", boxSizing: "border-box",
 };
 
 const emptyHint: React.CSSProperties = {
-  fontSize: "11px", color: "#C4B5A8", fontStyle: "italic",
+  fontSize: "11px", color: "#78716C", fontStyle: "italic",
   marginBottom: "4px", lineHeight: 1.4,
+};
+
+const countBadge: React.CSSProperties = {
+  fontSize: "9px", fontWeight: 700,
+  backgroundColor: "#EDE5D8", color: "#78716C",
+  borderRadius: "10px", padding: "1px 5px",
 };

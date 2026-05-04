@@ -23,7 +23,7 @@ type TaskKind = "one-time"; // RECURRING_DISABLED: | "recurring"
 const DEFAULT_FORM = {
   title: "", description: "", quadrant: "Q2" as EisenhowerQ, linkedGoalId: "",
   kind: "one-time" as TaskKind,
-  deadline: toTaskDate(),
+  deadline: "",
 };
 
 const Q_BUTTONS: Record<EisenhowerQ, { main: string; hint: string }> = {
@@ -71,21 +71,35 @@ export default function TaskCreateSheet({
 
   if (!open) return null;
 
-  const today        = toTaskDate();
-  const q2TodayNudge = f.quadrant === "Q2" && f.deadline === today;
+  const today             = toTaskDate();
+  const deadlineTodayNudge = f.deadline === today && f.quadrant !== "Q1";
 
   const selectedGoal        = goals.find((g) => g.id === f.linkedGoalId);
   const goalMilestones      = [...(selectedGoal?.milestones ?? [])].sort((a, b) => a.deadline.localeCompare(b.deadline));
   const goalHasNoMilestones = !!f.linkedGoalId && goalMilestones.length === 0;
   const milestoneRequired   = !!f.linkedGoalId && goalMilestones.length > 0 && !linkedMilestoneId;
 
-  const canSave = f.title.trim().length > 0 && !goalHasNoMilestones && !milestoneRequired;
+  const canSave = f.quadrant === "Q4" || (f.title.trim().length > 0 && !goalHasNoMilestones && !milestoneRequired);
 
   const set = <K extends keyof typeof DEFAULT_FORM>(k: K, v: typeof DEFAULT_FORM[K]) =>
     setF((p) => ({ ...p, [k]: v }));
 
   function selectQuadrant(q: EisenhowerQ) {
-    if (q === "Q4") {
+    setF((p) => ({
+      ...p,
+      quadrant: q,
+      deadline: q === "Q1" ? today : (p.quadrant === "Q1" ? "" : p.deadline),
+    }));
+    setDelegateNudge(false);
+  }
+
+  function handleGoalChange(gId: string) {
+    set("linkedGoalId", gId);
+    setLinkedMilestoneId("");
+  }
+
+  function handleSave() {
+    if (f.quadrant === "Q4") {
       setQ4Bang(true);
       setTimeout(() => {
         setF({ ...DEFAULT_FORM });
@@ -96,16 +110,6 @@ export default function TaskCreateSheet({
       }, 2400);
       return;
     }
-    setF((p) => ({ ...p, quadrant: q, deadline: q === "Q1" ? today : p.deadline }));
-    setDelegateNudge(false);
-  }
-
-  function handleGoalChange(gId: string) {
-    set("linkedGoalId", gId);
-    setLinkedMilestoneId("");
-  }
-
-  function handleSave() {
     if (!canSave) return;
     if (f.quadrant === "Q3" && !delegateTo.trim()) { setDelegateNudge(true); return; }
 
@@ -207,20 +211,22 @@ export default function TaskCreateSheet({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
               {(["Q1","Q2","Q3","Q4"] as EisenhowerQ[]).map((q) => {
                 const m = Q_META[q]; const ql = Q_BUTTONS[q];
-                const active = f.quadrant === q; const isQ4 = q === "Q4";
+                const active = f.quadrant === q;
+                const todayQ1Hint = deadlineTodayNudge && q === "Q1";
                 return (
                   <button key={q} onClick={() => selectQuadrant(q)} style={{
                     padding: "9px 11px", borderRadius: "8px", cursor: "pointer", textAlign: "left",
-                    border: `2px solid ${active ? m.color : isQ4 ? "#D1D5DB" : "#E8DDD0"}`,
-                    backgroundColor: active ? m.bg : isQ4 ? "#F9FAFB" : "#FAFAF9",
-                    opacity: isQ4 && !active ? 0.7 : 1, transition: "border-color 0.15s",
+                    border: `2px solid ${active ? m.color : todayQ1Hint ? m.color + "88" : m.border}`,
+                    backgroundColor: m.bg,
+                    boxShadow: active ? `0 0 0 1px ${m.color}22` : todayQ1Hint ? `0 0 0 2px ${m.color}22` : "none",
+                    transition: "border-color 0.15s, box-shadow 0.15s",
                   }}>
                     <p style={{ fontSize: "11px", fontWeight: 700, margin: 0,
-                      color: active ? m.color : isQ4 ? "#9CA3AF" : "#78716C" }}>
+                      color: active ? m.color : m.color + "AA" }}>
                       {ql.main}
                     </p>
-                    <p style={{ fontSize: "10px", margin: "2px 0 0", opacity: 0.85,
-                      color: active ? m.color : isQ4 ? "#9CA3AF" : "#A8A29E" }}>
+                    <p style={{ fontSize: "10px", margin: "2px 0 0",
+                      color: active ? m.color : m.color + "88" }}>
                       {ql.hint}
                     </p>
                   </button>
@@ -297,10 +303,30 @@ export default function TaskCreateSheet({
                 🔥 It's urgent — this one's happening today, no rescheduling!
               </p>
             )}
-            {q2TodayNudge && (
-              <p style={{ fontSize: "11px", color: "#D97706", fontWeight: 500, marginTop: "5px" }}>
-                ⚡ Scheduling something for today? If it's truly urgent, move it to "Urgent + Important" instead!
-              </p>
+            {deadlineTodayNudge && (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: "8px", marginTop: "8px",
+                padding: "9px 12px", borderRadius: "8px",
+                backgroundColor: "#FEF2F2", border: "1.5px solid #FCA5A5",
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "7px" }}>
+                  <AlertTriangle size={13} color="#DC2626" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
+                    Deadline is today — set it as Urgent + Important for maximum focus!
+                  </p>
+                </div>
+                <button
+                  onClick={() => selectQuadrant("Q1")}
+                  style={{
+                    padding: "4px 10px", borderRadius: "6px", border: "none",
+                    backgroundColor: "#DC2626", color: "#FFFFFF",
+                    fontSize: "10px", fontWeight: 700, cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  Set Q1
+                </button>
+              </div>
             )}
           </div>
         </div>

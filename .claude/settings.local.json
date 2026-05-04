@@ -17,7 +17,8 @@
       "PowerShell(cd D:\\\\RGB_Software\\\\lbd2\\\\backend; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; node_modules\\\\.bin\\\\tsc.cmd --noEmit 2>&1 | Select-Object -First 40)",
       "PowerShell(cd D:\\\\RGB_Software\\\\lbd2\\\\backend; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; node_modules\\\\.bin\\\\tsc.cmd --noEmit 2>&1 | Select-Object -First 20)",
       "Bash(pg_isready -h localhost -p 5432)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(xargs cat *)"
     ]
   }
 }

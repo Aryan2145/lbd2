@@ -97,7 +97,7 @@ function taskToApi(t: TaskData) {
 }
 
 function mapEventGroup(g: any): EventGroup {
-  return { id: g.id, name: g.name, color: g.color, createdAt: g.createdAt ? new Date(g.createdAt).getTime() : Date.now() };
+  return { id: g.id, name: g.name, color: g.color, createdAt: g.createdAt ? new Date(g.createdAt).getTime() : Date.now(), archived: g.archived ?? false };
 }
 
 function mapWeekEvent(e: any): WeekEvent {
@@ -105,7 +105,7 @@ function mapWeekEvent(e: any): WeekEvent {
 }
 
 function mapWeekPlan(p: any): WeekPlan {
-  return { weekStart: p.weekStart, priorities: p.priorities ?? [], outcomes: p.outcomes ?? [], dayNotes: p.dayNotes ?? {}, dayThemes: p.dayThemes ?? {} };
+  return { weekStart: p.weekStart, priorities: p.priorities ?? [], outcomes: p.outcomes ?? [], doneOutcomes: p.doneOutcomes ?? [], dayNotes: p.dayNotes ?? {}, dayThemes: p.dayThemes ?? {} };
 }
 
 function mapDayPlan(d: any): DayPlan {
@@ -415,7 +415,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     updateEventGroup: (g) => {
       setEventGroups(prev => prev.map(x => x.id === g.id ? g : x));
-      api.patch(`/calendar/groups/${g.id}`, { name: g.name, color: g.color }).catch(console.error);
+      api.patch(`/calendar/groups/${g.id}`, { name: g.name, color: g.color, archived: g.archived ?? false }).catch(console.error);
     },
     deleteEventGroup: (id) => {
       setEventGroups(prev => prev.filter(x => x.id !== id));

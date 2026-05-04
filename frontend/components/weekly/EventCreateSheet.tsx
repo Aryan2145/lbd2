@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Clock, Calendar, Layers, AlignLeft, Trash2, AlertTriangle, Lightbulb } from "lucide-react";
 import type { WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
+import ClockTimePicker from "@/components/weekly/ClockTimePicker";
 
 interface Props {
   open:           boolean;
@@ -32,12 +33,14 @@ export default function EventCreateSheet({
   open, onClose, onSave, onDelete, eventGroups, existingEvents,
   editEvent, initialDate, initialTime, onEditConflict,
 }: Props) {
-  const [title,       setTitle]       = useState("");
-  const [description, setDescription] = useState("");
-  const [date,        setDate]        = useState("");
-  const [startTime,   setStartTime]   = useState("09:00");
-  const [endTime,     setEndTime]     = useState("10:00");
-  const [groupId,     setGroupId]     = useState("");
+  const [title,        setTitle]        = useState("");
+  const [description,  setDescription]  = useState("");
+  const [date,         setDate]         = useState("");
+  const [startTime,    setStartTime]    = useState("09:00");
+  const [endTime,      setEndTime]      = useState("10:00");
+  const [groupId,      setGroupId]      = useState("");
+  const [startPickerOpen, setStartPickerOpen] = useState(false);
+  const [endPickerOpen,   setEndPickerOpen]   = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -107,6 +110,26 @@ export default function EventCreateSheet({
 
   return (
     <>
+      {startPickerOpen && (
+        <ClockTimePicker
+          label="Start time"
+          value={startTime}
+          onChange={(v) => {
+            setStartTime(v);
+            setEndTime(addOneHour(v));
+          }}
+          onClose={() => setStartPickerOpen(false)}
+        />
+      )}
+      {endPickerOpen && (
+        <ClockTimePicker
+          label="End time"
+          value={endTime}
+          onChange={(v) => setEndTime(v)}
+          onClose={() => setEndPickerOpen(false)}
+        />
+      )}
+
       <div onClick={onClose} style={{
         position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 50,
       }} />
@@ -150,11 +173,23 @@ export default function EventCreateSheet({
           </div>
           <div style={{ flex: 1 }}>
             <label style={lbl}><Clock size={9} style={{ display: "inline", marginRight: 3 }} />Start</label>
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inp} />
+            <button
+              onClick={() => setStartPickerOpen(true)}
+              style={{ ...inp, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontWeight: 600 }}
+            >
+              <span>{startTime}</span>
+              <Clock size={12} color="#F97316" />
+            </button>
           </div>
           <div style={{ flex: 1 }}>
             <label style={lbl}><Clock size={9} style={{ display: "inline", marginRight: 3 }} />End</label>
-            <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inp} />
+            <button
+              onClick={() => setEndPickerOpen(true)}
+              style={{ ...inp, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontWeight: 600 }}
+            >
+              <span>{endTime}</span>
+              <Clock size={12} color="#F97316" />
+            </button>
           </div>
         </div>
 
