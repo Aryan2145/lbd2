@@ -201,8 +201,9 @@ model EventGroup {
   userId String
   user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name   String
-  color  String
+  name     String
+  color    String
+  archived Boolean @default(false)
 
   events WeekEvent[]
 
@@ -241,7 +242,9 @@ model WeekPlan {
   // { text, lifeArea, completed }[]
   priorities Json    @default("[]")
   // string[]
-  outcomes   Json    @default("[]")
+  outcomes     Json    @default("[]")
+  // string[]
+  doneOutcomes Json    @default("[]")
   // Record<YYYY-MM-DD, string>
   dayNotes   Json    @default("{}")
   // Record<YYYY-MM-DD, string>
