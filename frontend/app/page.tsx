@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Crown } from "lucide-react";
 
 const FEATURES = [
   {
@@ -56,13 +55,12 @@ export default function LandingPage() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 9,
-            background: "linear-gradient(135deg,#F97316,#EA580C)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <Crown size={16} color="#fff" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt=""
+            style={{ width: 32, height: 32, display: "block" }}
+          />
           <span style={{ fontSize: 16, fontWeight: 700, color: "#1C1917" }}>Life By Design</span>
         </div>
 

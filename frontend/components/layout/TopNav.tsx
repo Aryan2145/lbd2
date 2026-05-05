@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Crown, Search, Menu, X as XIcon } from "lucide-react";
+import { Bell, Search, Menu, X as XIcon } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import { useAuth } from "@/lib/AuthContext";
 import { api } from "@/lib/api";
@@ -140,13 +140,12 @@ export default function TopNav() {
                 onClick={() => setMobileOpen(false)}
                 style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}
               >
-                <div style={{
-                  width: "28px", height: "28px", borderRadius: "8px",
-                  background: "linear-gradient(135deg, #F97316, #EA580C)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <Crown size={13} color="#fff" />
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo.png"
+                  alt=""
+                  style={{ width: 28, height: 28, display: "block" }}
+                />
                 <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", letterSpacing: "-0.01em" }}>
                   Life By Design
                 </span>
@@ -250,13 +249,12 @@ export default function TopNav() {
             marginRight: "8px",
           }}
         >
-          <div style={{
-            width: "28px", height: "28px", borderRadius: "8px",
-            background: "linear-gradient(135deg, #F97316, #EA580C)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <Crown size={13} color="#fff" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt=""
+            style={{ width: 28, height: 28, display: "block" }}
+          />
           <span
             className="hidden sm:inline"
             style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", letterSpacing: "-0.01em" }}

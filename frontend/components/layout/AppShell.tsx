@@ -35,8 +35,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router    = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  const isLogin  = pathname === "/login";
-  const isPublic = pathname === "/" || pathname === "/privacy" || pathname === "/terms";
+  const isLogin    = pathname === "/login";
+  const isRegister = pathname === "/register";
+  const isAuth     = isLogin || isRegister;
+  const isPublic   = pathname === "/" || pathname === "/privacy" || pathname === "/terms";
 
   useEffect(() => {
     setMounted(true);
@@ -44,11 +46,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!mounted) return;
-    if (!token && !isLogin && !isPublic) router.replace("/login");
-    if (token  &&  isLogin) router.replace("/dashboard");
-  }, [mounted, token, isLogin, isPublic, router]);
+    if (!token && !isAuth && !isPublic) router.replace("/login");
+    if (token  &&  isAuth) router.replace("/dashboard");
+  }, [mounted, token, isAuth, isPublic, router]);
 
-  if (isLogin || isPublic) return <>{children}</>;
+  if (isAuth || isPublic) return <>{children}</>;
 
   // Render spinner on server and initial client render to avoid hydration mismatch
   if (!mounted || !token) return <Spinner />;

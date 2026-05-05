@@ -1,10 +1,25 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Crown, Eye, EyeOff } from "lucide-react";
+import { Carlito } from "next/font/google";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { api } from "@/lib/api";
+
+// Calibri (Windows) with Carlito as the open-source metric-compatible fallback
+const carlito = Carlito({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style:   ["normal", "italic"],
+  display: "swap",
+});
+
+const wordmarkFont: React.CSSProperties = {
+  fontFamily: `Calibri, "Calibri Light", ${carlito.style.fontFamily}, sans-serif`,
+  fontStyle:  "italic",
+};
 
 type Mode = "login" | "register";
 
@@ -79,13 +94,45 @@ function LoginForm() {
 
   const labelStyle: React.CSSProperties = {
     display: "block", fontSize: 11, fontWeight: 700,
-    color: "#57534E", textTransform: "uppercase",
+    textTransform: "uppercase",
     letterSpacing: "0.07em", marginBottom: 6,
   };
+  // mobile: darker for legibility on the glass; desktop: original muted stone
+  const secondaryTextClass = "text-[#1C1917] lg:text-[#57534E]";
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", backgroundColor: "#FAF5EE" }}>
-      {/* ── LEFT — full-bleed mountain image ─────────────────────── */}
+    <div style={{
+      position: "relative",
+      height: "100vh", display: "flex", overflow: "hidden",
+      backgroundColor: "#FAF5EE",
+    }}>
+      {/* Mobile-only background image (portrait mountain + orange filter) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/login-bg-mobile.png"
+        alt=""
+        aria-hidden
+        className="lg:hidden"
+        style={{
+          position: "absolute", inset: 0,
+          width: "100%", height: "100%",
+          objectFit: "cover",
+          objectPosition: "center",
+          zIndex: 0,
+        }}
+      />
+      <div
+        aria-hidden
+        className="lg:hidden"
+        style={{
+          position: "absolute", inset: 0, zIndex: 0,
+          background:
+            "linear-gradient(160deg, rgba(249,115,22,0.10) 0%, rgba(234,88,12,0.10) 100%)",
+          mixBlendMode: "multiply",
+        }}
+      />
+
+      {/* ── LEFT — full-bleed mountain image with brand overlay ──── */}
       <div
         className="hidden lg:block"
         style={{
@@ -96,39 +143,130 @@ function LoginForm() {
           position: "relative",
         }}
       >
-        {/* subtle warm gradient overlay for depth */}
+        {/* subtle warm gradient for depth + legibility */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(180deg, rgba(28,25,23,0) 0%, rgba(28,25,23,0.25) 100%)",
+          background:
+            "linear-gradient(180deg, rgba(28,25,23,0.35) 0%, rgba(28,25,23,0) 35%, rgba(28,25,23,0) 60%, rgba(28,25,23,0.45) 100%)",
         }} />
+
+        {/* Brand block — glassmorphic plate over the mountain */}
+        <div style={{
+          position: "absolute", top: 28, left: 28, zIndex: 1,
+          display: "flex", alignItems: "center", gap: 12,
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-orange.png"
+            alt="Life By Design"
+            style={{
+              width: 44, height: 44, display: "block",
+              borderRadius: 10,
+              boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+            }}
+          />
+          <span style={{
+            ...wordmarkFont,
+            fontSize: 24, fontWeight: 700, color: "#FFFFFF",
+            letterSpacing: "-0.005em",
+            padding: "6px 14px",
+            backgroundColor: "rgba(0, 0, 0, 0.30)",
+            backdropFilter: "blur(12px) saturate(140%)",
+            WebkitBackdropFilter: "blur(12px) saturate(140%)",
+            border: "1px solid rgba(255, 255, 255, 0.18)",
+            borderRadius: 12,
+            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.22)",
+            display: "inline-block",
+          }}>
+            Life By <span style={{ color: "#fd9266" }}>Design</span>
+          </span>
+        </div>
       </div>
 
       {/* ── RIGHT — sign-in card ─────────────────────────────────── */}
       <div
-        className="flex flex-col justify-center px-6 lg:px-16 py-10"
+        className="flex flex-col px-6 lg:px-16 lg:bg-white"
         style={{
+          position: "relative",
+          zIndex: 1,
           width: "100%",
           maxWidth: 560,
           marginLeft: "auto",
-          backgroundColor: "#FFFFFF",
+          height: "100vh",
+          overflowY: "auto",
+          scrollbarGutter: "stable",
+          paddingTop: "9vh",
+          paddingBottom: 32,
         }}
       >
         <div style={{ width: "100%", maxWidth: 380, marginInline: "auto" }}>
 
-          {/* Logo */}
-          <div style={{
-            width: 56, height: 56, borderRadius: 14,
-            background: "linear-gradient(135deg, #F97316, #EA580C)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 6px 20px rgba(234,88,12,0.28)",
-            marginBottom: 18,
-          }}>
-            <Crown size={26} color="#fff" />
+          {/* Mobile: logo (bare) + wordmark on a glassmorphic plate */}
+          <div
+            className="flex lg:hidden"
+            style={{
+              alignItems: "center", gap: 12,
+              marginTop: "-5vh",
+              marginBottom: "calc(5vh + 18px)",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-orange.png"
+              alt="Life By Design"
+              style={{
+                width: 44, height: 44, display: "block",
+                borderRadius: 10,
+                boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+              }}
+            />
+            <span style={{
+              ...wordmarkFont,
+              fontSize: 24, fontWeight: 700, color: "#FFFFFF",
+              letterSpacing: "-0.005em",
+              padding: "6px 14px",
+              backgroundColor: "rgba(0, 0, 0, 0.30)",
+              backdropFilter: "blur(12px) saturate(140%)",
+              WebkitBackdropFilter: "blur(12px) saturate(140%)",
+              border: "1px solid rgba(255, 255, 255, 0.18)",
+              borderRadius: 12,
+              boxShadow: "0 6px 20px rgba(0, 0, 0, 0.22)",
+              display: "inline-block",
+            }}>
+              Life By <span style={{ color: "#fd9266" }}>Design</span>
+            </span>
           </div>
 
+          {/* Desktop: single compass logo (existing) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="Life By Design"
+            className="hidden lg:block"
+            style={{
+              width: 56, height: 56,
+              marginBottom: 18,
+            }}
+          />
+
+          {/* Frosted-glass card wrapping welcome → legal (mobile only) */}
+          <div
+            className="rounded-2xl bg-white/30 lg:bg-transparent lg:rounded-none lg:p-0"
+            style={{
+              padding: "20px 18px",
+              border: "1px solid rgba(255,255,255,0.30)",
+              boxShadow: "0 4px 16px rgba(28,25,23,0.08)",
+              backdropFilter: "blur(2px)",
+              WebkitBackdropFilter: "blur(2px)",
+            }}
+          >
+
           {/* Welcome line */}
-          <p style={{ fontSize: 14, color: "#57534E", margin: 0, marginBottom: 4 }}>
-            Welcome to <span style={{ fontWeight: 700, color: "#1C1917" }}>Life By Design</span>
+          <p className={secondaryTextClass} style={{ fontSize: 14, margin: 0, marginBottom: 4 }}>
+            Welcome to{" "}
+            <span style={{ ...wordmarkFont, fontWeight: 700, color: "#1C1917", fontSize: 17 }}>
+              Life By <span style={{ color: "#C2410C" }}>Design</span>
+            </span>
           </p>
 
           {/* Quote (in place of "Get started…") */}
@@ -140,7 +278,7 @@ function LoginForm() {
             &ldquo;{quote.text}&rdquo;
           </h1>
           {quote.author && (
-            <p style={{ fontSize: 13, color: "#78716C", margin: "0 0 28px", fontWeight: 500 }}>
+            <p className="text-[#1C1917] lg:text-[#78716C]" style={{ fontSize: 13, margin: "0 0 28px", fontWeight: 600 }}>
               — {quote.author}
             </p>
           )}
@@ -151,7 +289,7 @@ function LoginForm() {
 
             {mode === "register" && (
               <div>
-                <label style={labelStyle}>Full Name</label>
+                <label className={secondaryTextClass} style={labelStyle}>Full Name</label>
                 <input
                   type="text"
                   value={name}
@@ -164,7 +302,7 @@ function LoginForm() {
             )}
 
             <div>
-              <label style={labelStyle}>Email</label>
+              <label className={secondaryTextClass} style={labelStyle}>Email</label>
               <input
                 type="email"
                 value={email}
@@ -176,7 +314,7 @@ function LoginForm() {
             </div>
 
             <div>
-              <label style={labelStyle}>Password</label>
+              <label className={secondaryTextClass} style={labelStyle}>Password</label>
               <div style={{ position: "relative" }}>
                 <input
                   type={showPwd ? "text" : "password"}
@@ -234,29 +372,31 @@ function LoginForm() {
           </form>
 
           {/* Mode toggle */}
-          <p style={{ textAlign: "center", fontSize: 13, color: "#57534E", marginTop: 22 }}>
+          <p className={secondaryTextClass} style={{ textAlign: "center", fontSize: 13, marginTop: 22 }}>
             {mode === "login" ? (
               <>
                 New here?{" "}
-                <button
-                  onClick={() => switchMode("register")}
+                <Link
+                  href="/register"
+                  scroll={false}
+                  className="text-[#7C2D12] lg:text-[#EA580C]"
                   style={{
-                    background: "none", border: "none",
-                    color: "#EA580C", fontWeight: 700, cursor: "pointer", fontSize: 13,
-                    padding: 0,
+                    fontWeight: 700, fontSize: 13,
+                    textDecoration: "none",
                   }}
                 >
                   Create an account
-                </button>
+                </Link>
               </>
             ) : (
               <>
                 Already have an account?{" "}
                 <button
                   onClick={() => switchMode("login")}
+                  className="text-[#7C2D12] lg:text-[#EA580C]"
                   style={{
                     background: "none", border: "none",
-                    color: "#EA580C", fontWeight: 700, cursor: "pointer", fontSize: 13,
+                    fontWeight: 700, cursor: "pointer", fontSize: 13,
                     padding: 0,
                   }}
                 >
@@ -267,15 +407,18 @@ function LoginForm() {
           </p>
 
           {/* Legal */}
-          <p style={{
-            textAlign: "center", fontSize: 11, color: "#78716C",
+          <p className="text-[#1C1917] lg:text-[#78716C]" style={{
+            textAlign: "center", fontSize: 11, fontWeight: 500,
             marginTop: 24, lineHeight: 1.5,
           }}>
             By continuing you agree to our{" "}
-            <a href="/privacy" style={{ color: "#EA580C", fontWeight: 600 }}>privacy policy</a>
+            <a href="/privacy" className="text-[#7C2D12] lg:text-[#EA580C]" style={{ fontWeight: 700 }}>privacy policy</a>
             {" "}and{" "}
-            <a href="/terms" style={{ color: "#EA580C", fontWeight: 600 }}>terms of use</a>.
+            <a href="/terms" className="text-[#7C2D12] lg:text-[#EA580C]" style={{ fontWeight: 700 }}>terms of use</a>.
           </p>
+
+          </div>
+          {/* end frosted-glass card */}
         </div>
       </div>
     </div>

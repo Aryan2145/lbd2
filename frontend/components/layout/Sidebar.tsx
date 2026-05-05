@@ -55,14 +55,13 @@ export default function Sidebar() {
         style={{ borderBottom: "1px solid #E8DDD0" }}
       >
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{
-              background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
-            }}
-          >
-            <Crown size={13} className="text-white" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt=""
+            className="w-7 h-7 flex-shrink-0"
+            style={{ display: "block" }}
+          />
           <div>
             <p
               className="text-xs font-semibold leading-tight"
