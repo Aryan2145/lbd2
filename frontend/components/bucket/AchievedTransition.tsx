@@ -11,10 +11,22 @@ interface Props {
   onCancel: () => void;
 }
 
-function processImageUrl(url: string): string {
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)\//);
-  if (match) return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-  return url;
+function processImageUrl(raw: string): string {
+  if (!raw) return raw;
+  if (raw.includes("drive.google.com/thumbnail?id=")) return raw;
+
+  let id: string | null = null;
+  const fileMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) id = fileMatch[1];
+  if (!id) {
+    const idMatch = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idMatch) id = idMatch[1];
+  }
+  if (!id) {
+    const lh3Match = raw.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+    if (lh3Match) id = lh3Match[1];
+  }
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1500` : raw;
 }
 
 export default function AchievedTransition({ entry, onSave, onCancel }: Props) {

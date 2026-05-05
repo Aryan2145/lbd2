@@ -136,36 +136,62 @@ export default function WeekSidebar({
           )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "160px", overflowY: "auto" }}>
-            {plan.outcomes.map((out, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
-                <Check size={12} color="#16A34A" style={{ marginTop: 3, flexShrink: 0 }} />
-                {editOutIdx === idx ? (
-                  <input
-                    ref={outInputRef}
-                    value={outDraft}
-                    onChange={(e) => setOutDraft(e.target.value)}
-                    onBlur={saveOutcome}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveOutcome();
-                      if (e.key === "Escape") setEditOutIdx(null);
+            {plan.outcomes.map((out, idx) => {
+              const done = (plan.doneOutcomes ?? []).includes(out);
+              const toggleDone = () => {
+                if (!out.trim()) return; // can't toggle empty placeholder
+                const cur  = plan.doneOutcomes ?? [];
+                const next = done ? cur.filter((t) => t !== out) : [...cur, out];
+                onUpdatePlan({ ...plan, doneOutcomes: next });
+              };
+              return (
+                <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
+                  <button
+                    onClick={toggleDone}
+                    title={done ? "Mark as not done" : "Mark as done"}
+                    style={{
+                      width: 14, height: 14, borderRadius: 3, padding: 0, cursor: "pointer",
+                      border: done ? "none" : "1.5px solid #C4B5A8",
+                      backgroundColor: done ? "#16A34A" : "#FFFFFF",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0, marginTop: 3,
                     }}
-                    style={{ ...inlineInput, flex: 1 }}
-                    placeholder="Enter outcome…"
-                  />
-                ) : (
-                  <p
-                    onClick={() => { setEditOutIdx(idx); setOutDraft(out); }}
-                    style={{ flex: 1, fontSize: "13px", color: "#1C1917", cursor: "text",
-                      lineHeight: 1.4, margin: 0, padding: "3px 4px", borderRadius: 4 }}
                   >
-                    {out || <span style={{ color: "#A8A29E", fontStyle: "italic" }}>Click to edit…</span>}
-                  </p>
-                )}
-                <button onClick={() => deleteOutcome(idx)} style={ghostBtn}>
-                  <X size={11} color="#A8A29E" />
-                </button>
-              </div>
-            ))}
+                    {done && <Check size={9} color="#FFFFFF" strokeWidth={3} />}
+                  </button>
+                  {editOutIdx === idx ? (
+                    <input
+                      ref={outInputRef}
+                      value={outDraft}
+                      onChange={(e) => setOutDraft(e.target.value)}
+                      onBlur={saveOutcome}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveOutcome();
+                        if (e.key === "Escape") setEditOutIdx(null);
+                      }}
+                      style={{ ...inlineInput, flex: 1 }}
+                      placeholder="Enter outcome…"
+                    />
+                  ) : (
+                    <p
+                      onClick={() => { setEditOutIdx(idx); setOutDraft(out); }}
+                      style={{
+                        flex: 1, fontSize: "13px",
+                        color: done ? "#15803D" : "#1C1917",
+                        textDecoration: done ? "line-through" : "none",
+                        cursor: "text", lineHeight: 1.4, margin: 0,
+                        padding: "3px 4px", borderRadius: 4,
+                      }}
+                    >
+                      {out || <span style={{ color: "#78716C", fontStyle: "italic" }}>Click to edit…</span>}
+                    </p>
+                  )}
+                  <button onClick={() => deleteOutcome(idx)} style={ghostBtn}>
+                    <X size={11} color="#78716C" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
 

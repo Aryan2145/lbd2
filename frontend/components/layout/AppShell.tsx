@@ -45,7 +45,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
     if (!token && !isLogin && !isPublic) router.replace("/login");
-    if (token  &&  isLogin) router.replace("/legacy");
+    if (token  &&  isLogin) router.replace("/dashboard");
   }, [mounted, token, isLogin, isPublic, router]);
 
   if (isLogin || isPublic) return <>{children}</>;

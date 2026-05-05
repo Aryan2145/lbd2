@@ -6,6 +6,7 @@ import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import { COLUMN_META, formatTargetDate } from "@/lib/bucketTypes";
 import type { LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
+import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
 
 interface Props {
   open:           boolean;
@@ -16,9 +17,12 @@ interface Props {
   initialStatus?: BucketStatus;
 }
 
-// Same logic as vision board — converts Drive share links to embeddable CDN URL
-function toDriveImgUrl(raw: string): string {
-  if (!raw || (!raw.includes("drive.google.com") && !raw.includes("docs.google.com"))) return raw;
+// Convert any Drive URL form (share link, /uc?export=view, lh3 CDN) to the
+// reliable thumbnail endpoint. Non-Drive URLs pass through unchanged.
+export function toDriveImgUrl(raw: string): string {
+  if (!raw) return raw;
+  if (raw.includes("drive.google.com/thumbnail?id=")) return raw;
+
   let id: string | null = null;
   const fileMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileMatch) id = fileMatch[1];
@@ -26,11 +30,15 @@ function toDriveImgUrl(raw: string): string {
     const idMatch = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
     if (idMatch) id = idMatch[1];
   }
-  return id ? `https://lh3.googleusercontent.com/d/${id}` : raw;
+  if (!id) {
+    const lh3Match = raw.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+    if (lh3Match) id = lh3Match[1];
+  }
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1500` : raw;
 }
 
 function generatePrompt(title: string, description: string, lifeArea: LifeArea): string {
-  return `Wide landscape photograph, 16:9 aspect ratio, representing the dream: "${title || "a life aspiration"}". ${description ? description + " " : ""}Evokes ${lifeArea} at its finest — emotionally resonant, life-affirming, beautifully composed wide shot. Golden hour natural lighting, photorealistic, high resolution, cinematic aspirational mood. Horizontal orientation only.`;
+  return `Panoramic banner photograph, 3:1 aspect ratio (extra-wide horizontal letterbox), representing the dream: "${title || "a life aspiration"}". ${description ? description + " " : ""}Evokes ${lifeArea} at its finest — emotionally resonant, life-affirming, beautifully composed for a wide banner crop. Golden hour natural lighting, photorealistic, high resolution, cinematic aspirational mood. Strict 3:1 horizontal banner format, no vertical or square framing. Output dimensions approximately 1500×500.`;
 }
 
 export default function BucketEntrySheet({
@@ -42,6 +50,7 @@ export default function BucketEntrySheet({
   const [imageUrl,    setImageUrl]    = useState("");
   const [targetDate,  setTargetDate]  = useState("");
   const [imgError,    setImgError]    = useState(false);
+  const [imgRetryKey, setImgRetryKey] = useState(0);
   const [copied,      setCopied]      = useState(false);
   const [confirmDel,  setConfirmDel]  = useState(false);
 
@@ -65,7 +74,8 @@ export default function BucketEntrySheet({
 
   const currentStatus = editEntry?.status ?? initialStatus;
   const colMeta       = COLUMN_META[currentStatus];
-  const canSave       = title.trim().length > 0;
+  const targetDateError = validateDate(targetDate, { required: false });
+  const canSave         = title.trim().length > 0 && !targetDateError;
   const processedSrc  = imageUrl ? toDriveImgUrl(imageUrl) : "";
 
   async function handleCopyPrompt() {
@@ -199,15 +209,27 @@ export default function BucketEntrySheet({
 
           {/* Target date — native date picker */}
           <div style={{ marginBottom: "18px" }}>
-            <label style={lbl}>Tentative Target Date</label>
+            <label style={lbl}>Tentative Target Date <span style={{ fontSize: "10px", fontWeight: 400, color: "#A8A29E" }}>(optional)</span></label>
             <input
               type="date"
               value={targetDate}
+              min={todayDateStr()} max={MAX_DATE_STR}
               onChange={(e) => setTargetDate(e.target.value)}
               className="weekly-input"
-              style={{ ...inp, colorScheme: "light" as React.CSSProperties["colorScheme"], cursor: "pointer" }}
+              style={{
+                ...inp,
+                colorScheme: "light" as React.CSSProperties["colorScheme"],
+                cursor: "pointer",
+                borderColor: targetDateError ? "#FCA5A5" : (inp.borderColor as string | undefined),
+              }}
             />
-            {targetDate && (
+            {targetDateError && (
+              <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600,
+                marginTop: "5px", marginLeft: "2px" }}>
+                {targetDateError}
+              </p>
+            )}
+            {!targetDateError && targetDate && (
               <p style={{ fontSize: "12px", color: "#F97316", fontWeight: 600,
                 marginTop: "5px", marginLeft: "2px" }}>
                 {formatTargetDate(targetDate)}
@@ -236,15 +258,29 @@ export default function BucketEntrySheet({
               <div style={{ marginTop: 8, borderRadius: 10, overflow: "hidden",
                 border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={processedSrc} alt="" onError={() => setImgError(true)}
+                <img key={imgRetryKey} src={processedSrc} alt="" onError={() => setImgError(true)}
                   style={{ width: "100%", height: "auto", maxHeight: "240px",
                     display: "block", objectFit: "contain" }} />
               </div>
             )}
             {processedSrc && imgError && (
-              <p style={{ fontSize: "10px", color: "#EF4444", marginTop: 4 }}>
-                Could not load image. Make sure the file is shared as &ldquo;Anyone with the link&rdquo; on Google Drive.
-              </p>
+              <div style={{ marginTop: 4, display: "flex", alignItems: "center",
+                gap: 8, flexWrap: "wrap" }}>
+                <p style={{ fontSize: "10px", color: "#EF4444", margin: 0 }}>
+                  Could not load image. Make sure the file is shared as &ldquo;Anyone with the link&rdquo; on Google Drive.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setImgError(false); setImgRetryKey((k) => k + 1); }}
+                  style={{
+                    fontSize: "10px", fontWeight: 700, color: "#FFFFFF",
+                    backgroundColor: "#F97316", border: "none",
+                    padding: "3px 10px", borderRadius: 6, cursor: "pointer",
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
             )}
           </div>
 

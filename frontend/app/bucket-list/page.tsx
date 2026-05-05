@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Plus, Pencil, Calendar, GripVertical, ArrowLeft } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
-import BucketEntrySheet   from "@/components/bucket/BucketEntrySheet";
+import BucketEntrySheet, { toDriveImgUrl } from "@/components/bucket/BucketEntrySheet";
 import AchievedTransition from "@/components/bucket/AchievedTransition";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import { COLUMN_META, formatTargetDate } from "@/lib/bucketTypes";
@@ -17,7 +17,10 @@ function fmtAchievedDate(ts: number): string {
 }
 
 export default function BucketListPage() {
-  const { bucketEntries, addBucketEntry, updateBucketEntry, deleteBucketEntry } = useAppStore();
+  const {
+    bucketEntries,
+    addBucketEntry, updateBucketEntry, deleteBucketEntry, reorderBucketEntries,
+  } = useAppStore();
 
   const [sheetOpen,      setSheetOpen]      = useState(false);
   const [editEntry,      setEditEntry]      = useState<BucketEntry | null>(null);
@@ -25,7 +28,68 @@ export default function BucketListPage() {
   const [achievingEntry, setAchievingEntry] = useState<BucketEntry | null>(null);
   const [draggingId,     setDraggingId]     = useState<string | null>(null);
   const [dragoverCol,    setDragoverCol]    = useState<BucketStatus | null>(null);
+  const [dropTarget,     setDropTarget]     = useState<{ id: string; position: "above" | "below" } | null>(null);
   const [mobileTab,      setMobileTab]      = useState<BucketStatus>("dreaming");
+
+  // ── Auto-scroll while dragging near a column's top/bottom edge ─────────────
+  const scrollSpeedRef     = useRef(0);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const scrollRafRef       = useRef<number | null>(null);
+
+  function autoScrollTick() {
+    const c = scrollContainerRef.current;
+    const s = scrollSpeedRef.current;
+    if (c && s !== 0) {
+      c.scrollBy({ top: s });
+      scrollRafRef.current = window.requestAnimationFrame(autoScrollTick);
+    } else {
+      scrollRafRef.current = null;
+      scrollContainerRef.current = null;
+    }
+  }
+
+  function startAutoScroll(container: HTMLElement, speed: number) {
+    scrollContainerRef.current = container;
+    scrollSpeedRef.current     = speed;
+    if (scrollRafRef.current === null) {
+      scrollRafRef.current = window.requestAnimationFrame(autoScrollTick);
+    }
+  }
+
+  function stopAutoScroll() {
+    scrollSpeedRef.current = 0;
+    if (scrollRafRef.current !== null) {
+      window.cancelAnimationFrame(scrollRafRef.current);
+      scrollRafRef.current = null;
+    }
+    scrollContainerRef.current = null;
+  }
+
+  function handleListDragOver(e: React.DragEvent<HTMLDivElement>) {
+    if (!draggingId) return;
+    const list = e.currentTarget;
+    const rect = list.getBoundingClientRect();
+    const EDGE = 60, MAX = 14;
+    let speed = 0;
+    if (e.clientY < rect.top + EDGE) {
+      const dist = Math.max(0, e.clientY - rect.top);
+      speed = -Math.ceil(MAX * (1 - dist / EDGE));
+    } else if (e.clientY > rect.bottom - EDGE) {
+      const dist = Math.max(0, rect.bottom - e.clientY);
+      speed = Math.ceil(MAX * (1 - dist / EDGE));
+    }
+    if (speed !== 0) startAutoScroll(list, speed);
+    else             stopAutoScroll();
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+      }
+    };
+  }, []);
 
   const columns: [BucketStatus, BucketEntry[]][] = COLUMN_ORDER.map((s) => [
     s, bucketEntries.filter((e) => e.status === s),
@@ -44,15 +108,50 @@ export default function BucketListPage() {
   }
 
   function handleDrop(targetStatus: BucketStatus) {
+    stopAutoScroll();
     if (!draggingId) return;
     const entry = bucketEntries.find((e) => e.id === draggingId);
-    setDraggingId(null); setDragoverCol(null);
+    setDraggingId(null); setDragoverCol(null); setDropTarget(null);
     if (!entry || entry.status === targetStatus) return;
     if (targetStatus === "achieved") {
       setAchievingEntry(entry);
     } else {
       updateBucketEntry({ ...entry, status: targetStatus });
     }
+  }
+
+  function handleCardDrop(targetId: string) {
+    stopAutoScroll();
+    const dt = dropTarget;
+    if (!draggingId || draggingId === targetId) {
+      setDraggingId(null); setDragoverCol(null); setDropTarget(null);
+      return;
+    }
+    const dragged = bucketEntries.find((e) => e.id === draggingId);
+    const target  = bucketEntries.find((e) => e.id === targetId);
+    if (!dragged || !target) {
+      setDraggingId(null); setDragoverCol(null); setDropTarget(null);
+      return;
+    }
+    // Cross-column to "achieved" — defer to the achievement flow (no reorder).
+    if (dragged.status !== target.status && target.status === "achieved") {
+      setAchievingEntry(dragged);
+      setDraggingId(null); setDragoverCol(null); setDropTarget(null);
+      return;
+    }
+    // Cross-column (dreaming ↔ planning): change status before reordering.
+    if (dragged.status !== target.status) {
+      updateBucketEntry({ ...dragged, status: target.status });
+    }
+    // Reorder the global list.
+    const ids     = bucketEntries.map((e) => e.id);
+    const without = ids.filter((id) => id !== draggingId);
+    const tIdx    = without.indexOf(targetId);
+    const insertAt = (dt?.position === "below") ? tIdx + 1 : tIdx;
+    const newIds  = [...without.slice(0, insertAt), draggingId, ...without.slice(insertAt)];
+    reorderBucketEntries(newIds);
+
+    setDraggingId(null); setDragoverCol(null); setDropTarget(null);
   }
 
   function handleAchievedSave(reflection: { memoryPhotoUrl: string; changeReflection: string }) {
@@ -203,10 +302,13 @@ export default function BucketListPage() {
               </div>
 
               {/* Card list */}
-              <div style={{
-                flex: 1, overflowY: "auto", padding: "12px",
-                display: "flex", flexDirection: "column", gap: "10px",
-              }}>
+              <div
+                onDragOver={handleListDragOver}
+                style={{
+                  flex: 1, overflowY: "auto", padding: "12px",
+                  display: "flex", flexDirection: "column", gap: "10px",
+                }}
+              >
                 {entries.length === 0 ? (
                   <div style={{
                     padding: "32px 16px", textAlign: "center",
@@ -229,21 +331,51 @@ export default function BucketListPage() {
                       + Add
                     </button>
                   </div>
-                ) : entries.map((entry) => (
-                  <BucketCard
-                    key={entry.id}
-                    entry={entry}
-                    isDragging={draggingId === entry.id}
-                    onEdit={() => openEdit(entry)}
-                    onDragStart={() => setDraggingId(entry.id)}
-                    onDragEnd={() => { setDraggingId(null); setDragoverCol(null); }}
-                    onMoveForward={() => {
-                      if (entry.status === "dreaming") updateBucketEntry({ ...entry, status: "planning" });
-                      else setAchievingEntry(entry);
-                    }}
-                    onMoveBack={() => updateBucketEntry({ ...entry, status: "dreaming" })}
-                  />
-                ))}
+                ) : entries.map((entry) => {
+                  const isDropTarget = dropTarget?.id === entry.id;
+                  return (
+                    <div
+                      key={entry.id}
+                      style={{ position: "relative", flexShrink: 0 }}
+                      onDragOver={(e) => {
+                        if (!draggingId || draggingId === entry.id) return;
+                        e.preventDefault();
+                        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                        const position = e.clientY < rect.top + rect.height / 2 ? "above" : "below";
+                        if (dropTarget?.id !== entry.id || dropTarget.position !== position) {
+                          setDropTarget({ id: entry.id, position });
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        handleCardDrop(entry.id);
+                      }}
+                    >
+                      {isDropTarget && dropTarget!.position === "above" && (
+                        <div style={{ position: "absolute", top: -6, left: 0, right: 0,
+                          height: 3, backgroundColor: meta.accent, borderRadius: 2, zIndex: 10,
+                          pointerEvents: "none" }} />
+                      )}
+                      <BucketCard
+                        entry={entry}
+                        isDragging={draggingId === entry.id}
+                        onEdit={() => openEdit(entry)}
+                        onDragStart={() => setDraggingId(entry.id)}
+                        onDragEnd={() => { stopAutoScroll(); setDraggingId(null); setDragoverCol(null); setDropTarget(null); }}
+                        onMoveForward={() => {
+                          if (entry.status === "dreaming") updateBucketEntry({ ...entry, status: "planning" });
+                          else setAchievingEntry(entry);
+                        }}
+                        onMoveBack={() => updateBucketEntry({ ...entry, status: "dreaming" })}
+                      />
+                      {isDropTarget && dropTarget!.position === "below" && (
+                        <div style={{ position: "absolute", bottom: -6, left: 0, right: 0,
+                          height: 3, backgroundColor: meta.accent, borderRadius: 2, zIndex: 10,
+                          pointerEvents: "none" }} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -285,8 +417,11 @@ export default function BucketListPage() {
               </button>
             </div>
             {/* scrollable cards */}
-            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px",
-              display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div
+              onDragOver={handleListDragOver}
+              style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px",
+                display: "flex", flexDirection: "column", gap: "12px" }}
+            >
               {entries.length === 0 ? (
                 <div style={{
                   padding: "40px 20px", textAlign: "center",
@@ -306,21 +441,51 @@ export default function BucketListPage() {
                     fontSize: "12px", fontWeight: 600, color: meta.accent, cursor: "pointer",
                   }}>+ Add</button>
                 </div>
-              ) : entries.map((entry) => (
-                <BucketCard
-                  key={entry.id}
-                  entry={entry}
-                  isDragging={draggingId === entry.id}
-                  onEdit={() => openEdit(entry)}
-                  onDragStart={() => setDraggingId(entry.id)}
-                  onDragEnd={() => { setDraggingId(null); setDragoverCol(null); }}
-                  onMoveForward={() => {
-                    if (entry.status === "dreaming") updateBucketEntry({ ...entry, status: "planning" });
-                    else setAchievingEntry(entry);
-                  }}
-                  onMoveBack={() => updateBucketEntry({ ...entry, status: "dreaming" })}
-                />
-              ))}
+              ) : entries.map((entry) => {
+                const isDropTarget = dropTarget?.id === entry.id;
+                return (
+                  <div
+                    key={entry.id}
+                    style={{ position: "relative", flexShrink: 0 }}
+                    onDragOver={(e) => {
+                      if (!draggingId || draggingId === entry.id) return;
+                      e.preventDefault();
+                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      const position = e.clientY < rect.top + rect.height / 2 ? "above" : "below";
+                      if (dropTarget?.id !== entry.id || dropTarget.position !== position) {
+                        setDropTarget({ id: entry.id, position });
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault(); e.stopPropagation();
+                      handleCardDrop(entry.id);
+                    }}
+                  >
+                    {isDropTarget && dropTarget!.position === "above" && (
+                      <div style={{ position: "absolute", top: -7, left: 0, right: 0,
+                        height: 3, backgroundColor: meta.accent, borderRadius: 2, zIndex: 10,
+                        pointerEvents: "none" }} />
+                    )}
+                    <BucketCard
+                      entry={entry}
+                      isDragging={draggingId === entry.id}
+                      onEdit={() => openEdit(entry)}
+                      onDragStart={() => setDraggingId(entry.id)}
+                      onDragEnd={() => { stopAutoScroll(); setDraggingId(null); setDragoverCol(null); setDropTarget(null); }}
+                      onMoveForward={() => {
+                        if (entry.status === "dreaming") updateBucketEntry({ ...entry, status: "planning" });
+                        else setAchievingEntry(entry);
+                      }}
+                      onMoveBack={() => updateBucketEntry({ ...entry, status: "dreaming" })}
+                    />
+                    {isDropTarget && dropTarget!.position === "below" && (
+                      <div style={{ position: "absolute", bottom: -7, left: 0, right: 0,
+                        height: 3, backgroundColor: meta.accent, borderRadius: 2, zIndex: 10,
+                        pointerEvents: "none" }} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -376,6 +541,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
         transition: "box-shadow 0.2s, opacity 0.15s",
         userSelect: "none",
         overflow: "hidden",
+        flexShrink: 0,
       }}
       onMouseEnter={(e) => {
         if (!isDragging)
@@ -389,8 +555,8 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
       {/* Image banner */}
       {entry.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={entry.imageUrl} alt=""
-          style={{ width: "100%", height: "auto", display: "block" }} />
+        <img src={toDriveImgUrl(entry.imageUrl)} alt=""
+          style={{ width: "100%", aspectRatio: "3 / 1", objectFit: "cover", display: "block" }} />
       )}
 
       {/* Card content */}
@@ -432,7 +598,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
           <p style={{
             fontSize: "11px", color: "#57534E", lineHeight: 1.5,
             margin: "0 0 6px",
-            display: "-webkit-box", WebkitLineClamp: 2,
+            display: "-webkit-box", WebkitLineClamp: 1,
             WebkitBoxOrient: "vertical" as const, overflow: "hidden",
           }}>
             {entry.status === "achieved" && entry.changeReflection

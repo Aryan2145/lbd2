@@ -118,28 +118,46 @@ export default function HabitsPage() {
     <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
 
       {/* Header */}
-      <div className="px-page" style={{ paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
-        display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
-            textTransform: "uppercase", color: "#F97316", marginBottom: "3px" }}>
-            Habits
-          </p>
-          <h1 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
-            Habit Tracker
-          </h1>
-          <p style={{ fontSize: "12px", color: "#78716C", marginTop: "3px" }}>
-            Small actions, done daily, compound into extraordinary results.
-          </p>
+      <div
+        className="px-page flex flex-wrap items-center justify-between gap-3"
+        style={{ paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8" }}
+      >
+        <div className="flex items-start justify-between gap-3 w-full lg:w-auto">
+          <div>
+            <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
+              textTransform: "uppercase", color: "#F97316", marginBottom: "3px" }}>
+              Habits
+            </p>
+            <h1 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
+              Habit Tracker
+            </h1>
+            <p className="hidden lg:block" style={{ fontSize: "12px", color: "#78716C", marginTop: "3px" }}>
+              Small actions, done daily, compound into extraordinary results.
+            </p>
+          </div>
+          {/* Add button — visible on mobile next to title */}
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="lg:hidden flex-shrink-0"
+            style={{
+              display: "flex", alignItems: "center", gap: "6px",
+              padding: "8px 14px", borderRadius: "10px", border: "none",
+              background: "linear-gradient(135deg, #F97316, #EA580C)",
+              fontSize: "12px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(249,115,22,0.3)",
+            }}>
+            <Plus size={13} /> Add
+          </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+        <div className="flex items-center gap-3 lg:gap-6 flex-wrap">
           <HeaderStat icon={<Repeat2 size={14} color="#F97316" />} label="Active habits" value={`${habits.length}`} color="#1C1917" />
           <HeaderStat icon={<Flame size={14} color="#F97316" />} label="Top streak" value={`${topStreak} days`} color="#F97316" />
           <HeaderStat icon={<CheckCheck size={14} color="#16A34A" />} label="On streak" value={`${activeCount}`} color="#16A34A" />
           <button
             onClick={() => setCreateOpen(true)}
+            className="hidden lg:flex"
             style={{
-              display: "flex", alignItems: "center", gap: "6px",
+              alignItems: "center", gap: "6px",
               padding: "9px 16px", borderRadius: "10px", border: "none",
               background: "linear-gradient(135deg, #F97316, #EA580C)",
               fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
@@ -151,12 +169,13 @@ export default function HabitsPage() {
       </div>
 
       {/* Today's progress banner */}
-      <div className="px-page" style={{
-        paddingTop: "14px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
-        display: "flex", alignItems: "center", gap: "20px",
-        backgroundColor: todayPct === 100 ? "#F0FDF4" : "#FFFFFF",
-        transition: "background-color 0.4s",
-      }}>
+      <div
+        className="px-page flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5"
+        style={{
+          paddingTop: "14px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
+          backgroundColor: todayPct === 100 ? "#F0FDF4" : "#FFFFFF",
+          transition: "background-color 0.4s",
+        }}>
         <div style={{ flexShrink: 0 }}>
           <p style={{ fontSize: "11px", fontWeight: 600, color: "#78716C", marginBottom: "2px" }}>
             Today&apos;s progress
@@ -284,9 +303,9 @@ export default function HabitsPage() {
           )}
         </div>
 
-        <div style={{ flex: 1 }} />
+        <div className="hidden lg:block" style={{ flex: 1 }} />
 
-        <div style={{ width: "240px", flexShrink: 0, display: "flex" }}>
+        <div className="flex flex-1 lg:flex-none lg:w-60">
           {searchOpen ? (
             <div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%" }}>
               <div style={{ flex: 1, position: "relative" }}>
@@ -340,7 +359,7 @@ export default function HabitsPage() {
                 <p style={{ fontSize: "13px", color: "#A8A29E" }}>No habits match your search</p>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "14px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: "14px" }}>
                 {searchResults.map((h) => (
                   <HabitCard
                     key={h.id}
@@ -358,7 +377,7 @@ export default function HabitsPage() {
           <EmptyState area={selectedAreas.size === 1 ? [...selectedAreas][0] : null}
             onAdd={() => setCreateOpen(true)} />
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "14px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: "14px" }}>
             {filtered.map((h) => (
               <HabitCard
                 key={h.id}

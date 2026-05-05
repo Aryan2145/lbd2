@@ -19,13 +19,13 @@ const NAV = [
   { href: "/dashboard",   label: "Dashboard"     },
   { href: "/legacy",      label: "My Legacy"     },
   { href: "/vision",      label: "Vision Canvas" },
+  { href: "/values",      label: "Values"        },
   { href: "/goals",       label: "Goals"         },
   { href: "/habits",      label: "Habits"        },
   { href: "/bucket-list", label: "Bucket List"   },
   { href: "/tasks",       label: "Tasks"         },
   { href: "/weekly",      label: "Weekly Plan"   },
   { href: "/daily",       label: "Daily"         },
-  { href: "/support",     label: "Support"       },
 ];
 
 function getWeekStart(): string {

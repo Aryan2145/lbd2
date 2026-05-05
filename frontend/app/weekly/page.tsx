@@ -840,6 +840,7 @@ export default function WeeklyPage() {
         initialDate={newEventDate}
         initialTime={newEventTime}
         onEditConflict={handleEditConflict}
+        onAddGroup={addEventGroup}
       />
 
       <TaskDetailSheet

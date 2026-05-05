@@ -7,6 +7,7 @@ import {
   Q_META, toTaskDate,
   type EisenhowerQ, type TaskData, type RecurringTemplate,
 } from "@/components/tasks/TaskCard";
+import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
 
 interface Props {
   open:                boolean;
@@ -79,7 +80,8 @@ export default function TaskCreateSheet({
   const goalHasNoMilestones = !!f.linkedGoalId && goalMilestones.length === 0;
   const milestoneRequired   = !!f.linkedGoalId && goalMilestones.length > 0 && !linkedMilestoneId;
 
-  const canSave = f.quadrant === "Q4" || (f.title.trim().length > 0 && !goalHasNoMilestones && !milestoneRequired);
+  const dateError = validateDate(f.deadline, { required: true });
+  const canSave = (f.quadrant === "Q4" || (f.title.trim().length > 0 && !goalHasNoMilestones && !milestoneRequired)) && !dateError;
 
   const set = <K extends keyof typeof DEFAULT_FORM>(k: K, v: typeof DEFAULT_FORM[K]) =>
     setF((p) => ({ ...p, [k]: v }));
@@ -292,15 +294,22 @@ export default function TaskCreateSheet({
           <div style={{ marginBottom: "14px" }}>
             <Label>{f.quadrant === "Q1" ? "Deadline — locked to today 🔒" : "Deadline"}</Label>
             <input type="date" value={f.deadline} disabled={f.quadrant === "Q1"}
+              min={todayDateStr()} max={MAX_DATE_STR}
               onChange={(e) => { if (f.quadrant === "Q1") return; set("deadline", e.target.value); }}
               style={{
                 ...inputStyle, opacity: f.quadrant === "Q1" ? 0.6 : 1,
                 cursor: f.quadrant === "Q1" ? "not-allowed" : "default",
                 backgroundColor: f.quadrant === "Q1" ? "#FEF2F2" : "#FFFFFF",
+                borderColor: dateError && f.quadrant !== "Q1" ? "#FCA5A5" : undefined,
               }} />
+            {f.quadrant !== "Q1" && dateError && (
+              <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px" }}>
+                {dateError}
+              </p>
+            )}
             {f.quadrant === "Q1" && (
               <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
-                🔥 It's urgent — this one's happening today, no rescheduling!
+                🔥 It&apos;s urgent — this one&apos;s happening today, no rescheduling!
               </p>
             )}
             {deadlineTodayNudge && (

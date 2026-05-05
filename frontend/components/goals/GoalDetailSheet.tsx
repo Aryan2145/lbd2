@@ -8,6 +8,7 @@ import type { HabitData } from "@/components/habits/HabitCard";
 import { AREA_META as HABIT_AREA_META, FREQ_LABEL, calcStreak, isHabitDoneOnDate, isScheduledDay, toLocalDate } from "@/components/habits/HabitCard";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import { fmtDeadline, Q_META, daysUntil } from "@/components/tasks/TaskCard";
+import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const AREA_COLOR: Record<LifeArea, string> = {
@@ -105,6 +106,7 @@ export default function GoalDetailSheet({ goal, linkedHabits, tasks, onClose, on
   const color      = AREA_COLOR[goal.area];
   const milestones = [...(goal.milestones ?? [])].sort((a, b) => a.deadline.localeCompare(b.deadline));
   const editDeadlineConflicts = milestones.filter((m) => eDeadline && m.deadline > eDeadline);
+  const eDeadlineError = validateDate(eDeadline, { required: true });
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const enterEdit = () => {
@@ -309,9 +311,14 @@ export default function GoalDetailSheet({ goal, linkedHabits, tasks, onClose, on
                 <StyledDateInput
                   value={eDeadline}
                   onChange={setEDeadline}
-                  error={editDeadlineConflicts.length > 0}
+                  error={!!eDeadlineError || editDeadlineConflicts.length > 0}
                 />
-                {editDeadlineConflicts.length > 0 && (
+                {eDeadlineError && (
+                  <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px" }}>
+                    {eDeadlineError}
+                  </p>
+                )}
+                {!eDeadlineError && editDeadlineConflicts.length > 0 && (
                   <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
                     ⚠ {editDeadlineConflicts.length} milestone{editDeadlineConflicts.length > 1 ? "s are" : " is"} after this date ({editDeadlineConflicts.map(m => m.title).join(", ")}). Adjust milestones first.
                   </p>
@@ -639,14 +646,14 @@ export default function GoalDetailSheet({ goal, linkedHabits, tasks, onClose, on
               </button>
               <button
                 onClick={saveEdit}
-                disabled={!eOutcome.trim() || !eMetric.trim() || !eDeadline || editDeadlineConflicts.length > 0}
+                disabled={!eOutcome.trim() || !eMetric.trim() || !!eDeadlineError || editDeadlineConflicts.length > 0}
                 style={{
                   flex: 2, padding: "10px", borderRadius: "10px", border: "none",
-                  background: eOutcome.trim() && eMetric.trim() && eDeadline && editDeadlineConflicts.length === 0
+                  background: eOutcome.trim() && eMetric.trim() && !eDeadlineError && editDeadlineConflicts.length === 0
                     ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0",
                   fontSize: "13px", fontWeight: 700,
-                  color: eOutcome.trim() && eMetric.trim() && eDeadline && editDeadlineConflicts.length === 0 ? "#FFFFFF" : "#A8A29E",
-                  cursor: eOutcome.trim() && eMetric.trim() && eDeadline && editDeadlineConflicts.length === 0 ? "pointer" : "default",
+                  color: eOutcome.trim() && eMetric.trim() && !eDeadlineError && editDeadlineConflicts.length === 0 ? "#FFFFFF" : "#A8A29E",
+                  cursor: eOutcome.trim() && eMetric.trim() && !eDeadlineError && editDeadlineConflicts.length === 0 ? "pointer" : "default",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                 }}>
                 <Check size={14} /> Save changes
@@ -744,11 +751,12 @@ const taStyle: React.CSSProperties = {
   ...inStyle, resize: "none", lineHeight: 1.5,
 };
 
-function StyledDateInput({ value, onChange, error, accentColor = "#F97316", max }: {
+function StyledDateInput({ value, onChange, error, accentColor = "#F97316", min, max }: {
   value: string;
   onChange: (v: string) => void;
   error?: boolean;
   accentColor?: string;
+  min?: string;
   max?: string;
 }) {
   const [focused, setFocused] = useState(false);
@@ -767,7 +775,8 @@ function StyledDateInput({ value, onChange, error, accentColor = "#F97316", max 
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        max={max}
+        min={min ?? todayDateStr()}
+        max={max ?? MAX_DATE_STR}
         style={{
           ...inStyle,
           paddingLeft: "30px",
@@ -809,7 +818,8 @@ function MilestonePopup({
   const [confirmDelete,  setConfirmDelete]  = useState(false);
 
   const today       = toLocalDate();
-  const deadlineOk  = editDeadline && editDeadline <= goal.deadline;
+  const editMsDateError = validateDate(editDeadline, { required: true });
+  const deadlineOk  = editDeadline && editDeadline <= goal.deadline && !editMsDateError;
   const linkedCount = mTasks.length + mHabits.length;
 
   const selectedTask  = mTasks.find((t) => t.id === selectedTaskId)  ?? null;
@@ -950,9 +960,14 @@ function MilestonePopup({
                       cursor: editTitle.trim() && deadlineOk ? "pointer" : "default",
                     }}>Save</button>
                   </div>
-                  {!deadlineOk && editDeadline && (
+                  {editMsDateError && (
+                    <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "6px" }}>
+                      {editMsDateError}
+                    </p>
+                  )}
+                  {!editMsDateError && !deadlineOk && editDeadline && (
                     <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "6px" }}>
-                      Milestone date can't be after goal target ({fmtMs(goal.deadline)}).
+                      Milestone date can&apos;t be after goal target ({fmtMs(goal.deadline)}).
                     </p>
                   )}
                 </div>

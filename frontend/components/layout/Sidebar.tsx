@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Crown,
   Eye,
+  Sparkles,
   Target,
   Zap,
   Heart,
@@ -21,6 +22,7 @@ const NAV = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/legacy", icon: Crown, label: "My Legacy" },
   { href: "/vision", icon: Eye, label: "Vision Canvas" },
+  { href: "/values", icon: Sparkles, label: "Values" },
   { href: "/goals", icon: Target, label: "Goals" },
   { href: "/habits", icon: Zap, label: "Habits" },
   { href: "/bucket-list", icon: Heart, label: "Bucket List" },
@@ -31,7 +33,6 @@ const NAV = [
 
 const BOTTOM_NAV = [
   { href: "/settings", icon: Settings, label: "Settings" },
-  { href: "/support", icon: HelpCircle, label: "Support" },
 ];
 
 export default function Sidebar() {

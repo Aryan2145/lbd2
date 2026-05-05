@@ -21,6 +21,34 @@ export interface UserProfile {
   password: string;
 }
 
+// ── Bucket order persistence (localStorage) ──────────────────────────────────
+const BUCKET_ORDER_KEY = "lbd_bucket_order_v1";
+
+function loadBucketOrder(): string[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(BUCKET_ORDER_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : null;
+  } catch { return null; }
+}
+
+function saveBucketOrder(ids: string[]) {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(BUCKET_ORDER_KEY, JSON.stringify(ids)); } catch {}
+}
+
+// Reorder `entries` according to `order`; entries not in `order` are appended at the end.
+function applyBucketOrder<T extends { id: string }>(entries: T[], order: string[] | null): T[] {
+  if (!order || order.length === 0) return entries;
+  const byId = new Map(entries.map(e => [e.id, e]));
+  const ordered: T[] = [];
+  for (const id of order) {
+    const e = byId.get(id);
+    if (e) { ordered.push(e); byId.delete(id); }
+  }
+  return [...ordered, ...byId.values()];
+}
+
 // ── Type mapping helpers ──────────────────────────────────────────────────────
 
 const Q_FROM_DB: Record<string, string> = { q1: "Q1", q2: "Q2", q3: "Q3", q4: "Q4" };
@@ -199,9 +227,10 @@ interface AppState {
   upsertEveningReflection: (r: EveningReflection) => void;
   upsertWeeklyReview:      (r: WeeklyReview)      => void;
   // Bucket
-  addBucketEntry:    (e: BucketEntry) => void;
-  updateBucketEntry: (e: BucketEntry) => void;
-  deleteBucketEntry: (id: string)     => void;
+  addBucketEntry:      (e: BucketEntry) => void;
+  updateBucketEntry:   (e: BucketEntry) => void;
+  deleteBucketEntry:   (id: string)     => void;
+  reorderBucketEntries:(orderedIds: string[]) => void;
   // Support
   addTicket:    (t: SupportTicket) => void;
   updateTicket: (t: SupportTicket) => void;
@@ -273,7 +302,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDayPlans(apiDayPlans.map(mapDayPlan));
       setEveningReflections(apiEveningReflections.map(mapEveningReflection));
       setWeeklyReviews(apiWeeklyReviews.map(mapWeeklyReview));
-      setBucketEntries(apiBucket.map(mapBucketEntry));
+      setBucketEntries(applyBucketOrder(apiBucket.map(mapBucketEntry), loadBucketOrder()));
       setTickets(apiTickets.map(mapTicket));
 
       if (apiUser) {
@@ -478,6 +507,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteBucketEntry: (id) => {
       setBucketEntries(prev => prev.filter(x => x.id !== id));
       api.del(`/bucket/${id}`).catch(console.error);
+    },
+    reorderBucketEntries: (orderedIds) => {
+      setBucketEntries(prev => {
+        const next = applyBucketOrder(prev, orderedIds);
+        saveBucketOrder(next.map(e => e.id));
+        return next;
+      });
     },
 
     // Support

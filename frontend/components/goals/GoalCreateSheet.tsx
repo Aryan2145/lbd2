@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Sparkles, Plus, Trash2, CalendarDays } from "lucide-react";
 import type { LifeArea, GoalData, Milestone } from "./GoalCard";
 import { AREA_META } from "./GoalCard";
+import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
 
 const AREAS: { value: LifeArea; label: string }[] = [
   { value: "professional",  label: "Professional"   },
@@ -61,13 +62,15 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
     }
   }, [open]);
 
+  const deadlineError      = validateDate(deadline, { required: true });
+  const mDateError         = mDeadline ? validateDate(mDeadline, { required: false }) : null;
   const mDeadlineError     = deadline && mDeadline && mDeadline > deadline
     ? "Milestone date can't be after the goal's target date."
     : null;
   const goalDeadlineWarning = deadline ? milestones.filter((m) => m.deadline > deadline) : [];
 
   const statement = buildStatement(outcome, metric, unit, deadline, connector);
-  const canSave   = outcome.trim() && metric.trim() && deadline && goalDeadlineWarning.length === 0;
+  const canSave   = outcome.trim() && metric.trim() && !deadlineError && goalDeadlineWarning.length === 0;
 
   const addMilestone = () => {
     if (!mTitle.trim() || !mDeadline || mDeadlineError) return;
@@ -230,9 +233,14 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
                     <DateInput
                       value={deadline}
                       onChange={setDeadline}
-                      error={goalDeadlineWarning.length > 0}
+                      error={!!deadlineError || goalDeadlineWarning.length > 0}
                     />
-                    {goalDeadlineWarning.length > 0 && (
+                    {deadlineError && (
+                      <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px" }}>
+                        {deadlineError}
+                      </p>
+                    )}
+                    {!deadlineError && goalDeadlineWarning.length > 0 && (
                       <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
                         ⚠ {goalDeadlineWarning.length} milestone{goalDeadlineWarning.length > 1 ? "s are" : " is"} scheduled after this date — please remove or reschedule them.
                       </p>
@@ -277,25 +285,31 @@ export default function GoalCreateSheet({ open, onClose, onSave }: Props) {
                 <DateInput
                   value={mDeadline}
                   onChange={setMDeadline}
-                  error={!!mDeadlineError}
+                  error={!!mDeadlineError || !!mDateError}
                   accentColor="#D97706"
+                  max={deadline || undefined}
                 />
               </div>
               <button
                 onClick={addMilestone}
-                disabled={!mTitle.trim() || !mDeadline || !!mDeadlineError}
+                disabled={!mTitle.trim() || !mDeadline || !!mDeadlineError || !!mDateError}
                 style={{
                   flexShrink: 0, width: "34px", height: "36px", borderRadius: "8px", border: "none",
-                  background: mTitle.trim() && mDeadline && !mDeadlineError
+                  background: mTitle.trim() && mDeadline && !mDeadlineError && !mDateError
                     ? "linear-gradient(135deg, #D97706, #B45309)" : "#E8DDD0",
-                  cursor: mTitle.trim() && mDeadline && !mDeadlineError ? "pointer" : "default",
+                  cursor: mTitle.trim() && mDeadline && !mDeadlineError && !mDateError ? "pointer" : "default",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                <Plus size={14} color={mTitle.trim() && mDeadline && !mDeadlineError ? "#FFFFFF" : "#A8A29E"} />
+                <Plus size={14} color={mTitle.trim() && mDeadline && !mDeadlineError && !mDateError ? "#FFFFFF" : "#A8A29E"} />
               </button>
             </div>
-            {mDeadlineError && (
+            {mDateError && (
+              <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginBottom: "6px" }}>
+                {mDateError}
+              </p>
+            )}
+            {!mDateError && mDeadlineError && (
               <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginBottom: "6px" }}>
                 {mDeadlineError}
               </p>
@@ -427,11 +441,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function DateInput({ value, onChange, error, accentColor = "#F97316", max }: {
+function DateInput({ value, onChange, error, accentColor = "#F97316", min, max }: {
   value: string;
   onChange: (v: string) => void;
   error?: boolean;
   accentColor?: string;
+  min?: string;
   max?: string;
 }) {
   const [focused, setFocused] = useState(false);
@@ -450,7 +465,8 @@ function DateInput({ value, onChange, error, accentColor = "#F97316", max }: {
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        max={max}
+        min={min ?? todayDateStr()}
+        max={max ?? MAX_DATE_STR}
         style={{
           ...inputStyle,
           paddingLeft: "30px",

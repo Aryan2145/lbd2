@@ -1,10 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Clock, Calendar, Layers, AlignLeft, Trash2, AlertTriangle, Lightbulb } from "lucide-react";
+import { X, Clock, Calendar, Layers, AlignLeft, Trash2, AlertTriangle, Lightbulb, Plus, Check } from "lucide-react";
 import type { WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import ClockTimePicker from "@/components/weekly/ClockTimePicker";
+import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
+
+const NEW_GROUP_COLORS = [
+  "#6366F1","#3B82F6","#06B6D4","#10B981",
+  "#F59E0B","#EF4444","#EC4899","#8B5CF6",
+];
 
 interface Props {
   open:           boolean;
@@ -17,6 +23,7 @@ interface Props {
   initialDate?:   string;
   initialTime?:   string;
   onEditConflict: (e: WeekEvent)  => void;
+  onAddGroup?:    (g: EventGroup) => void;
 }
 
 function addOneHour(time: string): string {
@@ -31,7 +38,7 @@ function toMins(time: string): number {
 
 export default function EventCreateSheet({
   open, onClose, onSave, onDelete, eventGroups, existingEvents,
-  editEvent, initialDate, initialTime, onEditConflict,
+  editEvent, initialDate, initialTime, onEditConflict, onAddGroup,
 }: Props) {
   const [title,        setTitle]        = useState("");
   const [description,  setDescription]  = useState("");
@@ -41,6 +48,11 @@ export default function EventCreateSheet({
   const [groupId,      setGroupId]      = useState("");
   const [startPickerOpen, setStartPickerOpen] = useState(false);
   const [endPickerOpen,   setEndPickerOpen]   = useState(false);
+
+  // Inline new-group creator
+  const [showNewGroup,   setShowNewGroup]   = useState(false);
+  const [newGroupName,   setNewGroupName]   = useState("");
+  const [newGroupColor,  setNewGroupColor]  = useState(NEW_GROUP_COLORS[0]);
 
   useEffect(() => {
     if (!open) return;
@@ -60,8 +72,27 @@ export default function EventCreateSheet({
       setEndTime(addOneHour(st));
       setGroupId("");
     }
+    setShowNewGroup(false);
+    setNewGroupName("");
+    setNewGroupColor(NEW_GROUP_COLORS[0]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  function saveNewGroup() {
+    const name = newGroupName.trim();
+    if (!name || !onAddGroup) return;
+    const newGroup: EventGroup = {
+      id:        `eg_${Date.now()}`,
+      name,
+      color:     newGroupColor,
+      createdAt: Date.now(),
+    };
+    onAddGroup(newGroup);
+    setGroupId(newGroup.id);            // auto-select for the new event
+    setShowNewGroup(false);
+    setNewGroupName("");
+    setNewGroupColor(NEW_GROUP_COLORS[0]);
+  }
 
   if (!open) return null;
 
@@ -91,7 +122,8 @@ export default function EventCreateSheet({
       }) ?? null
     : null;
 
-  const canSave = title.trim().length > 0 && date.length > 0 && !timeInvalid && conflicts.length === 0;
+  const dateError = validateDate(date, { required: true });
+  const canSave   = title.trim().length > 0 && !dateError && !timeInvalid && conflicts.length === 0;
 
   function handleSave() {
     if (!canSave) return;
@@ -169,7 +201,20 @@ export default function EventCreateSheet({
         <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
           <div style={{ flex: 1.2 }}>
             <label style={lbl}><Calendar size={9} style={{ display: "inline", marginRight: 3 }} />Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inp} />
+            <input
+              type="date" value={date}
+              min={todayDateStr()} max={MAX_DATE_STR}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                ...inp,
+                borderColor: dateError ? "#FCA5A5" : (inp.borderColor as string | undefined),
+              }}
+            />
+            {dateError && (
+              <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>
+                {dateError}
+              </p>
+            )}
           </div>
           <div style={{ flex: 1 }}>
             <label style={lbl}><Clock size={9} style={{ display: "inline", marginRight: 3 }} />Start</label>
@@ -294,7 +339,7 @@ export default function EventCreateSheet({
                 × Clear
               </button>
             )}
-            {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID).map((g) => (
+            {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && !g.archived).map((g) => (
               <button key={g.id} onClick={() => setGroupId(g.id)} style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 padding: "5px 12px", borderRadius: "8px",
@@ -308,7 +353,97 @@ export default function EventCreateSheet({
                 {g.name}
               </button>
             ))}
+            {onAddGroup && !showNewGroup && (
+              <button
+                onClick={() => setShowNewGroup(true)}
+                style={{
+                  display: "flex", alignItems: "center", gap: "5px",
+                  padding: "5px 11px", borderRadius: "8px",
+                  border: "1.5px dashed #C4B5A8", backgroundColor: "transparent",
+                  fontSize: "12px", fontWeight: 600, color: "#57534E",
+                  cursor: "pointer",
+                }}
+              >
+                <Plus size={11} /> New group
+              </button>
+            )}
           </div>
+
+          {/* Inline new-group creator */}
+          {showNewGroup && onAddGroup && (
+            <div style={{
+              marginTop: "8px", padding: "10px 12px",
+              borderRadius: "10px", border: "1.5px solid #FED7AA",
+              backgroundColor: "#FFF7ED",
+              display: "flex", flexDirection: "column", gap: "8px",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <input
+                  autoFocus
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="Group name (e.g. Deep Work)"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newGroupName.trim()) saveNewGroup();
+                    if (e.key === "Escape") { setShowNewGroup(false); setNewGroupName(""); }
+                  }}
+                  style={{
+                    flex: 1, padding: "6px 10px", borderRadius: "7px",
+                    border: "1.5px solid #FED7AA", backgroundColor: "#FFFFFF",
+                    fontSize: "12px", fontWeight: 600, color: "#1C1917",
+                    outline: "none", boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={saveNewGroup}
+                  disabled={!newGroupName.trim()}
+                  title="Create group"
+                  style={{
+                    width: 28, height: 28, borderRadius: 7, border: "none",
+                    backgroundColor: newGroupName.trim() ? newGroupColor : "#E8DDD0",
+                    cursor: newGroupName.trim() ? "pointer" : "not-allowed",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Check size={13} color="#FFFFFF" strokeWidth={3} />
+                </button>
+                <button
+                  onClick={() => { setShowNewGroup(false); setNewGroupName(""); }}
+                  title="Cancel"
+                  style={{
+                    width: 28, height: 28, borderRadius: 7,
+                    border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+                    cursor: "pointer", flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <X size={12} color="#57534E" />
+                </button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, color: "#57534E",
+                  textTransform: "uppercase", letterSpacing: "0.06em",
+                }}>
+                  Color
+                </span>
+                {NEW_GROUP_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setNewGroupColor(c)}
+                    aria-label={`Pick color ${c}`}
+                    style={{
+                      width: 18, height: 18, borderRadius: "50%", padding: 0, cursor: "pointer",
+                      backgroundColor: c,
+                      border: newGroupColor === c ? "2.5px solid #1C1917" : "1.5px solid #FFFFFF",
+                      boxShadow: newGroupColor === c ? `0 0 0 2px ${c}55` : "0 1px 3px rgba(0,0,0,0.12)",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Notes */}

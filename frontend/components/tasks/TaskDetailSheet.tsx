@@ -6,6 +6,7 @@ import { X, Calendar, Target, Pencil, Check } from "lucide-react";
 import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
 import { Q_META, fmtDeadline } from "@/components/tasks/TaskCard";
 import type { GoalData } from "@/components/goals/GoalCard";
+import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
 
 interface Props {
   task:       TaskData | null;
@@ -93,7 +94,20 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
               <div style={{ display: "flex", gap: "10px" }}>
                 <div style={{ flex: 1 }}>
                   <label style={lbl}>Deadline</label>
-                  <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} style={inp} />
+                  <input
+                    type="date" value={editDeadline}
+                    min={todayDateStr()} max={MAX_DATE_STR}
+                    onChange={(e) => setEditDeadline(e.target.value)}
+                    style={{
+                      ...inp,
+                      borderColor: validateDate(editDeadline, { required: true }) ? "#FCA5A5" : (inp.borderColor as string | undefined),
+                    }}
+                  />
+                  {validateDate(editDeadline, { required: true }) && (
+                    <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px" }}>
+                      {validateDate(editDeadline, { required: true })}
+                    </p>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={lbl}>Quadrant</label>
@@ -111,11 +125,11 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
             </div>
 
             <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={saveEdit} disabled={!editTitle.trim()} style={{
+              <button onClick={saveEdit} disabled={!editTitle.trim() || !!validateDate(editDeadline, { required: true })} style={{
                 flex: 1, padding: "11px", borderRadius: "10px", border: "none",
                 background: "linear-gradient(135deg, #F97316, #EA580C)",
                 fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
-                opacity: editTitle.trim() ? 1 : 0.45,
+                opacity: (editTitle.trim() && !validateDate(editDeadline, { required: true })) ? 1 : 0.45,
               }}>
                 <Check size={14} style={{ display: "inline", marginRight: 6 }} />
                 Save Changes

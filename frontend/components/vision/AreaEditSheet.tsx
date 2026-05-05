@@ -4,10 +4,13 @@ import { useState, useEffect } from "react";
 import { X, Copy, Check, Image as ImageIcon } from "lucide-react";
 import type { AreaData } from "./PolaroidCard";
 
-// Converts any Google Drive share URL to a directly embeddable CDN URL.
+// Converts any Google Drive share URL form (file/d/, ?id=, lh3 CDN) into
+// the reliable thumbnail endpoint. Non-Drive URLs pass through unchanged.
 // Works for publicly shared files ("Anyone with the link") — no OAuth needed.
 function toDriveImgUrl(raw: string): string {
-  if (!raw || (!raw.includes("drive.google.com") && !raw.includes("docs.google.com"))) return raw;
+  if (!raw) return raw;
+  if (raw.includes("drive.google.com/thumbnail?id=")) return raw;
+
   let id: string | null = null;
   const fileMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileMatch) id = fileMatch[1];
@@ -15,7 +18,11 @@ function toDriveImgUrl(raw: string): string {
     const idMatch = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
     if (idMatch) id = idMatch[1];
   }
-  return id ? `https://lh3.googleusercontent.com/d/${id}` : raw;
+  if (!id) {
+    const lh3Match = raw.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+    if (lh3Match) id = lh3Match[1];
+  }
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1500` : raw;
 }
 
 interface AreaEditSheetProps {

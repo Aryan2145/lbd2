@@ -19,7 +19,10 @@
       "Bash(pg_isready -h localhost -p 5432)",
       "Bash(echo \"exit: $?\")",
       "Bash(xargs cat *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(awk 'NR==1267,NR==1492 {next} {print}' app/dashboard/page.tsx)",
+      "Bash(mv /tmp/dash.tmp app/dashboard/page.tsx)",
+      "Bash(awk 'NR<833 || NR>978 {print}' app/dashboard/page.tsx)"
     ]
   }
 }
