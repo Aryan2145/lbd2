@@ -12,6 +12,13 @@ const geist = Geist({
 export const metadata: Metadata = {
   title: "Life By Design",
   description: "Your premium life architecture platform",
+  icons: {
+    icon: [
+      { url: "/favicon-light.png", media: "(prefers-color-scheme: light)", type: "image/png" },
+      { url: "/favicon-dark.png",  media: "(prefers-color-scheme: dark)",  type: "image/png" },
+    ],
+    apple: "/favicon-light.png",
+  },
 };
 
 export default function RootLayout({
