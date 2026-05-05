@@ -142,7 +142,7 @@ export default function DailyPage() {
         </div>
 
         {/* Tab toggle */}
-        <div style={{ display: "flex", borderRadius: "9px", border: `1.5px solid ${navBorder}`,
+        <div className="w-full lg:w-auto" style={{ display: "flex", borderRadius: "9px", border: `1.5px solid ${navBorder}`,
           overflow: "hidden", backgroundColor: navBg }}>
           {(["plan", "reflection"] as const).map((t) => {
             const active = tab === t;
@@ -153,7 +153,7 @@ export default function DailyPage() {
             const iconColor = active ? "#FFFFFF" : (done ? doneColor : navText);
             return (
               <button key={t} onClick={() => setTab(t)} style={{
-                display: "flex", alignItems: "center", gap: "6px",
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                 padding: "6px 16px", border: "none",
                 backgroundColor: active ? accent : "transparent",
                 color: active ? "#FFFFFF" : navText,

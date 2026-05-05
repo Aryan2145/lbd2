@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Plus, X, Check, Clock, Lightbulb, Pencil, Trash2 } from "lucide-react";
-import type { DayPlan, DailyPriority, LifeArea } from "@/lib/dayTypes";
+import type { DayPlan, LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import type { WeekPlan, WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
@@ -30,10 +30,6 @@ function getDailyQuote(): { text: string; author: string } {
   const doy = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
   return DAILY_QUOTES[doy % DAILY_QUOTES.length];
 }
-
-const EMPTY_PRI = (lifeArea: LifeArea = "professional"): DailyPriority => ({
-  text: "", lifeArea, completed: false,
-});
 
 function toMins(t: string): number {
   const [h, m] = t.split(":").map(Number);
@@ -164,44 +160,8 @@ export default function MorningPlan({
   const [newTaskTitle,  setNewTaskTitle]  = useState("");
   const [newTaskQuad,   setNewTaskQuad]   = useState<EisenhowerQ>("Q2");
 
-  // ── Undo-delete for priorities ─────────────────────────────────────────────
-  const [pendingDeletePriIdx, setPendingDeletePriIdx] = useState<number | null>(null);
-  const priDeleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const planRef        = useRef(plan);
-  const prisRef        = useRef<DailyPriority[]>([]);
-  useEffect(() => { planRef.current = plan; }, [plan]);
-
   const quote    = getDailyQuote();
   const groupMap = Object.fromEntries(eventGroups.map((g) => [g.id, g]));
-
-  const pris: DailyPriority[] = plan.priorities.length > 0 ? plan.priorities : [EMPTY_PRI()];
-  prisRef.current = pris;
-
-  function updatePri(idx: number, patch: Partial<DailyPriority>) {
-    const updated = pris.map((p, i) => i === idx ? { ...p, ...patch } : p);
-    onUpdate({ ...plan, priorities: updated });
-  }
-
-  function addPriority() {
-    onUpdate({ ...plan, priorities: [...pris, EMPTY_PRI()] });
-  }
-
-  function requestDeletePri(idx: number) {
-    if (priDeleteTimer.current) clearTimeout(priDeleteTimer.current);
-    setPendingDeletePriIdx(idx);
-    priDeleteTimer.current = setTimeout(() => {
-      const cur = prisRef.current;
-      const updated = cur.filter((_, i) => i !== idx);
-      onUpdate({ ...planRef.current, priorities: updated.length ? updated : [] });
-      setPendingDeletePriIdx(null);
-      priDeleteTimer.current = null;
-    }, 3000);
-  }
-  function undoDeletePri() {
-    if (priDeleteTimer.current) clearTimeout(priDeleteTimer.current);
-    priDeleteTimer.current = null;
-    setPendingDeletePriIdx(null);
-  }
 
   // ── Event save/edit ────────────────────────────────────────────────────────
   function saveEvent() {
@@ -320,18 +280,14 @@ export default function MorningPlan({
     .map((g) => ({ group: g, events: sortedEvents.filter((e) => e.groupId === g.id) }))
     .filter(({ events }) => events.length > 0);
 
-  const completedPriCount = pris.filter((p) => p.completed && p.text.trim()).length;
-  const totalPriCount     = pris.filter((p) => p.text.trim()).length;
-
   return (
     <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-      <style>{`@keyframes drainBar { from { width: 100%; } to { width: 0%; } }`}</style>
 
-      {/* ── Left context panel ── */}
-      <div style={{
+      {/* ── Left context panel (desktop only) ── */}
+      <div className="hidden lg:flex" style={{
         width: 252, flexShrink: 0, overflowY: "auto",
         borderRight: "1px solid #EDE5D8", backgroundColor: "#FFFFFF",
-        padding: "20px 16px", display: "flex", flexDirection: "column", gap: "20px",
+        padding: "20px 16px", flexDirection: "column", gap: "20px",
       }}>
 
         {weekPlan && weekPlan.priorities.length > 0 && (
@@ -363,7 +319,7 @@ export default function MorningPlan({
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px" }}>
               <span>💡</span>
-              <span style={{ fontSize: "9px", fontWeight: 700, color: "#F97316",
+              <span style={{ fontSize: "10px", fontWeight: 700, color: "#C2410C",
                 textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 Thought for the day
               </span>
@@ -381,124 +337,15 @@ export default function MorningPlan({
       </div>
 
       {/* ── Main planning panel ── */}
-      <div style={{ flex: 1, overflow: "hidden", padding: "16px 20px", display: "flex" }}>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gridTemplateRows: "1fr 1fr",
-          gap: "14px",
-          flex: 1,
-          minHeight: 0,
-        }}>
+      <div className="flex-1 overflow-y-auto lg:overflow-hidden p-4 lg:p-5 flex">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full lg:flex-1 lg:min-h-0 lg:[grid-template-rows:1fr]">
 
-          {/* ── Top-left: Today's Priorities ── */}
-          <div style={boxStyle}>
-            <div style={boxHeader}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <p style={sectionTitle}>Today&apos;s Priorities</p>
-                {totalPriCount > 0 && (
-                  <span style={{
-                    fontSize: "10px", fontWeight: 700, color: "#16A34A",
-                    backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0",
-                    padding: "1px 8px", borderRadius: "20px",
-                  }}>
-                    {completedPriCount}/{totalPriCount}
-                  </span>
-                )}
-              </div>
-              <button onClick={addPriority} style={iconBtn} title="Add priority">
-                <Plus size={13} color="#F97316" />
-              </button>
-            </div>
-            <div style={boxContent}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-                {pris.map((pri, idx) => (
-                  pendingDeletePriIdx === idx ? (
-                    <div key={idx} style={{
-                      padding: "8px 10px", borderRadius: "10px",
-                      border: "1.5px solid #FED7AA", backgroundColor: "#FFF7ED",
-                      position: "relative", overflow: "hidden",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: "12px", color: "#A8A29E", fontStyle: "italic" }}>
-                          {pri.text || `Priority ${idx + 1}`}
-                        </span>
-                        <button onClick={undoDeletePri} style={{
-                          fontSize: "11px", fontWeight: 700, color: "#F97316",
-                          background: "none", border: "none", cursor: "pointer", padding: "0 4px",
-                        }}>
-                          Undo
-                        </button>
-                      </div>
-                      <div style={{
-                        position: "absolute", bottom: 0, left: 0, height: "2px",
-                        backgroundColor: "#F97316",
-                        animation: "drainBar 3s linear forwards",
-                      }} />
-                    </div>
-                  ) : (
-                    <div key={idx} style={{
-                      display: "flex", alignItems: "flex-start", gap: "8px",
-                      padding: "8px 10px", borderRadius: "10px",
-                      backgroundColor: pri.completed ? "#F0FDF4" : "#FAFAFA",
-                      border: `1.5px solid ${pri.completed ? "#BBF7D0" : "#E8DDD0"}`,
-                    }}>
-                      <button
-                        onClick={() => updatePri(idx, { completed: !pri.completed })}
-                        style={{
-                          width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-                          border: `2px solid ${pri.completed ? "#16A34A" : "#C8BFB5"}`,
-                          backgroundColor: pri.completed ? "#16A34A" : "#FFFFFF",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {pri.completed && <Check size={10} color="#FFFFFF" strokeWidth={3} />}
-                      </button>
-                      <textarea
-                        ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }}
-                        value={pri.text}
-                        onChange={(e) => {
-                          updatePri(idx, { text: e.target.value });
-                          e.target.style.height = "auto";
-                          e.target.style.height = `${e.target.scrollHeight}px`;
-                        }}
-                        placeholder={`Priority ${idx + 1}…`}
-                        rows={1}
-                        style={{
-                          flex: 1, minWidth: 0, border: "none", outline: "none",
-                          backgroundColor: "transparent", padding: 0, resize: "none",
-                          overflow: "hidden", lineHeight: "1.45", fontFamily: "inherit",
-                          fontSize: "13px", fontWeight: 600,
-                          color: pri.completed ? "#78716C" : "#1C1917",
-                          textDecoration: pri.completed ? "line-through" : "none",
-                        }}
-                      />
-                      <div style={{ flexShrink: 0, marginTop: 2 }}>
-                        <ColorSelect
-                          value={pri.lifeArea}
-                          onChange={(v) => updatePri(idx, { lifeArea: v as LifeArea })}
-                          options={LIFE_AREAS}
-                          getColor={(a) => LIFE_AREA_COLORS[a as LifeArea]}
-                          getLabel={(a) => LIFE_AREA_LABELS[a as LifeArea]}
-                        />
-                      </div>
-                      <button onClick={() => requestDeletePri(idx)} style={{ ...ghostBtn, marginTop: 1 }}>
-                        <X size={11} color="#C4B5A8" />
-                      </button>
-                    </div>
-                  )
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Top-right: Today's Schedule ── */}
-          <div style={boxStyle}>
+          {/* ── Left: Today's Schedule ── */}
+          <div className="min-h-52 lg:min-h-0" style={boxStyle}>
             <div style={boxHeader}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <p style={sectionTitle}>Today&apos;s Schedule</p>
-                <span style={{ fontSize: "10px", color: "#A8A29E", fontWeight: 500 }}>
+                <span style={{ fontSize: "10px", color: "#78716C", fontWeight: 500 }}>
                   {todayEvents.length} block{todayEvents.length !== 1 ? "s" : ""}
                 </span>
               </div>
@@ -542,7 +389,7 @@ export default function MorningPlan({
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                     <input type="time" value={newEvStart} onChange={(e) => setNewEvStart(e.target.value)}
                       style={{ ...timeInputStyle, borderColor: evTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
-                    <span style={{ fontSize: "11px", color: "#A8A29E" }}>–</span>
+                    <span style={{ fontSize: "11px", color: "#78716C" }}>–</span>
                     <input type="time" value={newEvEnd} onChange={(e) => setNewEvEnd(e.target.value)}
                       style={{ ...timeInputStyle, borderColor: evTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
                     <select value={newEvGroupId} onChange={(e) => setNewEvGroupId(e.target.value)}
@@ -595,7 +442,7 @@ export default function MorningPlan({
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                     <input type="time" value={editEvStart} onChange={(e) => setEditEvStart(e.target.value)}
                       style={{ ...timeInputStyle, borderColor: editTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
-                    <span style={{ fontSize: "11px", color: "#A8A29E" }}>–</span>
+                    <span style={{ fontSize: "11px", color: "#78716C" }}>–</span>
                     <input type="time" value={editEvEnd} onChange={(e) => setEditEvEnd(e.target.value)}
                       style={{ ...timeInputStyle, borderColor: editTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
                     <input type="date" value={editEvDate} onChange={(e) => setEditEvDate(e.target.value)}
@@ -640,8 +487,8 @@ export default function MorningPlan({
               {todayEvents.length === 0 && !showAddEvent && !editingEventId ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
                   justifyContent: "center", height: "100%", gap: "6px" }}>
-                  <Clock size={20} color="#D6C5B4" />
-                  <p style={{ fontSize: "11px", color: "#C4B5A8", margin: 0 }}>No events today</p>
+                  <Clock size={20} color="#A8A29E" />
+                  <p style={{ fontSize: "11px", color: "#78716C", margin: 0 }}>No events today</p>
                 </div>
               ) : scheduleView === "time" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
@@ -716,8 +563,8 @@ export default function MorningPlan({
             </div>
           </div>
 
-          {/* ── Bottom: Tasks (full width) ── */}
-          <div style={{ ...boxStyle, gridColumn: "1 / -1" }}>
+          {/* ── Right: Tasks ── */}
+          <div className="min-h-52 lg:min-h-0" style={boxStyle}>
             <div style={boxHeader}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <p style={sectionTitle}>Tasks</p>
@@ -736,7 +583,7 @@ export default function MorningPlan({
                         border: `1px solid ${taskFilter === key ? color : "#E8DDD0"}`,
                         backgroundColor: taskFilter === key ? bg : "transparent",
                         fontSize: "10px", fontWeight: 600,
-                        color: taskFilter === key ? color : "#A8A29E",
+                        color: taskFilter === key ? color : "#57534E",
                       }}
                     >
                       {label}
@@ -905,7 +752,7 @@ const boxContent: React.CSSProperties = {
 };
 
 const emptyText: React.CSSProperties = {
-  fontSize: "11px", color: "#C4B5A8", fontStyle: "italic", margin: 0,
+  fontSize: "11px", color: "#78716C", fontStyle: "italic", margin: 0,
 };
 
 const iconBtn: React.CSSProperties = {

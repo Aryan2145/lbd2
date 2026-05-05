@@ -272,11 +272,7 @@ export default function WeeklyReviewSheet({
         </div>
 
         {/* Day cards — 3 at a time */}
-        <div style={{
-          display:"grid",
-          gridTemplateColumns: groupDates.length === 1 ? "1fr" : "repeat(3, 1fr)",
-          gap:"10px",
-        }}>
+        <div className={`grid gap-2.5 grid-cols-1${groupDates.length > 1 ? " lg:grid-cols-3" : ""}`}>
           {groupDates.map((date, idx) => {
             const col  = DAY_PALETTE[groupIndices[idx]];
             const d    = new Date(date + "T00:00:00");
@@ -587,7 +583,7 @@ export default function WeeklyReviewSheet({
 
     return (
       <div>
-        {/* Stats + Rating */}
+        {/* Habit Rate stat */}
         <div style={{ display:"flex", gap:"10px", marginBottom:"24px" }}>
           <div style={{
             width:120, padding:"12px", borderRadius:"10px",
@@ -598,29 +594,6 @@ export default function WeeklyReviewSheet({
             <div style={{ fontSize:"10px", fontWeight:700, color:"#065F46",
               textTransform:"uppercase", letterSpacing:"0.07em", marginTop:"2px" }}>
               Habit Rate
-            </div>
-          </div>
-          <div style={{
-            flex:1, padding:"12px 16px", borderRadius:"10px",
-            backgroundColor:"#FAF5EE", border:"1px solid #EDE5D8",
-          }}>
-            <label style={{ ...lbl, marginBottom:"8px" }}>Overall week rating</label>
-            <div style={{ display:"flex", gap:"5px", flexWrap:"wrap" }}>
-              {Array.from({ length:10 }, (_, i) => i + 1).map((n) => {
-                const sel = draft.overallRating === n;
-                const col = ratingColor(n);
-                return (
-                  <button key={n} onClick={() => ud("overallRating", n)} style={{
-                    width:32, height:32, borderRadius:"8px",
-                    border:`2px solid ${sel ? col : "#C8BFB5"}`,
-                    backgroundColor: sel ? col : "#FFFFFF",
-                    fontSize:"12px", fontWeight:700,
-                    color: sel ? "#FFFFFF" : "#44403C", cursor:"pointer",
-                  }}>
-                    {n}
-                  </button>
-                );
-              })}
             </div>
           </div>
         </div>
@@ -1110,71 +1083,115 @@ export default function WeeklyReviewSheet({
     }}>
 
       {/* ── Header ── */}
-      <div style={{
-        padding:"12px 24px", borderBottom:"1px solid #EDE5D8",
-        display:"flex", alignItems:"center", gap:"14px",
-        flexShrink:0, backgroundColor:"#FAF5EE",
-      }}>
-        {/* Back */}
-        <button onClick={onClose} style={{
-          width:32, height:32, borderRadius:9, border:"1px solid #EDE5D8",
-          backgroundColor:"#FFFFFF", display:"flex", alignItems:"center",
-          justifyContent:"center", cursor:"pointer", flexShrink:0,
-        }}>
-          <X size={15} color="#44403C" />
-        </button>
+      <div style={{ borderBottom:"1px solid #EDE5D8", flexShrink:0, backgroundColor:"#FAF5EE" }}>
 
-        {/* Title */}
-        <div>
-          <p style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase",
-            letterSpacing:"0.07em", color:"#C2410C", marginBottom:"1px", margin:0 }}>
-            Week {weekNum} Review
-          </p>
-          <h2 style={{ fontSize:"16px", fontWeight:700, color:"#1C1917", margin:0 }}>
-            {weekLabel(weekStart)}
-          </h2>
+        {/* Mobile header — two rows */}
+        <div className="lg:hidden">
+          <div style={{ padding:"12px 16px 8px", display:"flex", alignItems:"center", gap:"10px" }}>
+            <button onClick={onClose} style={{
+              width:32, height:32, borderRadius:9, border:"1px solid #EDE5D8",
+              backgroundColor:"#FFFFFF", display:"flex", alignItems:"center",
+              justifyContent:"center", cursor:"pointer", flexShrink:0,
+            }}>
+              <X size={15} color="#44403C" />
+            </button>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase",
+                letterSpacing:"0.07em", color:"#C2410C", margin:0 }}>
+                Week {weekNum} Review
+              </p>
+              <h2 style={{ fontSize:"15px", fontWeight:700, color:"#1C1917", margin:0,
+                overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                {weekLabel(weekStart)}
+              </h2>
+            </div>
+            <button onClick={handleSave} style={{
+              padding:"8px 14px", borderRadius:"10px", border:"none",
+              background:"linear-gradient(135deg, #F97316, #EA580C)",
+              fontSize:"12px", fontWeight:700, color:"#FFFFFF", cursor:"pointer", flexShrink:0,
+            }}>
+              Save ✓
+            </button>
+          </div>
+          <div style={{ padding:"0 16px 12px", display:"flex",
+            borderRadius:"10px", overflow:"hidden", gap:0 }}>
+            <div style={{ display:"flex", borderRadius:"10px", border:"1.5px solid #C8BFB5",
+              overflow:"hidden", backgroundColor:"#FFFFFF", width:"100%" }}>
+              {([
+                ["success",     "Success Story", "#F97316", "#FFF7ED"],
+                ["reflections", "Reflections",   "#7C3AED", "#FAF5FF"],
+              ] as const).map(([id, label, activeColor, activeBg]) => {
+                const on = tab === id;
+                return (
+                  <button key={id} onClick={() => setTab(id)} style={{
+                    flex:1, padding:"8px", border:"none",
+                    backgroundColor: on ? activeBg : "#FFFFFF",
+                    color: on ? activeColor : "#57534E",
+                    fontSize:"12px", fontWeight:700, cursor:"pointer",
+                    borderLeft: id === "reflections" ? "1.5px solid #C8BFB5" : "none",
+                  }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        <div style={{ flex:1 }} />
-
-        {/* Tab toggle */}
-        <div style={{
-          display:"flex", borderRadius:"10px",
-          border:"1.5px solid #C8BFB5", overflow:"hidden",
-          backgroundColor:"#FFFFFF",
+        {/* Desktop header — single row */}
+        <div className="hidden lg:flex" style={{
+          padding:"12px 24px", alignItems:"center", gap:"14px",
         }}>
-          {([
-            ["success",     "My Success Story", "#F97316", "#FFF7ED"],
-            ["reflections", "Reflections",      "#7C3AED", "#FAF5FF"],
-          ] as const).map(([id, label, activeColor, activeBg]) => {
-            const on = tab === id;
-            return (
-              <button key={id} onClick={() => setTab(id)} style={{
-                padding:"7px 18px", border:"none",
-                backgroundColor: on ? activeBg : "#FFFFFF",
-                color: on ? activeColor : "#57534E",
-                fontSize:"12px", fontWeight:700, cursor:"pointer",
-                borderLeft: id === "reflections" ? "1.5px solid #C8BFB5" : "none",
-              }}>
-                {label}
-              </button>
-            );
-          })}
+          <button onClick={onClose} style={{
+            width:32, height:32, borderRadius:9, border:"1px solid #EDE5D8",
+            backgroundColor:"#FFFFFF", display:"flex", alignItems:"center",
+            justifyContent:"center", cursor:"pointer", flexShrink:0,
+          }}>
+            <X size={15} color="#44403C" />
+          </button>
+          <div>
+            <p style={{ fontSize:"10px", fontWeight:700, textTransform:"uppercase",
+              letterSpacing:"0.07em", color:"#C2410C", marginBottom:"1px", margin:0 }}>
+              Week {weekNum} Review
+            </p>
+            <h2 style={{ fontSize:"16px", fontWeight:700, color:"#1C1917", margin:0 }}>
+              {weekLabel(weekStart)}
+            </h2>
+          </div>
+          <div style={{ flex:1 }} />
+          <div style={{ display:"flex", borderRadius:"10px",
+            border:"1.5px solid #C8BFB5", overflow:"hidden", backgroundColor:"#FFFFFF" }}>
+            {([
+              ["success",     "My Success Story", "#F97316", "#FFF7ED"],
+              ["reflections", "Reflections",      "#7C3AED", "#FAF5FF"],
+            ] as const).map(([id, label, activeColor, activeBg]) => {
+              const on = tab === id;
+              return (
+                <button key={id} onClick={() => setTab(id)} style={{
+                  padding:"7px 18px", border:"none",
+                  backgroundColor: on ? activeBg : "#FFFFFF",
+                  color: on ? activeColor : "#57534E",
+                  fontSize:"12px", fontWeight:700, cursor:"pointer",
+                  borderLeft: id === "reflections" ? "1.5px solid #C8BFB5" : "none",
+                }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={handleSave} style={{
+            padding:"8px 20px", borderRadius:"10px", border:"none",
+            background:"linear-gradient(135deg, #F97316, #EA580C)",
+            fontSize:"12px", fontWeight:700, color:"#FFFFFF", cursor:"pointer", flexShrink:0,
+          }}>
+            Save Review ✓
+          </button>
         </div>
 
-        {/* Save */}
-        <button onClick={handleSave} style={{
-          padding:"8px 20px", borderRadius:"10px", border:"none",
-          background:"linear-gradient(135deg, #F97316, #EA580C)",
-          fontSize:"12px", fontWeight:700, color:"#FFFFFF", cursor:"pointer",
-          flexShrink:0,
-        }}>
-          Save Review ✓
-        </button>
       </div>
 
       {/* ── Scrollable content ── */}
-      <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>
+      <div className="px-4 lg:px-6 py-5" style={{ flex:1, overflowY:"auto" }}>
 
         {tab === "success" ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
@@ -1186,7 +1203,7 @@ export default function WeeklyReviewSheet({
             </ReviewCard>
 
             {/* Outcome · Task · Habits — 3 columns */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"16px" }}>
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
               <ReviewCard title="Outcome Review" color="#F97316" maxH={400}
                 icon={<Target size={13} color="#F97316" />}>
                 {renderOutcomes()}
@@ -1201,6 +1218,38 @@ export default function WeeklyReviewSheet({
               </ReviewCard>
             </div>
 
+            {/* Overall week rating — standalone */}
+            <ReviewCard title="Overall Week Rating" color="#F97316"
+              icon={<Star size={13} color="#F97316" />}>
+              <div style={{ display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
+                <div style={{ display:"flex", gap:"5px", flexWrap:"wrap" }}>
+                  {Array.from({ length:10 }, (_, i) => i + 1).map((n) => {
+                    const sel = draft.overallRating === n;
+                    const col = ratingColor(n);
+                    return (
+                      <button key={n} onClick={() => ud("overallRating", n)} style={{
+                        width:36, height:36, borderRadius:"8px",
+                        border:`2px solid ${sel ? col : "#C8BFB5"}`,
+                        backgroundColor: sel ? col : "#FFFFFF",
+                        fontSize:"13px", fontWeight:700,
+                        color: sel ? "#FFFFFF" : "#44403C", cursor:"pointer",
+                      }}>
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
+                {draft.overallRating > 0 && (
+                  <span style={{
+                    fontSize:"13px", fontWeight:700,
+                    color: ratingColor(draft.overallRating),
+                  }}>
+                    {draft.overallRating}/10
+                  </span>
+                )}
+              </div>
+            </ReviewCard>
+
           </div>
         ) : (
           <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
@@ -1212,7 +1261,7 @@ export default function WeeklyReviewSheet({
             </ReviewCard>
 
             {/* Life Lessons · Core Values — 2 columns */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px" }}>
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
               <ReviewCard title="Life Lessons" color="#7C3AED" maxH={400}
                 icon={<Lightbulb size={13} color="#7C3AED" />}>
                 {renderLessons()}

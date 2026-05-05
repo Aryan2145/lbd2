@@ -188,12 +188,12 @@ export default function EveningReflectionComponent({
         <div style={{ padding: "16px", boxSizing: "border-box" }}>
 
           {/* ════════ SINGLE 3-col grid — all 8 cards ════════ */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-[14px]">
 
             {/* ── Row 1 ── */}
 
             {/* Three Wins Today */}
-            <div style={{ ...card(A.wins), height: CARD_H }}>
+            <div className="lg:h-[260px]" style={card(A.wins)}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.wins }} />
@@ -227,7 +227,7 @@ export default function EveningReflectionComponent({
             </div>
 
             {/* I Am Grateful For */}
-            <div style={{ ...card(A.grateful), height: CARD_H }}>
+            <div className="lg:h-[260px]" style={card(A.grateful)}>
               <CardHeader color={A.grateful} label="I Am Grateful For…" />
               <textarea
                 value={plan.gratitude}
@@ -239,7 +239,7 @@ export default function EveningReflectionComponent({
             </div>
 
             {/* Highlights of the Day */}
-            <div style={{ ...card(A.highlights), height: CARD_H }}>
+            <div className="lg:h-[260px]" style={card(A.highlights)}>
               <CardHeader color={A.highlights} label="Highlights of the Day" />
               {(() => {
                 const clamp = Math.max(0, Math.min(evIdx, events.length - 1));
@@ -278,7 +278,7 @@ export default function EveningReflectionComponent({
             {/* ── Row 2 ── */}
 
             {/* Today's Tasks */}
-            <div style={{ ...card(A.tasks), height: CARD_H }}>
+            <div className="lg:h-[260px]" style={card(A.tasks)}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.tasks }} />
@@ -307,7 +307,7 @@ export default function EveningReflectionComponent({
             </div>
 
             {/* Today's Habits */}
-            <div style={{ ...card(A.habits), height: CARD_H }}>
+            <div className="lg:h-[260px]" style={card(A.habits)}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.habits }} />
@@ -364,7 +364,7 @@ export default function EveningReflectionComponent({
             </div>
 
             {/* Decision Log */}
-            <div style={{ ...card(A.decisions), height: CARD_H }}>
+            <div className="lg:h-[260px]" style={card(A.decisions)}>
               <CardHeader color={A.decisions} label="Decision Log" />
               <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexShrink: 0 }}>
                 <input
@@ -398,7 +398,7 @@ export default function EveningReflectionComponent({
             {/* ── Row 3 ── */}
 
             {/* Energy & Mood */}
-            <div style={{ ...card(energyCol), height: CARD_H }}>
+            <div className="lg:h-[260px]" style={card(energyCol)}>
               <CardHeader color={energyCol} label="Energy & Mood" />
 
               {/* Square arc container — prevents letterboxing */}
@@ -443,7 +443,7 @@ export default function EveningReflectionComponent({
             </div>
 
             {/* Where I Was Stuck — same style as Three Wins Today */}
-            <div style={{ ...card(A.stuck), height: CARD_H }}>
+            <div className="lg:h-[260px]" style={card(A.stuck)}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.stuck }} />

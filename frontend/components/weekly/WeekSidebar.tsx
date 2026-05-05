@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, X, Check, Pencil, Trash2, AlertTriangle, Calendar, Archive, ChevronDown, RotateCcw } from "lucide-react";
+import { Plus, X, Check, Pencil, Trash2, AlertTriangle, Archive, ChevronDown, RotateCcw } from "lucide-react";
 import type { WeekPlan, EventGroup, WeekEvent } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
-import { ClipboardList } from "lucide-react";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import { fmtDeadline } from "@/components/tasks/TaskCard";
 
@@ -18,8 +17,6 @@ interface Props {
   onAddGroup:      (g: EventGroup) => void;
   onUpdateGroup:   (g: EventGroup) => void;
   onDeleteGroup:   (id: string)    => void;
-  hasReview:       boolean;
-  onOpenReview:    () => void;
 }
 
 const GROUP_COLORS = [
@@ -46,7 +43,6 @@ function weekLabel(weekStart: string): { num: number; range: string } {
 export default function WeekSidebar({
   weekStart, plan, eventGroups, weekEvents, overdueTasks,
   onUpdatePlan, onAddGroup, onUpdateGroup, onDeleteGroup,
-  hasReview, onOpenReview,
 }: Props) {
   const { num, range } = weekLabel(weekStart);
 
@@ -139,7 +135,7 @@ export default function WeekSidebar({
             <p style={emptyHint}>What must be true by end of week?</p>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "160px", overflowY: "auto" }}>
             {plan.outcomes.map((out, idx) => (
               <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
                 <Check size={12} color="#16A34A" style={{ marginTop: 3, flexShrink: 0 }} />
@@ -279,25 +275,30 @@ export default function WeekSidebar({
 
                   {archiveOpen && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "4px", maxHeight: archivedGroups.length > 4 ? "144px" : undefined, overflowY: archivedGroups.length > 4 ? "auto" : undefined }}>
-                      {archivedGroups.map((g) => (
-                        <div key={g.id} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "5px 4px", borderRadius: 7, flexShrink: 0, opacity: 0.7 }}>
-                          <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, flexShrink: 0 }} />
-                          <span style={{ flex: 1, fontSize: "13px", color: "#1C1917", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
-                          <button
-                            onClick={() => onUpdateGroup({ ...g, archived: false })}
-                            title="Unarchive group"
-                            style={ghostBtn}
-                          >
-                            <RotateCcw size={11} color="#78716C" />
-                          </button>
-                          <button
-                            onClick={() => onDeleteGroup(g.id)}
-                            style={ghostBtn}
-                          >
-                            <Trash2 size={11} color="#EF4444" />
-                          </button>
-                        </div>
-                      ))}
+                      {archivedGroups.map((g) => {
+                        const groupHasEvents = weekEvents.some((e) => e.groupId === g.id);
+                        return (
+                          <div key={g.id} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "5px 4px", borderRadius: 7, flexShrink: 0, opacity: 0.7 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontSize: "13px", color: "#1C1917", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
+                            <button
+                              onClick={() => onUpdateGroup({ ...g, archived: false })}
+                              title="Unarchive group"
+                              style={ghostBtn}
+                            >
+                              <RotateCcw size={11} color="#78716C" />
+                            </button>
+                            {!groupHasEvents && (
+                              <button
+                                onClick={() => onDeleteGroup(g.id)}
+                                style={ghostBtn}
+                              >
+                                <Trash2 size={11} color="#EF4444" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -313,56 +314,20 @@ export default function WeekSidebar({
               <AlertTriangle size={11} color="#DC2626" />
               <p style={{ ...sectionTitle, color: "#DC2626", margin: 0 }}>Overdue ({overdueTasks.length})</p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-              {overdueTasks.slice(0, 5).map((t) => (
+            <div style={{ display: "flex", flexDirection: "column", gap: "3px", maxHeight: "144px", overflowY: "auto" }}>
+              {overdueTasks.map((t) => (
                 <div key={t.id} style={{ fontSize: "11px", color: "#DC2626", backgroundColor: "#FEF2F2",
                   borderRadius: 6, padding: "4px 8px", border: "1px solid #FECACA",
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0 }}>
                   {t.title}
                   <span style={{ color: "#78716C", marginLeft: 4 }}>· {fmtDeadline(t.deadline)}</span>
                 </div>
               ))}
-              {overdueTasks.length > 5 && (
-                <p style={{ fontSize: "10px", color: "#78716C", paddingLeft: 4 }}>+{overdueTasks.length - 5} more</p>
-              )}
             </div>
           </section>
         )}
 
-        {/* Weekly Review */}
-        <section style={{ marginTop: "auto" }}>
-          <button onClick={onOpenReview} style={{
-            width: "100%", padding: "9px 12px", borderRadius: "10px",
-            border: `1.5px solid ${hasReview ? "#BBF7D0" : "#FED7AA"}`,
-            backgroundColor: hasReview ? "#F0FDF4" : "#FFF7ED",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-            fontSize: "11px", fontWeight: 700,
-            color: hasReview ? "#15803D" : "#F97316",
-            cursor: "pointer", marginBottom: "8px",
-          }}>
-            <ClipboardList size={12} />
-            {hasReview ? "✓ Review Done · Edit" : "Write Week Review"}
-            {!hasReview && (
-              <span style={{
-                width: 6, height: 6, borderRadius: "50%",
-                backgroundColor: "#F97316", flexShrink: 0,
-              }} />
-            )}
-          </button>
-        </section>
 
-        {/* Google Calendar placeholder */}
-        <section>
-          <button style={{
-            width: "100%", padding: "9px 12px", borderRadius: "10px",
-            border: "1.5px dashed #E8DDD0", backgroundColor: "#FAFAFA",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-            fontSize: "11px", fontWeight: 600, color: "#A8A29E", cursor: "not-allowed",
-          }}>
-            <Calendar size={12} /> Connect Google Calendar
-          </button>
-          <p style={{ fontSize: "9px", color: "#A8A29E", textAlign: "center", marginTop: "4px" }}>Coming soon</p>
-        </section>
 
       </div>
     </div>
