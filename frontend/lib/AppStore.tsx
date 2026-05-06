@@ -11,6 +11,7 @@ import type { DayPlan, EveningReflection, WeeklyReview } from "@/lib/dayTypes";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import type { SupportTicket, TicketCategory, TicketPriority } from "@/lib/ticketTypes";
 import { api } from "@/lib/api";
+import { readAppCache, writeAppCache } from "@/lib/appCache";
 
 // ── User profile ─────────────────────────────────────────────────────────────
 export interface UserProfile {
@@ -262,7 +263,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => { goalsRef.current = goals; }, [goals]);
 
   // ── Initial data load ─────────────────────────────────────────────────────
+  // Two-phase hydration:
+  //   1. Read last-known snapshot from localStorage and paint it instantly
+  //      (so the user never sees a cream void on refresh).
+  //   2. Fire the network requests in the background; when they resolve,
+  //      replace state with fresh data and persist a new snapshot.
   useEffect(() => {
+    const cached = readAppCache();
+    if (cached) {
+      setGoals             (cached.goals              as GoalData[]);
+      setHabits            (cached.habits             as HabitData[]);
+      setTasks             (cached.tasks              as TaskData[]);
+      setEventGroups       (cached.eventGroups        as EventGroup[]);
+      setWeekEvents        (cached.weekEvents         as WeekEvent[]);
+      setWeekPlans         (cached.weekPlans          as WeekPlan[]);
+      setDayPlans          (cached.dayPlans           as DayPlan[]);
+      setEveningReflections(cached.eveningReflections as EveningReflection[]);
+      setWeeklyReviews     (cached.weeklyReviews      as WeeklyReview[]);
+      setBucketEntries     (cached.bucketEntries      as BucketEntry[]);
+      setTickets           (cached.tickets            as SupportTicket[]);
+      if (cached.userProfile) setUserProfile(cached.userProfile as UserProfile);
+      setLoaded(true);
+    }
+
     async function load() {
       const [
         apiGoals, apiHabits, apiTasks, apiGroups,
@@ -282,34 +305,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fetchSafe<any>('/users/me', null),
       ]);
 
-      setGoals(apiGoals.map(mapGoal));
-      setHabits(apiHabits.map(mapHabit));
-      setTasks(apiTasks.map(mapTask));
+      const freshGoals    = apiGoals.map(mapGoal);
+      const freshHabits   = apiHabits.map(mapHabit);
+      const freshTasks    = apiTasks.map(mapTask);
 
       // Calendar: groups include nested events
-      const groups = apiGroups.map(mapEventGroup);
-      const events = apiGroups.flatMap((g: any) =>
+      const freshGroups = apiGroups.map(mapEventGroup);
+      const freshEvents = apiGroups.flatMap((g: any) =>
         (g.events ?? []).map((e: any) => mapWeekEvent({ ...e, groupId: g.id }))
       );
-      if (!groups.find(g => g.id === GENERAL_GROUP_ID)) {
+      if (!freshGroups.find(g => g.id === GENERAL_GROUP_ID)) {
         const created = await api.post<any>('/calendar/groups', { id: GENERAL_GROUP_ID, name: "General", color: "#9CA3AF" }).catch(() => null);
-        if (created) groups.unshift(mapEventGroup(created));
+        if (created) freshGroups.unshift(mapEventGroup(created));
       }
-      setEventGroups(groups);
-      setWeekEvents(events);
 
-      setWeekPlans(apiWeekPlans.map(mapWeekPlan));
-      setDayPlans(apiDayPlans.map(mapDayPlan));
-      setEveningReflections(apiEveningReflections.map(mapEveningReflection));
-      setWeeklyReviews(apiWeeklyReviews.map(mapWeeklyReview));
-      setBucketEntries(applyBucketOrder(apiBucket.map(mapBucketEntry), loadBucketOrder()));
-      setTickets(apiTickets.map(mapTicket));
+      const freshWeekPlans          = apiWeekPlans.map(mapWeekPlan);
+      const freshDayPlans           = apiDayPlans.map(mapDayPlan);
+      const freshEveningReflections = apiEveningReflections.map(mapEveningReflection);
+      const freshWeeklyReviews      = apiWeeklyReviews.map(mapWeeklyReview);
+      const freshBucket             = applyBucketOrder(apiBucket.map(mapBucketEntry), loadBucketOrder());
+      const freshTickets            = apiTickets.map(mapTicket);
+      const freshProfile: UserProfile = apiUser
+        ? { name: apiUser.name ?? "", email: apiUser.email ?? "", phone: apiUser.phone ?? "", role: apiUser.role ?? "", password: "" }
+        : userProfile;
 
-      if (apiUser) {
-        setUserProfile({ name: apiUser.name ?? "", email: apiUser.email ?? "", phone: apiUser.phone ?? "", role: apiUser.role ?? "", password: "" });
-      }
+      setGoals(freshGoals);
+      setHabits(freshHabits);
+      setTasks(freshTasks);
+      setEventGroups(freshGroups);
+      setWeekEvents(freshEvents);
+      setWeekPlans(freshWeekPlans);
+      setDayPlans(freshDayPlans);
+      setEveningReflections(freshEveningReflections);
+      setWeeklyReviews(freshWeeklyReviews);
+      setBucketEntries(freshBucket);
+      setTickets(freshTickets);
+      if (apiUser) setUserProfile(freshProfile);
 
       setLoaded(true);
+
+      writeAppCache({
+        goals:              freshGoals,
+        habits:             freshHabits,
+        tasks:              freshTasks,
+        eventGroups:        freshGroups,
+        weekEvents:         freshEvents,
+        weekPlans:          freshWeekPlans,
+        dayPlans:           freshDayPlans,
+        eveningReflections: freshEveningReflections,
+        weeklyReviews:      freshWeeklyReviews,
+        bucketEntries:      freshBucket,
+        tickets:            freshTickets,
+        userProfile:        freshProfile,
+      });
     }
     load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

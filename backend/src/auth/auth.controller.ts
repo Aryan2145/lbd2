@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Delete, Body, Query, Request, Res, UseGuards } from '@nestjs/common';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -15,6 +15,8 @@ class RegisterDto {
   @IsString() name: string;
   @IsEmail() email: string;
   @IsString() @MinLength(6) password: string;
+  @IsOptional() @IsString() designation?: string;
+  @IsOptional() @IsIn(['Male', 'Female', 'Other']) gender?: string;
 }
 
 @Controller('auth')
@@ -33,7 +35,10 @@ export class AuthController {
 
   @Post('register')
   register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto.name, dto.email, dto.password);
+    return this.auth.register(dto.name, dto.email, dto.password, {
+      role:   dto.designation,
+      gender: dto.gender,
+    });
   }
 
   // ── Google Calendar OAuth ───────────────────────────────────────────────────

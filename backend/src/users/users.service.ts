@@ -14,7 +14,13 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async create(data: { name: string; email: string; password: string }) {
+  async create(data: {
+    name: string;
+    email: string;
+    password: string;
+    role?: string;
+    gender?: string;
+  }) {
     const existing = await this.findByEmail(data.email);
     if (existing) throw new ConflictException('Email already in use');
     return this.prisma.user.create({ data });

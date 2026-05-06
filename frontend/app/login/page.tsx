@@ -103,7 +103,7 @@ function LoginForm() {
   return (
     <div style={{
       position: "relative",
-      height: "100vh", display: "flex", overflow: "hidden",
+      height: "100dvh", display: "flex", overflow: "hidden",
       backgroundColor: "#FAF5EE",
     }}>
       {/* Mobile-only background image (portrait mountain + orange filter) */}
@@ -185,14 +185,14 @@ function LoginForm() {
 
       {/* ── RIGHT — sign-in card ─────────────────────────────────── */}
       <div
-        className="flex flex-col px-6 lg:px-16 lg:bg-white"
+        className="flex flex-col px-6 lg:px-16 lg:bg-white lbd-hide-scrollbar"
         style={{
           position: "relative",
           zIndex: 1,
           width: "100%",
           maxWidth: 560,
           marginLeft: "auto",
-          height: "100vh",
+          height: "100dvh",
           overflowY: "auto",
           scrollbarGutter: "stable",
           paddingTop: "9vh",

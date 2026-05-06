@@ -19,9 +19,18 @@ export class AuthService {
     return { accessToken: this.jwt.sign(payload), user: this.strip(user) };
   }
 
-  async register(name: string, email: string, password: string) {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    extra?: { role?: string; gender?: string },
+  ) {
     const hash = await bcrypt.hash(password, 10);
-    const user = await this.users.create({ name, email, password: hash });
+    const user = await this.users.create({
+      name, email, password: hash,
+      role:   extra?.role,
+      gender: extra?.gender,
+    });
     const payload = { sub: user.id, email: user.email };
     return { accessToken: this.jwt.sign(payload), user: this.strip(user) };
   }

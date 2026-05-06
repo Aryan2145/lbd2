@@ -69,6 +69,7 @@ model User {
   email     String   @unique
   phone     String?
   role      String?
+  gender    String?
   password  String   // bcrypt hash
 
   googleRefreshToken String?
