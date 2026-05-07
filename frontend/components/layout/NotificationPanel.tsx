@@ -49,7 +49,7 @@ export default function NotificationPanel({ onClose, tasks, habits, weekPlans }:
 
   // Weekly plan
   const plan       = weekPlans.find((p) => p.weekStart === weekStart);
-  const hasWeekly  = plan && ((plan.priorities?.length ?? 0) > 0 || (plan.outcomes?.length ?? 0) > 0);
+  const hasWeekly  = plan && (plan.outcomes?.length ?? 0) > 0;
 
   const total = overdue.length + dueToday.length + (pending > 0 ? 1 : 0) + (!hasWeekly ? 1 : 0);
 
