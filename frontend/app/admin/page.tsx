@@ -7,8 +7,8 @@ import {
   ArrowLeft, ChevronRight, Send, X, RefreshCw,
   Users, Activity, CheckSquare, Target, Flame,
   Calendar, BookOpen, Star, ShoppingBag,
-  Eye, EyeOff, LogOut, Mail, Phone, UserCircle,
-  Briefcase, Venus, Hash, Clock, AlertCircle,
+  Eye, EyeOff, LogOut, Phone, UserCircle,
+  Briefcase, Venus, Clock, AlertCircle,
 } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import type { SupportTicket, TicketStatus, TicketPriority } from "@/lib/ticketTypes";
@@ -147,34 +147,66 @@ function Sidebar({ tab, setTab }: { tab: AdminTab; setTab: (t: AdminTab) => void
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 function OverviewTab() {
-  const store = useAppStore();
-  const openTaskCount     = store.tasks.filter((t) => t.status === "open").length;
-  const closedTaskCount   = store.tasks.filter((t) => t.status !== "open").length;
-  const activeHabits      = store.habits.length;
-  const openTickets       = store.tickets.filter((t) => t.status === "open" || t.status === "in-progress").length;
-  const resolvedTickets   = store.tickets.filter((t) => t.status === "resolved" || t.status === "closed").length;
+  const [users,   setUsers]   = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    adminFetch<AdminUser[]>("/admin/users")
+      .then(setUsers)
+      .catch(e => setError(e.message ?? "Failed to load"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Aggregate counts across all users
+  const sum = (key: keyof AdminUser["counts"]) => users.reduce((a, u) => a + u.counts[key], 0);
+  const totalTickets   = sum("tickets");
+  const totalGoals     = sum("goals");
+  const totalHabits    = sum("habits");
+  const totalTasks     = sum("tasks");
+  const totalEvents    = sum("weekEvents");
+  const totalPlans     = sum("weekPlans");
+  const totalReflect   = sum("eveningReflections");
+  const totalReviews   = sum("weeklyReviews");
+  const totalBucket    = sum("bucketEntries");
+  const withVision     = users.filter(u => u.hasVisionCanvas).length;
+  const withLegacy     = users.filter(u => u.hasLegacyCanvas).length;
 
   const statCards: { icon: React.ReactNode; label: string; value: number; color: string }[] = [
-    { icon: <Target       size={16} />, label: "Goals",             value: store.goals.length,             color: "#6366F1" },
-    { icon: <Flame        size={16} />, label: "Habits",            value: activeHabits,                   color: "#F97316" },
-    { icon: <CheckSquare  size={16} />, label: "Open Tasks",        value: openTaskCount,                  color: "#3B82F6" },
-    { icon: <CheckSquare  size={16} />, label: "Closed Tasks",      value: closedTaskCount,                color: "#10B981" },
-    { icon: <Calendar     size={16} />, label: "Week Events",       value: store.weekEvents.length,        color: "#EC4899" },
-    { icon: <ShoppingBag  size={16} />, label: "Bucket Items",      value: store.bucketEntries.length,     color: "#8B5CF6" },
-    { icon: <BookOpen     size={16} />, label: "Week Plans",         value: store.weekPlans.length,         color: "#06B6D4" },
-    { icon: <Star         size={16} />, label: "Weekly Reviews",    value: store.weeklyReviews.length,     color: "#F59E0B" },
-    { icon: <Activity     size={16} />, label: "Evening Reflections", value: store.eveningReflections.length, color: "#EF4444" },
-    { icon: <Ticket       size={16} />, label: "Open Tickets",      value: openTickets,                    color: "#F97316" },
-    { icon: <Ticket       size={16} />, label: "Resolved Tickets",  value: resolvedTickets,                color: "#10B981" },
-    { icon: <Users        size={16} />, label: "Total Tickets",     value: store.tickets.length,           color: "#6B7280" },
+    { icon: <Users        size={16} />, label: "Total Users",          value: users.length,   color: "#0F172A" },
+    { icon: <Target       size={16} />, label: "Goals",                value: totalGoals,     color: "#6366F1" },
+    { icon: <Flame        size={16} />, label: "Habits",               value: totalHabits,    color: "#F97316" },
+    { icon: <CheckSquare  size={16} />, label: "Tasks",                value: totalTasks,     color: "#3B82F6" },
+    { icon: <Calendar     size={16} />, label: "Week Events",          value: totalEvents,    color: "#EC4899" },
+    { icon: <ShoppingBag  size={16} />, label: "Bucket Items",         value: totalBucket,    color: "#8B5CF6" },
+    { icon: <BookOpen     size={16} />, label: "Week Plans",           value: totalPlans,     color: "#06B6D4" },
+    { icon: <Star         size={16} />, label: "Weekly Reviews",       value: totalReviews,   color: "#F59E0B" },
+    { icon: <Activity     size={16} />, label: "Evening Reflections",  value: totalReflect,   color: "#EF4444" },
+    { icon: <Ticket       size={16} />, label: "Support Tickets",      value: totalTickets,   color: "#64748B" },
+    { icon: <UserCircle   size={16} />, label: "Vision Canvas Set Up", value: withVision,     color: "#8B5CF6" },
+    { icon: <UserCircle   size={16} />, label: "Legacy Canvas Set Up", value: withLegacy,     color: "#EC4899" },
   ];
+
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
+      <div className="animate-spin" style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid #E2E8F0", borderTopColor: "#F97316" }} />
+      <span style={{ fontSize: 13, color: "#94A3B8" }}>Loading platform data…</span>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", flexDirection: "column", gap: 8 }}>
+      <AlertCircle size={20} color="#EF4444" />
+      <span style={{ fontSize: 13, color: "#94A3B8" }}>{error}</span>
+    </div>
+  );
 
   return (
     <div style={{ padding: "32px 36px" }}>
       <div style={{ marginBottom: "28px" }}>
         <h1 style={{ fontSize: "20px", fontWeight: 800, color: "#0F172A", margin: "0 0 4px" }}>Platform Overview</h1>
         <p style={{ fontSize: "13px", color: "#64748B", margin: 0 }}>
-          Real-time snapshot of all data stored in this instance.
+          Aggregate totals across all {users.length} registered user{users.length !== 1 ? "s" : ""}.
         </p>
       </div>
 
@@ -183,6 +215,7 @@ function OverviewTab() {
           <div key={i} style={{
             backgroundColor: "#FFFFFF", borderRadius: "12px",
             border: "1px solid #E2E8F0", padding: "16px 18px",
+            boxShadow: "0 1px 3px rgba(15,23,42,0.03)",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
               <div style={{
@@ -200,27 +233,49 @@ function OverviewTab() {
         ))}
       </div>
 
-      {/* Ticket breakdown */}
-      <div style={{ marginTop: "28px", backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #E2E8F0", padding: "20px 24px" }}>
-        <h2 style={{ fontSize: "14px", fontWeight: 700, color: "#0F172A", margin: "0 0 16px" }}>Ticket Status Breakdown</h2>
-        <div style={{ display: "flex", gap: "0" }}>
-          {(["open", "in-progress", "resolved", "closed"] as const).map((s, i) => {
-            const m   = STATUS_META[s];
-            const cnt = store.tickets.filter((t) => t.status === s).length;
-            const pct = store.tickets.length ? Math.round((cnt / store.tickets.length) * 100) : 0;
-            return (
-              <div key={s} style={{
-                flex: 1, padding: "14px 16px",
-                borderRight: i < 3 ? "1px solid #F1F5F9" : undefined,
-              }}>
-                <p style={{ fontSize: "20px", fontWeight: 800, color: m.color, margin: "0 0 2px" }}>{cnt}</p>
-                <p style={{ fontSize: "11px", fontWeight: 600, color: m.color, margin: "0 0 4px" }}>{m.label}</p>
-                <p style={{ fontSize: "11px", color: "#94A3B8", margin: 0 }}>{pct}% of total</p>
-              </div>
-            );
-          })}
+      {/* Per-user activity breakdown */}
+      {users.length > 0 && (
+        <div style={{ marginTop: "28px", backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #E2E8F0", padding: "20px 24px" }}>
+          <h2 style={{ fontSize: "14px", fontWeight: 700, color: "#0F172A", margin: "0 0 16px" }}>User Activity Breakdown</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {users.map(u => {
+              const total = Object.values(u.counts).reduce((a, b) => a + b, 0);
+              const allTotal = users.reduce((a, uu) => a + Object.values(uu.counts).reduce((x, y) => x + y, 0), 0);
+              const pct = allTotal > 0 ? Math.round((total / allTotal) * 100) : 0;
+              const color = avatarColor(u.id);
+              return (
+                <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                    backgroundColor: color + "20", border: `1.5px solid ${color}44`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 10, fontWeight: 700, color,
+                  }}>
+                    {initials(u.name)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#0F172A",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60%" }}>
+                        {u.name}
+                      </span>
+                      <span style={{ fontSize: 11, color: "#64748B", flexShrink: 0 }}>{total} items · {pct}%</span>
+                    </div>
+                    <div style={{ height: 5, backgroundColor: "#F1F5F9", borderRadius: 999, overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%", borderRadius: 999,
+                        backgroundColor: color,
+                        width: `${pct}%`, transition: "width 0.4s ease",
+                        minWidth: total > 0 ? 4 : 0,
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -708,10 +763,6 @@ function UsersTab() {
                       <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600,
                         color: "#374151", backgroundColor: "#F1F5F9", padding: "3px 9px", borderRadius: 20 }}>
                         <Clock size={10} /> Joined {fmtIso(u.createdAt)}
-                      </span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11,
-                        color: "#94A3B8", backgroundColor: "#F8FAFC", padding: "3px 9px", borderRadius: 20, border: "1px solid #E2E8F0" }}>
-                        <Hash size={10} /> {u.id.slice(0, 8)}…
                       </span>
                     </div>
                   </div>
