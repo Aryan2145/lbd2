@@ -289,11 +289,11 @@ export default function MorningPlan({
         padding: "20px 16px", flexDirection: "column", gap: "20px",
       }}>
 
-        {weekPlan && weekPlan.priorities.length > 0 && (
+        {weekPlan && weekPlan.outcomes.length > 0 && (
           <section>
-            <p style={sectionTitle}>This Week&apos;s Focus</p>
+            <p style={sectionTitle}>This Week&apos;s Outcomes</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "8px" }}>
-              {weekPlan.priorities.map((pri, i) => (
+              {weekPlan.outcomes.map((pri, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "7px" }}>
                   <span style={{
                     width: 16, height: 16, borderRadius: "50%", flexShrink: 0, marginTop: 1,

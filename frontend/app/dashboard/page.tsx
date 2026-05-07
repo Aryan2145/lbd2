@@ -547,8 +547,8 @@ export default function DashboardPage() {
 
   function toggleOutcome(text: string) {
     const current = weekPlans.find((p) => p.weekStart === weekStart);
-    const base    = current ?? {
-      weekStart, priorities: [], outcomes: [], doneOutcomes: [],
+    const base: WeekPlan = current ?? {
+      weekStart, outcomes: [], doneOutcomes: [],
       dayNotes: {} as Record<string, string>,
     };
     const isDone   = base.doneOutcomes.includes(text);
@@ -1547,7 +1547,7 @@ function WeekPlanContent({ plan, weekStart, agenda, eventGroups, onToggleOutcome
 }) {
   const outcomes     = plan?.outcomes     ?? [];
   const doneOutcomes = plan?.doneOutcomes ?? [];
-  const priorities   = plan?.priorities   ?? [];
+
   const todayStr     = toTaskDate();
   const groupColorMap = useMemo(
     () => Object.fromEntries(eventGroups.map((g) => [g.id, g.color])) as Record<string, string>,
@@ -1581,7 +1581,7 @@ function WeekPlanContent({ plan, weekStart, agenda, eventGroups, onToggleOutcome
           )}
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
-          {outcomes.length === 0 && priorities.length === 0 ? (
+          {outcomes.length === 0 ? (
             <EmptyHint
               icon={<CalendarRange size={14} color="#78716C" />}
               text={`No plan for week of ${new Date(weekStart + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
