@@ -18,7 +18,7 @@ async function bootstrap() {
     origin: [
       process.env.FRONTEND_URL,
       'https://life.rgbindia.com',
-      'https://lbd.rgbindia.com',
+      'https://staging.life.rgbindia.com',
       'http://localhost:3000',
     ].filter(Boolean),
     credentials: true,
