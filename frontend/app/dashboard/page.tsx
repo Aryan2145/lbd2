@@ -19,7 +19,7 @@ import type { AreaData } from "@/components/vision/PolaroidCard";
 import type { HabitData } from "@/components/habits/HabitCard";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import type { GoalData } from "@/components/goals/GoalCard";
-import type { EveningReflection, DayPlan } from "@/lib/dayTypes";
+import type { EveningReflection } from "@/lib/dayTypes";
 import type { WeekPlan } from "@/lib/weeklyTypes";
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -370,7 +370,7 @@ function ImageRotator({ items, kind, intervalMs = 6000, emptyHref, emptyLabel }:
 export default function DashboardPage() {
   const {
     goals, tasks, habits,
-    weekEvents, weekPlans, dayPlans, eventGroups,
+    weekEvents, weekPlans, eventGroups,
     eveningReflections, bucketEntries,
     toggleHabitDay, closeTask, reopenTask, updateGoal, addTask, upsertWeekPlan,
   } = useAppStore();

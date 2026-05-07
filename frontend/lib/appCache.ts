@@ -20,7 +20,6 @@ export interface CachedAppData {
   eventGroups:        unknown[];
   weekEvents:         unknown[];
   weekPlans:          unknown[];
-  dayPlans:           { date: string }[];
   eveningReflections: { date: string }[];
   weeklyReviews:      unknown[];
   bucketEntries:      unknown[];
@@ -57,7 +56,6 @@ export function writeAppCache(data: CachedAppData): void {
     const cutoff = cutoffISO();
     const trimmed: CachedAppData = {
       ...data,
-      dayPlans:           (data.dayPlans           ?? []).filter(p => p.date >= cutoff),
       eveningReflections: (data.eveningReflections ?? []).filter(r => r.date >= cutoff),
     };
     const payload: CacheEnvelope = { ts: Date.now(), data: trimmed };
