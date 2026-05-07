@@ -17,6 +17,8 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       process.env.FRONTEND_URL,
+      'https://life.rgbindia.com',
+      'https://lbd.rgbindia.com',
       'http://localhost:3000',
     ].filter(Boolean),
     credentials: true,
