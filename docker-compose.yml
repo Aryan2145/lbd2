@@ -8,6 +8,8 @@ services:
         NEXT_PUBLIC_API_URL: https://api.lbd.rgbindia.com
     container_name: lbd_production
     env_file: .env.production
+    volumes:
+      - /etc/secrets/encryption.key:/etc/secrets/encryption.key:ro
     ports:
       - "3100:3000"
       - "4100:4000"
