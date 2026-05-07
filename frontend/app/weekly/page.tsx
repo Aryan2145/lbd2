@@ -213,13 +213,13 @@ export default function WeeklyPage() {
           const existing = eveningReflections.find((r) => r.date === date);
           upsertEveningReflection({
             date,
-            energyLevel:  existing?.energyLevel  ?? 5,
-            mood:         existing?.mood          ?? "",
-            highlights:   existing?.highlights    ?? "",
-            keyLearnings: existing?.keyLearnings  ?? "",
-            wins:         [...(existing?.wins ?? []), text],
-            notes:        existing?.notes         ?? "",
-            stuck:        existing?.stuck         ?? [],
+            energyLevel: existing?.energyLevel ?? 5,
+            mood:        existing?.mood         ?? "",
+            highlights:  existing?.highlights   ?? "",
+            gratitude:   existing?.gratitude    ?? "",
+            decisions:   existing?.decisions    ?? [],
+            wins:        [...(existing?.wins ?? []), text],
+            stuck:       existing?.stuck        ?? [],
           });
         }}
       />
