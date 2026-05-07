@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Shield, LayoutDashboard, Ticket, Database,
   ArrowLeft, ChevronRight, Send, X, RefreshCw,
   Users, Activity, CheckSquare, Target, Flame,
   Calendar, BookOpen, Star, ShoppingBag,
+  Eye, EyeOff, LogOut,
 } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import type { SupportTicket, TicketStatus, TicketPriority } from "@/lib/ticketTypes";
@@ -22,7 +23,7 @@ function fmtTime(ts: number) {
 function fmtDateTime(ts: number) { return `${fmtDate(ts)}, ${fmtTime(ts)}`; }
 
 type AdminTab = "overview" | "tickets" | "data";
-type DataStore = "goals" | "habits" | "tasks" | "events" | "bucketEntries" | "tickets" | "weeklyReviews" | "dayIntentions" | "eveningReflections";
+type DataStore = "goals" | "habits" | "tasks" | "events" | "bucketEntries" | "tickets" | "weeklyReviews" | "weekPlans" | "eveningReflections";
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({ tab, setTab }: { tab: AdminTab; setTab: (t: AdminTab) => void }) {
@@ -112,7 +113,7 @@ function OverviewTab() {
     { icon: <CheckSquare  size={16} />, label: "Closed Tasks",      value: closedTaskCount,                color: "#10B981" },
     { icon: <Calendar     size={16} />, label: "Week Events",       value: store.weekEvents.length,        color: "#EC4899" },
     { icon: <ShoppingBag  size={16} />, label: "Bucket Items",      value: store.bucketEntries.length,     color: "#8B5CF6" },
-    { icon: <BookOpen     size={16} />, label: "Daily Plans",        value: store.dayPlans.length,          color: "#06B6D4" },
+    { icon: <BookOpen     size={16} />, label: "Week Plans",         value: store.weekPlans.length,         color: "#06B6D4" },
     { icon: <Star         size={16} />, label: "Weekly Reviews",    value: store.weeklyReviews.length,     color: "#F59E0B" },
     { icon: <Activity     size={16} />, label: "Evening Reflections", value: store.eveningReflections.length, color: "#EF4444" },
     { icon: <Ticket       size={16} />, label: "Open Tickets",      value: openTickets,                    color: "#F97316" },
@@ -435,7 +436,7 @@ function DataTab() {
     bucketEntries:      { label: "Bucket Entries",     data: store.bucketEntries      },
     tickets:            { label: "Support Tickets",    data: store.tickets            },
     weeklyReviews:      { label: "Weekly Reviews",     data: store.weeklyReviews      },
-    dayIntentions:      { label: "Daily Plans",         data: store.dayPlans           },
+    weekPlans:          { label: "Week Plans",           data: store.weekPlans          },
     eveningReflections: { label: "Evening Reflections",data: store.eveningReflections },
   };
 
@@ -553,9 +554,206 @@ function DataTab() {
   );
 }
 
+// ── Admin credentials ─────────────────────────────────────────────────────────
+const ADMIN_EMAIL    = "admin@lbd.in";
+const ADMIN_PASSWORD = "LBD#Admin@2025";
+const SESSION_KEY    = "lbd_admin_auth";
+
+// ── Admin login screen ────────────────────────────────────────────────────────
+function AdminLogin({ onAuth }: { onAuth: () => void }) {
+  const [email,    setEmail]    = useState("");
+  const [password, setPassword] = useState("");
+  const [showPwd,  setShowPwd]  = useState(false);
+  const [error,    setError]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    setTimeout(() => {
+      if (email.trim().toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+        sessionStorage.setItem(SESSION_KEY, "1");
+        onAuth();
+      } else {
+        setError("Invalid admin credentials.");
+      }
+      setLoading(false);
+    }, 400);
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "12px 14px",
+    borderRadius: 12, border: "1.5px solid #D6C9BC",
+    backgroundColor: "#FFFFFF", color: "#1C1917",
+    fontSize: 14, outline: "none", boxSizing: "border-box",
+  };
+
+  return (
+    <div style={{
+      position: "relative", height: "100dvh",
+      display: "flex", overflow: "hidden", backgroundColor: "#FAF5EE",
+    }}>
+      {/* Mobile bg */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/login-bg-mobile.png" alt="" aria-hidden className="lg:hidden"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }} />
+      <div aria-hidden className="lg:hidden" style={{
+        position: "absolute", inset: 0, zIndex: 0,
+        background: "linear-gradient(160deg, rgba(249,115,22,0.10) 0%, rgba(234,88,12,0.10) 100%)",
+        mixBlendMode: "multiply",
+      }} />
+
+      {/* Left — mountain */}
+      <div className="hidden lg:block" style={{
+        flex: 1, backgroundImage: "url(/login-bg.png)",
+        backgroundSize: "cover", backgroundPosition: "center", position: "relative",
+      }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(180deg, rgba(28,25,23,0.35) 0%, rgba(28,25,23,0) 35%, rgba(28,25,23,0) 60%, rgba(28,25,23,0.45) 100%)",
+        }} />
+        <div style={{ position: "absolute", top: 28, left: 28, zIndex: 1, display: "flex", alignItems: "center", gap: 12 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-orange.png" alt="Life By Design" style={{ width: 44, height: 44, borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.25)" }} />
+          <span style={{
+            fontFamily: `Calibri, sans-serif`, fontStyle: "italic",
+            fontSize: 24, fontWeight: 700, color: "#FFFFFF",
+            padding: "6px 14px", backgroundColor: "rgba(0,0,0,0.30)",
+            backdropFilter: "blur(12px)", borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.18)",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.22)",
+          }}>
+            Life By <span style={{ color: "#fd9266" }}>Design</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Right — form */}
+      <div className="flex flex-col px-6 lg:px-16 lg:bg-white lbd-hide-scrollbar" style={{
+        position: "relative", zIndex: 1,
+        width: "100%", maxWidth: 560, marginLeft: "auto",
+        height: "100dvh", overflowY: "auto", paddingTop: "9vh", paddingBottom: 32,
+      }}>
+        <div style={{ width: "100%", maxWidth: 380, marginInline: "auto" }}>
+
+          {/* Mobile logo */}
+          <div className="flex lg:hidden" style={{ alignItems: "center", gap: 12, marginTop: "-5vh", marginBottom: "calc(5vh + 18px)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-orange.png" alt="Life By Design" style={{ width: 44, height: 44, borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.25)" }} />
+            <span style={{
+              fontStyle: "italic", fontSize: 24, fontWeight: 700, color: "#FFFFFF",
+              padding: "6px 14px", backgroundColor: "rgba(0,0,0,0.30)",
+              backdropFilter: "blur(12px)", borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.18)",
+            }}>
+              Life By <span style={{ color: "#fd9266" }}>Design</span>
+            </span>
+          </div>
+
+          {/* Desktop logo */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" className="hidden lg:block" style={{ width: 56, height: 56, marginBottom: 18 }} />
+
+          {/* Card */}
+          <div className="rounded-2xl bg-white/30 lg:bg-transparent lg:rounded-none lg:p-0" style={{
+            padding: "20px 18px", border: "1px solid rgba(255,255,255,0.30)",
+            boxShadow: "0 4px 16px rgba(28,25,23,0.08)", backdropFilter: "blur(2px)",
+          }}>
+            {/* Admin badge */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 8,
+                background: "linear-gradient(135deg, #F97316, #EA580C)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <Shield size={13} color="#fff" />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#EA580C", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                Admin Panel
+              </span>
+            </div>
+
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: "#1C1917", letterSpacing: "-0.02em", lineHeight: 1.2, margin: "0 0 6px" }}>
+              Sign in to continue
+            </h1>
+            <p style={{ fontSize: 13, color: "#78716C", margin: "0 0 28px" }}>
+              Restricted access. Authorised personnel only.
+            </p>
+
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6, color: "#57534E" }}>
+                  Email
+                </label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  required placeholder="admin@lbd.in" style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6, color: "#57534E" }}>
+                  Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input type={showPwd ? "text" : "password"} value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required placeholder="••••••••"
+                    style={{ ...inputStyle, paddingRight: 42 }} />
+                  <button type="button" onClick={() => setShowPwd(v => !v)} style={{
+                    position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                    background: "none", border: "none", cursor: "pointer", padding: 2,
+                    display: "flex", alignItems: "center", color: "#78716C",
+                  }}>
+                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p style={{
+                  fontSize: 13, color: "#DC2626", margin: 0,
+                  padding: "9px 12px", backgroundColor: "#FEF2F2",
+                  border: "1px solid #FCA5A5", borderRadius: 8, fontWeight: 600,
+                }}>
+                  {error}
+                </p>
+              )}
+
+              <button type="submit" disabled={loading} style={{
+                marginTop: 4, padding: "13px 0", borderRadius: 12, border: "none",
+                background: loading ? "#E8C8A8" : "linear-gradient(135deg, #F97316, #EA580C)",
+                color: "#FFFFFF", fontSize: 15, fontWeight: 700,
+                cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: loading ? "none" : "0 4px 14px rgba(234,88,12,0.32)",
+              }}>
+                {loading ? "Verifying…" : "Sign in to Admin"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminPage() {
-  const [tab, setTab] = useState<AdminTab>("overview");
+  const [tab,       setTab]       = useState<AdminTab>("overview");
+  const [authed,    setAuthed]    = useState(false);
+  const [checked,   setChecked]   = useState(false);
+
+  useEffect(() => {
+    setAuthed(sessionStorage.getItem(SESSION_KEY) === "1");
+    setChecked(true);
+  }, []);
+
+  function handleLogout() {
+    sessionStorage.removeItem(SESSION_KEY);
+    setAuthed(false);
+  }
+
+  if (!checked) return null;
+  if (!authed)  return <AdminLogin onAuth={() => setAuthed(true)} />;
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -572,6 +770,14 @@ export default function AdminPage() {
           <span style={{ fontSize: "12px", fontWeight: 600, color: "#0F172A" }}>
             {tab === "overview" ? "Overview" : tab === "tickets" ? "Support Tickets" : "Data Browser"}
           </span>
+          <button onClick={handleLogout} style={{
+            marginLeft: "auto", display: "flex", alignItems: "center", gap: 6,
+            padding: "4px 10px", borderRadius: 6, border: "1px solid #E2E8F0",
+            backgroundColor: "transparent", fontSize: "11px", color: "#64748B",
+            cursor: "pointer", fontWeight: 600,
+          }}>
+            <LogOut size={11} /> Sign out
+          </button>
         </div>
         <div style={{ flex: 1, overflow: "hidden" }}>
           {tab === "overview" && <div style={{ height: "100%", overflowY: "auto" }}><OverviewTab /></div>}

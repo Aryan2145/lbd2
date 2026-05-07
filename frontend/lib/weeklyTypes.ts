@@ -21,9 +21,7 @@ export const GENERAL_GROUP_ID = "eg_general";
 
 export interface WeekPlan {
   weekStart: string;          // Monday ISO date YYYY-MM-DD
-  priorities: string[];       // ordered, max 5
   outcomes: string[];
   doneOutcomes: string[];     // outcome texts that are marked complete
   dayNotes: Record<string, string>;
-  dayThemes: Record<string, string>;
 }

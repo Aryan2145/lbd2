@@ -29,6 +29,7 @@ export class EveningReflectionsService {
   private decryptRow(row: any) {
     return {
       ...row,
+      energyLevel: parseInt(this.dStr(row.energyLevel) ?? '5') || 5,
       mood:       this.dStr(row.mood) ?? '',
       highlights: this.dStr(row.highlights),
       gratitude:  this.dStr(row.gratitude),
@@ -41,7 +42,7 @@ export class EveningReflectionsService {
 
   private encryptData(data: any) {
     const out: any = {};
-    if (data.energyLevel !== undefined) out.energyLevel = data.energyLevel;
+    if (data.energyLevel !== undefined) out.energyLevel = this.enc.encrypt(String(data.energyLevel));
     if (data.mood        !== undefined) out.mood        = this.eStr(data.mood) ?? '';
     if (data.highlights  !== undefined) out.highlights  = this.eStr(data.highlights);
     if (data.gratitude   !== undefined) out.gratitude   = this.eStr(data.gratitude);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Zap, Smile, Minus, CloudRain, Flame, X, CheckCircle2, Circle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Zap, Smile, Minus, CloudRain, Flame, X, CheckCircle2, Circle, Save, Lock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { EveningReflection, MoodEmoji, DecisionEntry, StuckEntry } from "@/lib/dayTypes";
 import type { HabitData } from "@/components/habits/HabitCard";
@@ -33,11 +33,11 @@ function getEnergyAccent(n: number): { color: string; label: string } {
 }
 
 const MOOD_CONFIG: { emoji: MoodEmoji; label: string; color: string; tint: string; Icon: LucideIcon }[] = [
-  { emoji: "😤", label: "Rough",   color: "#E24B4A", tint: "#3A1818", Icon: Flame     },
-  { emoji: "😔", label: "Low",     color: "#EF9F27", tint: "#3A2A10", Icon: CloudRain },
-  { emoji: "😐", label: "Okay",    color: "#F0997B", tint: "#3A1F18", Icon: Minus     },
-  { emoji: "😊", label: "Good",    color: "#5DCAA5", tint: "#0F2E25", Icon: Smile     },
-  { emoji: "🤩", label: "Amazing", color: "#97C459", tint: "#1F2E15", Icon: Zap       },
+  { emoji: "😤", label: "Rough",   color: "#F87171", tint: "#3B1818", Icon: Flame     },
+  { emoji: "😔", label: "Low",     color: "#FBBF24", tint: "#3B2C0E", Icon: CloudRain },
+  { emoji: "😐", label: "Okay",    color: "#FB923C", tint: "#3B2010", Icon: Minus     },
+  { emoji: "😊", label: "Good",    color: "#34D399", tint: "#0D3325", Icon: Smile     },
+  { emoji: "🤩", label: "Amazing", color: "#A3E635", tint: "#1E3010", Icon: Zap       },
 ];
 
 const A = {
@@ -52,14 +52,14 @@ const A = {
 } as const;
 
 const B = {
-  pageBg:    "#E8E6F5",
-  cardBg:    "#0F0E1A",
-  fieldBg:   "#1A1830",
-  border:    "#2A2740",
-  text:      "#F5F4FB",
-  secondary: "#9893B8",
-  muted:     "#5A5577",
-  label:     "#7C75B5",
+  pageBg:    "#13111F",
+  cardBg:    "#1E1B2E",
+  fieldBg:   "#272440",
+  border:    "#353060",
+  text:      "#EDE8FA",
+  secondary: "#9B93BC",
+  muted:     "#5C5778",
+  label:     "#7D76A0",
 } as const;
 
 const CARD_H = "260px";
@@ -102,21 +102,58 @@ export default function EveningReflectionComponent({
   const [evIdx,       setEvIdx]       = useState(0);
   const arcDragging = useRef(false);
 
-  // ── Win helpers ──
+  // ── Per-card local states (text-heavy cards only) ──
+  const [localWins,      setLocalWins]      = useState<string[]>(reflection.wins.length > 0 ? reflection.wins : [""]);
+  const [localGratitude, setLocalGratitude] = useState(reflection.gratitude ?? "");
+  const [localHighlights,setLocalHighlights]= useState(reflection.highlights ?? "");
+  const [localStuck,     setLocalStuck]     = useState<StuckEntry[]>(reflection.stuck ?? []);
+
+  // ── Per-card locked (saved) state ──
+  const [winsLocked,       setWinsLocked]       = useState(false);
+  const [gratitudeLocked,  setGratitudeLocked]  = useState(false);
+  const [highlightsLocked, setHighlightsLocked] = useState(false);
+  const [stuckLocked,      setStuckLocked]      = useState(false);
+
+  // Reset local states when navigating to a different date
+  useEffect(() => {
+    setLocalWins(reflection.wins.length > 0 ? reflection.wins : [""]);
+    setLocalGratitude(reflection.gratitude ?? "");
+    setLocalHighlights(reflection.highlights ?? "");
+    setLocalStuck(reflection.stuck ?? []);
+    setWinsLocked(false);
+    setGratitudeLocked(false);
+    setHighlightsLocked(false);
+    setStuckLocked(false);
+  }, [date]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Per-card save handlers ──
+  function saveWins()       { onUpdate({ ...reflection, wins: localWins.filter(w => w.trim()) }); setWinsLocked(true); }
+  function saveGratitude()  { onUpdate({ ...reflection, gratitude: localGratitude }); setGratitudeLocked(true); }
+  function saveHighlights() { onUpdate({ ...reflection, highlights: localHighlights }); setHighlightsLocked(true); }
+  function saveStuck()      { onUpdate({ ...reflection, stuck: localStuck }); setStuckLocked(true); }
+
+  // ── Win helpers (local only) ──
   function updateWin(idx: number, val: string) {
-    const wins = [...reflection.wins];
-    wins[idx] = val;
-    onUpdate({ ...reflection, wins });
+    const next = [...localWins]; next[idx] = val; setLocalWins(next);
   }
-  function addWin() {
-    onUpdate({ ...reflection, wins: [...reflection.wins, ""] });
-  }
+  function addWin()          { setLocalWins([...localWins, ""]); }
   function deleteWin(idx: number) {
-    if (reflection.wins.length <= 1) return;
-    onUpdate({ ...reflection, wins: reflection.wins.filter((_, i) => i !== idx) });
+    if (localWins.length <= 1) return;
+    setLocalWins(localWins.filter((_, i) => i !== idx));
   }
 
-  // ── Decision helpers ──
+  // ── Stuck helpers (local only) ──
+  function addStuck() {
+    setLocalStuck([...localStuck, { id: crypto.randomUUID(), text: "", resolved: false, createdAt: Date.now() }]);
+  }
+  function updateStuck(id: string, text: string) {
+    setLocalStuck(localStuck.map((s) => s.id === id ? { ...s, text } : s));
+  }
+  function deleteStuck(id: string) {
+    setLocalStuck(localStuck.filter((s) => s.id !== id));
+  }
+
+  // ── Decision helpers (immediate — discrete actions, not keystrokes) ──
   function addDecision() {
     const text = newDecision.trim();
     if (!text) return;
@@ -131,19 +168,7 @@ export default function EveningReflectionComponent({
     onUpdate({ ...reflection, decisions: (reflection.decisions ?? []).filter((d) => d.id !== id) });
   }
 
-  // ── Stuck helpers ──
-  function addStuck() {
-    const entry: StuckEntry = { id: crypto.randomUUID(), text: "", resolved: false, createdAt: Date.now() };
-    onUpdate({ ...reflection, stuck: [...(reflection.stuck ?? []), entry] });
-  }
-  function updateStuck(id: string, text: string) {
-    onUpdate({ ...reflection, stuck: (reflection.stuck ?? []).map((s) => s.id === id ? { ...s, text } : s) });
-  }
-  function deleteStuck(id: string) {
-    onUpdate({ ...reflection, stuck: (reflection.stuck ?? []).filter((s) => s.id !== id) });
-  }
-
-  // ── Arc pointer handler ──
+  // ── Arc pointer handler (immediate — discrete drag action) ──
   function handleArcPtr(e: React.PointerEvent<SVGSVGElement>) {
     const svg = e.currentTarget;
     const pt  = svg.createSVGPoint();
@@ -167,17 +192,14 @@ export default function EveningReflectionComponent({
   const [lx, ly]         = arcPt(ARC_START, ARC_R + 14);
   const [rx, ry]         = arcPt(((ARC_START + ARC_SWEEP) % 360 + 360) % 360, ARC_R + 14);
 
-  const stuckList = reflection.stuck ?? [];
-  const wins      = reflection.wins.length > 0 ? reflection.wins : [""];
-
   return (
     <>
       <style>{`
-        .ev-ta::placeholder { color: #5A5577; font-size: 14px; line-height: 1.6; }
+        .ev-ta::placeholder { color: #5C5778; font-size: 14px; line-height: 1.6; }
         .ev-ta:focus        { outline: none; }
-        .ev-in::placeholder { color: #5A5577; }
+        .ev-in::placeholder { color: #5C5778; }
         .ev-in:focus        { outline: none; }
-        .ev-dec::placeholder { color: #5A5577; }
+        .ev-dec::placeholder { color: #5C5778; }
         .ev-dec:focus        { outline: none; }
       `}</style>
 
@@ -196,24 +218,30 @@ export default function EveningReflectionComponent({
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.wins }} />
                   <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.wins }}>Three Wins Today</span>
                 </div>
-                <button onClick={addWin} style={plusBtn(A.wins)}>+</button>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  {!winsLocked && <button onClick={addWin} style={plusBtn(A.wins)}>+</button>}
+                  <button onClick={winsLocked ? () => setWinsLocked(false) : saveWins} style={lockSaveBtn(A.wins, winsLocked)}>
+                    {winsLocked ? <Lock size={10} /> : <Save size={10} />}
+                  </button>
+                </div>
               </div>
               <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
-                {wins.map((win, idx) => (
+                {localWins.map((win, idx) => (
                   <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "10px", backgroundColor: B.fieldBg, borderRadius: "8px", padding: "8px 10px", border: `0.5px solid ${B.border}`, flexShrink: 0 }}>
-                    <span style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, backgroundColor: "#0F2E25", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 600, color: A.wins, marginTop: "2px" }}>
+                    <span style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, backgroundColor: A.wins + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 600, color: A.wins, marginTop: "2px" }}>
                       {idx + 1}
                     </span>
                     <textarea
                       value={win}
+                      readOnly={winsLocked}
                       onChange={(e) => updateWin(idx, e.target.value)}
                       onInput={(e) => { const t = e.currentTarget; t.style.height = ""; t.style.height = t.scrollHeight + "px"; }}
                       placeholder={`Win ${idx + 1}…`}
                       rows={1}
                       className="ev-in"
-                      style={{ flex: 1, background: "none", border: "none", fontSize: "13px", color: B.text, fontFamily: "inherit", resize: "none", overflow: "hidden", lineHeight: 1.5, padding: 0, minHeight: "20px", display: "block" }}
+                      style={{ flex: 1, background: "none", border: "none", fontSize: "13px", color: winsLocked ? B.secondary : B.text, fontFamily: "inherit", resize: "none", overflow: "hidden", lineHeight: 1.5, padding: 0, minHeight: "20px", display: "block", cursor: winsLocked ? "default" : "text" }}
                     />
-                    {wins.length > 1 && (
+                    {!winsLocked && localWins.length > 1 && (
                       <button onClick={() => deleteWin(idx)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: "3px" }}>
                         <X size={10} color={B.muted} />
                       </button>
@@ -225,19 +253,36 @@ export default function EveningReflectionComponent({
 
             {/* I Am Grateful For */}
             <div className="lg:h-[260px]" style={card(A.grateful)}>
-              <CardHeader color={A.grateful} label="I Am Grateful For…" />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.grateful }} />
+                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.grateful }}>I Am Grateful For…</span>
+                </div>
+                <button onClick={gratitudeLocked ? () => setGratitudeLocked(false) : saveGratitude} style={lockSaveBtn(A.grateful, gratitudeLocked)}>
+                  {gratitudeLocked ? <Lock size={10} /> : <Save size={10} />}
+                </button>
+              </div>
               <textarea
-                value={reflection.gratitude ?? ""}
-                onChange={(e) => onUpdate({ ...reflection, gratitude: e.target.value })}
+                value={localGratitude}
+                readOnly={gratitudeLocked}
+                onChange={(e) => setLocalGratitude(e.target.value)}
                 placeholder="What are you grateful for today?"
                 className="ev-ta"
-                style={taStyle}
+                style={{ ...taStyle, color: gratitudeLocked ? B.secondary : B.text, cursor: gratitudeLocked ? "default" : "text" }}
               />
             </div>
 
             {/* Highlights of the Day */}
             <div className="lg:h-[260px]" style={card(A.highlights)}>
-              <CardHeader color={A.highlights} label="Highlights of the Day" />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.highlights }} />
+                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.highlights }}>Highlights of the Day</span>
+                </div>
+                <button onClick={highlightsLocked ? () => setHighlightsLocked(false) : saveHighlights} style={lockSaveBtn(A.highlights, highlightsLocked)}>
+                  {highlightsLocked ? <Lock size={10} /> : <Save size={10} />}
+                </button>
+              </div>
               {(() => {
                 const clamp = Math.max(0, Math.min(evIdx, events.length - 1));
                 const ev = events[clamp];
@@ -264,11 +309,12 @@ export default function EveningReflectionComponent({
                 );
               })()}
               <textarea
-                value={reflection.highlights}
-                onChange={(e) => onUpdate({ ...reflection, highlights: e.target.value })}
+                value={localHighlights}
+                readOnly={highlightsLocked}
+                onChange={(e) => setLocalHighlights(e.target.value)}
                 placeholder="What stood out today? Moments, conversations, breakthroughs…"
                 className="ev-ta"
-                style={taStyle}
+                style={{ ...taStyle, color: highlightsLocked ? B.secondary : B.text, cursor: highlightsLocked ? "default" : "text" }}
               />
             </div>
 
@@ -282,7 +328,7 @@ export default function EveningReflectionComponent({
                   <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.tasks }}>Today&apos;s Tasks</span>
                 </div>
                 {tasks.length > 0 && (
-                  <span style={{ fontSize: "11px", fontWeight: 500, color: A.tasks, backgroundColor: "#2A1A3A", borderRadius: "10px", padding: "3px 8px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 500, color: A.tasks, backgroundColor: A.tasks + "18", borderRadius: "10px", padding: "3px 8px" }}>
                     {doneTasks}/{tasks.length}
                   </span>
                 )}
@@ -310,7 +356,7 @@ export default function EveningReflectionComponent({
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.habits }} />
                   <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.habits }}>Today&apos;s Habits</span>
                 </div>
-                <span style={{ fontSize: "11px", fontWeight: 500, color: A.habits, backgroundColor: "#1F2E15", borderRadius: "10px", padding: "3px 8px" }}>{doneCount}/{habits.length}</span>
+                <span style={{ fontSize: "11px", fontWeight: 500, color: A.habits, backgroundColor: A.habits + "20", borderRadius: "10px", padding: "3px 8px" }}>{doneCount}/{habits.length}</span>
               </div>
               <div style={{ height: 4, backgroundColor: B.fieldBg, borderRadius: "2px", overflow: "hidden", marginBottom: "10px", flexShrink: 0 }}>
                 <div style={{ height: "100%", width: `${habitPct}%`, backgroundColor: A.habits, borderRadius: "2px", transition: "width 0.3s" }} />
@@ -409,13 +455,13 @@ export default function EveningReflectionComponent({
                     onPointerUp={() => { arcDragging.current = false; }}
                     onPointerLeave={() => { arcDragging.current = false; }}
                   >
-                    <path d={trackPath} fill="none" stroke="#2A2740" strokeWidth="13" strokeLinecap="round" />
+                    <path d={trackPath} fill="none" stroke="#353060" strokeWidth="13" strokeLinecap="round" />
                     {filledPath && <path d={filledPath} fill="none" stroke={energyCol} strokeWidth="13" strokeLinecap="round" />}
-                    <circle cx={thumbX.toFixed(1)} cy={thumbY.toFixed(1)} r="9" fill={energyCol} stroke="#0F0E1A" strokeWidth="2.5" />
+                    <circle cx={thumbX.toFixed(1)} cy={thumbY.toFixed(1)} r="9" fill={energyCol} stroke="#1E1B2E" strokeWidth="2.5" />
                     <text x={CX} y="92" textAnchor="middle" fontSize="32" fontWeight="700" fill={energyCol} fontFamily="inherit">{reflection.energyLevel}</text>
-                    <text x={CX} y="116" textAnchor="middle" fontSize="12" fill="#7C75B5" fontFamily="inherit">{energyLbl}</text>
-                    <text x={lx.toFixed(0)} y={(ly + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#5A5577" fontFamily="inherit">1</text>
-                    <text x={rx.toFixed(0)} y={(ry + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#5A5577" fontFamily="inherit">10</text>
+                    <text x={CX} y="116" textAnchor="middle" fontSize="12" fill="#7D76A0" fontFamily="inherit">{energyLbl}</text>
+                    <text x={lx.toFixed(0)} y={(ly + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#5C5778" fontFamily="inherit">1</text>
+                    <text x={rx.toFixed(0)} y={(ry + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#5C5778" fontFamily="inherit">10</text>
                   </svg>
                 </div>
               </div>
@@ -439,35 +485,43 @@ export default function EveningReflectionComponent({
               </div>
             </div>
 
-            {/* Where I Was Stuck — same style as Three Wins Today */}
+            {/* Where I Was Stuck */}
             <div className="lg:h-[260px]" style={card(A.stuck)}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.stuck }} />
                   <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.stuck }}>Where I Was Stuck</span>
                 </div>
-                <button onClick={addStuck} style={plusBtn(A.stuck)}>+</button>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  {!stuckLocked && <button onClick={addStuck} style={plusBtn(A.stuck)}>+</button>}
+                  <button onClick={stuckLocked ? () => setStuckLocked(false) : saveStuck} style={lockSaveBtn(A.stuck, stuckLocked)}>
+                    {stuckLocked ? <Lock size={10} /> : <Save size={10} />}
+                  </button>
+                </div>
               </div>
               <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
-                {stuckList.length === 0
+                {localStuck.length === 0
                   ? <p style={{ fontSize: "12px", color: B.muted, margin: 0, fontStyle: "italic" }}>Nothing blocked you today…</p>
-                  : stuckList.map((s, idx) => (
+                  : localStuck.map((s, idx) => (
                       <div key={s.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", backgroundColor: B.fieldBg, borderRadius: "8px", padding: "8px 10px", border: `0.5px solid ${B.border}`, flexShrink: 0 }}>
-                        <span style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, backgroundColor: "#3A1818", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 600, color: A.stuck, marginTop: "2px" }}>
+                        <span style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, backgroundColor: A.stuck + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 600, color: A.stuck, marginTop: "2px" }}>
                           {idx + 1}
                         </span>
                         <textarea
                           value={s.text}
+                          readOnly={stuckLocked}
                           onChange={(e) => updateStuck(s.id, e.target.value)}
                           onInput={(e) => { const t = e.currentTarget; t.style.height = ""; t.style.height = t.scrollHeight + "px"; }}
                           placeholder={`Blocker ${idx + 1}…`}
                           rows={1}
                           className="ev-in"
-                          style={{ flex: 1, background: "none", border: "none", fontSize: "13px", color: B.text, fontFamily: "inherit", resize: "none", overflow: "hidden", lineHeight: 1.5, padding: 0, minHeight: "20px", display: "block" }}
+                          style={{ flex: 1, background: "none", border: "none", fontSize: "13px", color: stuckLocked ? B.secondary : B.text, fontFamily: "inherit", resize: "none", overflow: "hidden", lineHeight: 1.5, padding: 0, minHeight: "20px", display: "block", cursor: stuckLocked ? "default" : "text" }}
                         />
-                        <button onClick={() => deleteStuck(s.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: "3px" }}>
-                          <X size={10} color={B.muted} />
-                        </button>
+                        {!stuckLocked && (
+                          <button onClick={() => deleteStuck(s.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: "3px" }}>
+                            <X size={10} color={B.muted} />
+                          </button>
+                        )}
                       </div>
                     ))
                 }
@@ -498,10 +552,10 @@ function CardHeader({ color, label }: { color: string; label: string }) {
 
 function card(accentColor: string): React.CSSProperties {
   return {
-    backgroundColor: "#0F0E1A",
+    backgroundColor: "#1E1B2E",
     borderRadius: "14px",
     padding: "18px",
-    border: "0.5px solid #2A2740",
+    border: "1px solid #353060",
     borderTop: `2px solid ${accentColor}`,
     display: "flex",
     flexDirection: "column",
@@ -518,27 +572,38 @@ function plusBtn(color: string): React.CSSProperties {
   };
 }
 
+function lockSaveBtn(color: string, locked: boolean): React.CSSProperties {
+  return {
+    width: 22, height: 22, borderRadius: "6px", border: "none",
+    backgroundColor: locked ? color + "40" : color + "28",
+    color, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+    boxShadow: locked ? `0 0 0 1px ${color}60` : "none",
+  };
+}
+
 const taStyle: React.CSSProperties = {
   flex: 1, minHeight: 0, width: "100%",
-  backgroundColor: "#1A1830", borderRadius: "10px",
-  padding: "14px", border: "0.5px solid #2A2740",
-  fontSize: "14px", color: "#F5F4FB", lineHeight: 1.6,
+  backgroundColor: "#272440", borderRadius: "10px",
+  padding: "14px", border: "1px solid #353060",
+  fontSize: "14px", color: "#EDE8FA", lineHeight: 1.6,
   resize: "none", fontFamily: "inherit", outline: "none",
   boxSizing: "border-box",
 };
 
 const stepBtn: React.CSSProperties = {
   width: 22, height: 22, borderRadius: "6px",
-  border: "0.5px solid #2A2740", backgroundColor: "#2A2740",
-  color: "#9893B8", cursor: "pointer", fontSize: "13px",
+  border: "1px solid #353060", backgroundColor: "#272440",
+  color: "#9B93BC", cursor: "pointer", fontSize: "13px",
   display: "flex", alignItems: "center", justifyContent: "center",
   flexShrink: 0, fontWeight: 700, lineHeight: 1,
 };
 
 const evNavBtn: React.CSSProperties = {
   width: 22, height: 22, borderRadius: "6px",
-  border: "0.5px solid #2A2740", backgroundColor: "#2A2740",
-  color: "#9893B8", cursor: "pointer", fontSize: "15px",
+  border: "1px solid #353060", backgroundColor: "#272440",
+  color: "#9B93BC", cursor: "pointer", fontSize: "15px",
   display: "flex", alignItems: "center", justifyContent: "center",
   flexShrink: 0, lineHeight: 1, padding: 0,
 };

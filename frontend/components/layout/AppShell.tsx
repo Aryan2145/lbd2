@@ -83,6 +83,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isRegister = pathname === "/register";
   const isAuth     = isLogin || isRegister;
   const isPublic   = pathname === "/privacy" || pathname === "/terms";
+  const isAdmin    = pathname.startsWith("/admin");
 
   useEffect(() => {
     setMounted(true);
@@ -90,9 +91,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!mounted) return;
-    if (!token && !isAuth && !isPublic) router.replace("/login");
+    if (!token && !isAuth && !isPublic && !isAdmin) router.replace("/login");
     if (token  &&  isAuth) router.replace("/dashboard");
-  }, [mounted, token, isAuth, isPublic, router]);
+  }, [mounted, token, isAuth, isPublic, isAdmin, router]);
 
   if (isAuth || isPublic) return <>{children}</>;
 

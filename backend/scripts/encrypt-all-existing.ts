@@ -150,18 +150,15 @@ async function main() {
     const weekPlans = await prisma.weekPlan.findMany();
     for (const p of weekPlans) {
       if (
-        isEnc(p.priorities as any) && isEnc(p.outcomes as any) &&
-        isEnc(p.doneOutcomes as any) && isEnc(p.dayNotes as any) &&
-        isEnc(p.dayThemes as any)
+        isEnc(p.outcomes as any) &&
+        isEnc(p.doneOutcomes as any) && isEnc(p.dayNotes as any)
       ) { log('WeekPlan', p.id, 'skipped'); continue; }
       await prisma.weekPlan.update({
         where: { id: p.id },
         data: {
-          priorities:   isEnc(p.priorities   as any) ? p.priorities   : encJson(p.priorities),
           outcomes:     isEnc(p.outcomes     as any) ? p.outcomes     : encJson(p.outcomes),
           doneOutcomes: isEnc(p.doneOutcomes as any) ? p.doneOutcomes : encJson(p.doneOutcomes),
           dayNotes:     isEnc(p.dayNotes     as any) ? p.dayNotes     : encJson(p.dayNotes),
-          dayThemes:    isEnc(p.dayThemes    as any) ? p.dayThemes    : encJson(p.dayThemes),
         },
       });
       log('WeekPlan', p.id, 'encrypted');
@@ -173,6 +170,7 @@ async function main() {
     for (const r of evenings) {
       const winsNeedEnc = (r.wins ?? []).some(w => !isEnc(w));
       if (
+        isEnc(r.energyLevel as any)                   &&
         (r.mood       == null || isEnc(r.mood))       &&
         (r.highlights == null || isEnc(r.highlights)) &&
         (r.gratitude  == null || isEnc(r.gratitude))  &&
@@ -183,6 +181,7 @@ async function main() {
       await prisma.eveningReflection.update({
         where: { id: r.id },
         data: {
+          energyLevel: isEnc(r.energyLevel as any) ? r.energyLevel : enc(r.energyLevel as string),
           mood:       (r.mood       && !isEnc(r.mood))       ? enc(r.mood)       : r.mood,
           highlights: (r.highlights && !isEnc(r.highlights)) ? enc(r.highlights) : r.highlights,
           gratitude:  (r.gratitude  && !isEnc(r.gratitude))  ? enc(r.gratitude)  : r.gratitude,

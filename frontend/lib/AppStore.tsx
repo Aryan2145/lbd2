@@ -134,7 +134,7 @@ function mapWeekEvent(e: any): WeekEvent {
 }
 
 function mapWeekPlan(p: any): WeekPlan {
-  return { weekStart: p.weekStart, priorities: p.priorities ?? [], outcomes: p.outcomes ?? [], doneOutcomes: p.doneOutcomes ?? [], dayNotes: p.dayNotes ?? {}, dayThemes: p.dayThemes ?? {} };
+  return { weekStart: p.weekStart, outcomes: p.outcomes ?? [], doneOutcomes: p.doneOutcomes ?? [], dayNotes: p.dayNotes ?? {} };
 }
 
 
@@ -507,7 +507,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Planning (upserts)
     upsertWeekPlan: (plan) => {
       upsertBy(setWeekPlans, "weekStart", plan);
-      api.put('/week-plans', { weekStart: plan.weekStart, priorities: plan.priorities, outcomes: plan.outcomes, doneOutcomes: plan.doneOutcomes, dayNotes: plan.dayNotes, dayThemes: plan.dayThemes }).catch(console.error);
+      api.put('/week-plans', { weekStart: plan.weekStart, outcomes: plan.outcomes, doneOutcomes: plan.doneOutcomes, dayNotes: plan.dayNotes }).catch(console.error);
     },
     upsertEveningReflection: (r) => {
       upsertBy(setEveningReflections, "date", r);

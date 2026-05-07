@@ -22,21 +22,17 @@ export class WeekPlansService {
   private decryptRow(row: any) {
     return {
       ...row,
-      priorities:   this.dJson(row.priorities,   []),
       outcomes:     this.dJson(row.outcomes,      []),
       doneOutcomes: this.dJson(row.doneOutcomes,  []),
       dayNotes:     this.dJson(row.dayNotes,      {}),
-      dayThemes:    this.dJson(row.dayThemes,     {}),
     };
   }
 
   private encryptData(data: any) {
     const out: any = {};
-    if (data.priorities   !== undefined) out.priorities   = this.eJson(data.priorities);
     if (data.outcomes     !== undefined) out.outcomes     = this.eJson(data.outcomes);
     if (data.doneOutcomes !== undefined) out.doneOutcomes = this.eJson(data.doneOutcomes);
     if (data.dayNotes     !== undefined) out.dayNotes     = this.eJson(data.dayNotes);
-    if (data.dayThemes    !== undefined) out.dayThemes    = this.eJson(data.dayThemes);
     return out;
   }
 

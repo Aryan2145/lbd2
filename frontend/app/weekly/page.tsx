@@ -133,7 +133,7 @@ export default function WeeklyPage() {
   const weekEnd   = addWeeks(weekStart, 1);
 
   const plan = weekPlans.find((p) => p.weekStart === weekStart) ?? {
-    weekStart, priorities: [], outcomes: [], doneOutcomes: [], dayNotes: {}, dayThemes: {},
+    weekStart, priorities: [], outcomes: [], doneOutcomes: [], dayNotes: {},
   };
 
   const thisWeekEvents = weekEvents.filter((e) => e.date >= weekStart && e.date < weekEnd);

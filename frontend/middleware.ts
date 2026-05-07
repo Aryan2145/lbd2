@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 // Pages where an unauthenticated user is allowed.
 const AUTH_PAGES   = new Set(["/", "/login", "/register"]);
-const PUBLIC_PAGES = new Set(["/privacy", "/terms"]);
+const PUBLIC_PAGES = new Set(["/privacy", "/terms", "/admin"]);
 
 /**
  * Edge-side auth gate. Runs before any page renders, so we can redirect

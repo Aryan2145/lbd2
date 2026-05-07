@@ -239,16 +239,12 @@ model WeekPlan {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   weekStart String   // YYYY-MM-DD (Monday)
-  // { text, lifeArea, completed }[]
-  priorities Json    @default("[]")
   // string[]
   outcomes     Json    @default("[]")
   // string[]
   doneOutcomes Json    @default("[]")
   // Record<YYYY-MM-DD, string>
   dayNotes   Json    @default("{}")
-  // Record<YYYY-MM-DD, string>
-  dayThemes  Json    @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -268,7 +264,7 @@ model EveningReflection {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   date        String   // YYYY-MM-DD
-  energyLevel Int      @default(5) // 1–10
+  energyLevel String   @default("5") // encrypted 1–10
   mood        String   @default("") // MoodEmoji or ""
   highlights  String?
   gratitude   String?

@@ -549,7 +549,7 @@ export default function DashboardPage() {
     const current = weekPlans.find((p) => p.weekStart === weekStart);
     const base    = current ?? {
       weekStart, priorities: [], outcomes: [], doneOutcomes: [],
-      dayNotes: {} as Record<string, string>, dayThemes: {} as Record<string, string>,
+      dayNotes: {} as Record<string, string>,
     };
     const isDone   = base.doneOutcomes.includes(text);
     const nextDone = isDone
