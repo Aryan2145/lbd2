@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Carlito } from "next/font/google";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { api } from "@/lib/api";
 
-// Calibri (Windows) with Carlito as the open-source metric-compatible fallback
 const carlito = Carlito({
   subsets: ["latin"],
   weight: ["400", "700"],
@@ -35,10 +34,163 @@ const QUOTES = [
 ];
 
 function dailyQuote() {
-  const i = Math.floor((Date.now() / 86_400_000)) % QUOTES.length;
-  return QUOTES[i];
+  return QUOTES[Math.floor(Date.now() / 86_400_000) % QUOTES.length];
 }
 
+const PHRASES = [
+  "I want to grow as fast as possible",
+  "Wake up at 5am. No excuses.",
+  "Building my dream life, one day at a time",
+  "Every day I'm getting 1% better",
+  "My future self is watching me right now",
+  "Ship the landing page. Close 3 deals.",
+  "Fear is just resistance to growth",
+];
+const CRYPTO = "@#%&x!z$8fA3kQ92mBp7Lr5Ws2Yt9Nh4";
+const randChar = () => CRYPTO[Math.floor(Math.random() * CRYPTO.length)];
+
+// ── Left dark panel with encryption animation ────────────────────────────────
+function DarkPanel() {
+  const phraseRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLSpanElement>(null);
+  const idxRef    = useRef(0);
+  const phaseRef  = useRef<"show" | "encrypt" | "encrypted" | "next">("show");
+  const frameRef  = useRef(0);
+  const lockedRef = useRef("");
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const phrase = PHRASES[idxRef.current];
+      const pEl    = phraseRef.current;
+      const sEl    = statusRef.current;
+      if (!pEl || !sEl) return;
+
+      if (phaseRef.current === "show") {
+        pEl.textContent = phrase;
+        pEl.style.color = "white";
+        sEl.textContent = "Plain text";
+        sEl.style.color = "rgba(255,255,255,0.55)";
+        if (++frameRef.current > 35) { phaseRef.current = "encrypt"; frameRef.current = 0; }
+
+      } else if (phaseRef.current === "encrypt") {
+        sEl.textContent = "Encrypting...";
+        sEl.style.color = "#fb923c";
+        const progress  = Math.min(frameRef.current / 22, 1);
+        pEl.textContent = phrase.split("").map(c =>
+          c === " " ? " " : (Math.random() < progress ? randChar() : c)
+        ).join("");
+        if (progress > 0.5) pEl.style.color = "#fb923c";
+        if (++frameRef.current > 22) {
+          lockedRef.current = phrase.split("").map(c => c === " " ? " " : randChar()).join("");
+          phaseRef.current  = "encrypted";
+          frameRef.current  = 0;
+        }
+
+      } else if (phaseRef.current === "encrypted") {
+        sEl.textContent = "Encrypted ✓";
+        sEl.style.color = "#fb923c";
+        pEl.textContent = lockedRef.current;
+        pEl.style.color = "#fb923c";
+        if (++frameRef.current > 20) { phaseRef.current = "next"; frameRef.current = 0; }
+
+      } else {
+        idxRef.current   = (idxRef.current + 1) % PHRASES.length;
+        phaseRef.current = "show";
+        frameRef.current = 0;
+      }
+    }, 65);
+    return () => clearInterval(id);
+  }, []);
+
+  const bg = [
+    "radial-gradient(ellipse 80% 60% at 20% 100%, rgba(249,115,22,0.22) 0%, transparent 60%)",
+    "radial-gradient(ellipse 60% 80% at 100% 0%, rgba(249,115,22,0.08) 0%, transparent 50%)",
+    "#0a0a0a",
+  ].join(", ");
+
+  const dots = [
+    "radial-gradient(1px 1px at 18% 28%, rgba(249,115,22,0.5), transparent)",
+    "radial-gradient(1px 1px at 72% 62%, rgba(255,255,255,0.25), transparent)",
+    "radial-gradient(1px 1px at 42% 78%, rgba(249,115,22,0.4), transparent)",
+    "radial-gradient(1px 1px at 88% 22%, rgba(255,255,255,0.2), transparent)",
+    "radial-gradient(1px 1px at 12% 68%, rgba(249,115,22,0.35), transparent)",
+    "radial-gradient(1px 1px at 60% 12%, rgba(255,255,255,0.3), transparent)",
+  ].join(", ");
+
+  return (
+    <div
+      className="flex-none w-full h-[48dvh] landscape:max-lg:h-auto landscape:max-lg:flex-1 lg:h-auto lg:flex-1 flex flex-col justify-between p-6 lg:p-7"
+      style={{ background: bg, position: "relative", overflow: "hidden" }}
+    >
+      {/* Scattered light dots */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: dots }} />
+
+      {/* Logo */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 2 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-orange.png" alt="Life By Design" style={{ width: 34, height: 34, borderRadius: 8, display: "block" }} />
+        <span style={{ ...wordmarkFont, fontSize: 16, fontWeight: 700, color: "#FFFFFF", padding: "5px 11px", backgroundColor: "rgba(0,0,0,0.40)", borderRadius: 8 }}>
+          Life By <span style={{ color: "#fb923c" }}>Design</span>
+        </span>
+      </div>
+
+      {/* Headline + crypto card (desktop) / headline + pills (mobile) */}
+      <div style={{ position: "relative", zIndex: 2 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 600, color: "white", lineHeight: 1.2, margin: "0 0 8px", letterSpacing: "-0.5px" }}>
+          Your private space<br />to design your life.
+        </h2>
+        <p className="mb-3 lg:mb-[22px]" style={{ fontSize: 13, color: "#C4C4C4", margin: 0, lineHeight: 1.5 }}>
+          Goals, habits, reflections — encrypted before they leave your device.
+        </p>
+
+        {/* Crypto animation card */}
+        <div style={{
+          background: "rgba(255,255,255,0.05)",
+          border: "0.5px solid rgba(249,115,22,0.35)",
+          borderRadius: 12, padding: "16px 18px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <div style={{
+              width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+              background: "rgba(249,115,22,0.18)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Lock size={11} color="#fb923c" strokeWidth={2.5} />
+            </div>
+            <span ref={statusRef} style={{ fontSize: 10, fontWeight: 600, color: "#AAAAAA", letterSpacing: "1.2px", textTransform: "uppercase" }}>
+              Plain text
+            </span>
+          </div>
+          <div ref={phraseRef} style={{
+            fontSize: 15, fontWeight: 500, color: "white",
+            lineHeight: 1.5, minHeight: 46,
+            fontFamily: "'SF Mono', 'Courier New', monospace",
+            letterSpacing: "0.2px", wordBreak: "break-all",
+          }}>
+            {PHRASES[0]}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer pills */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", position: "relative", zIndex: 2 }}>
+        {["AES-256", "END-TO-END"].map(label => (
+          <span key={label} style={{
+            background: "rgba(249,115,22,0.12)", color: "#fb923c",
+            padding: "4px 10px", borderRadius: 12,
+            fontSize: 10, fontWeight: 600, letterSpacing: "0.5px",
+            border: "0.5px solid rgba(249,115,22,0.25)",
+          }}>
+            {label}
+          </span>
+        ))}
+        <span style={{ fontSize: 11, color: "#C4C4C4" }}>Only you can read this.</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Main form ────────────────────────────────────────────────────────────────
 function LoginForm() {
   const { login }    = useAuth();
   const router       = useRouter();
@@ -85,211 +237,61 @@ function LoginForm() {
   }
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "12px 14px",
-    borderRadius: 12, border: "1.5px solid #D6C9BC",
-    backgroundColor: "#FFFFFF", color: "#1C1917",
+    width: "100%", padding: "11px 14px",
+    borderRadius: 24, border: "1px solid #E5E5E5",
+    backgroundColor: "#FFFFFF", color: "#1a1a1a",
     fontSize: 14, outline: "none", boxSizing: "border-box",
-    transition: "border-color 0.15s, box-shadow 0.15s",
+    transition: "border-color 0.15s",
   };
 
   const labelStyle: React.CSSProperties = {
     display: "block", fontSize: 11, fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.07em", marginBottom: 6,
+    textTransform: "uppercase", letterSpacing: "0.08em",
+    marginBottom: 6, color: "#404040",
   };
-  // mobile: darker for legibility on the glass; desktop: original muted stone
-  const secondaryTextClass = "text-[#1C1917] lg:text-[#57534E]";
 
   return (
-    <div style={{
-      position: "relative",
-      height: "100dvh", display: "flex", overflow: "hidden",
-      backgroundColor: "#FAF5EE",
-    }}>
-      {/* Mobile-only background image (portrait mountain + orange filter) */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/login-bg-mobile.png"
-        alt=""
-        aria-hidden
-        className="lg:hidden"
-        style={{
-          position: "absolute", inset: 0,
-          width: "100%", height: "100%",
-          objectFit: "cover",
-          objectPosition: "center",
-          zIndex: 0,
-        }}
-      />
-      <div
-        aria-hidden
-        className="lg:hidden"
-        style={{
-          position: "absolute", inset: 0, zIndex: 0,
-          background:
-            "linear-gradient(160deg, rgba(249,115,22,0.10) 0%, rgba(234,88,12,0.10) 100%)",
-          mixBlendMode: "multiply",
-        }}
-      />
+    <div className="flex flex-col landscape:max-lg:flex-row lg:flex-row overflow-hidden" style={{ height: "100dvh", backgroundColor: "#FFFFFF" }}>
 
-      {/* ── LEFT — full-bleed mountain image with brand overlay ──── */}
+      <DarkPanel />
+
+      {/* ── Form panel ─────────────────────────────────────────────── */}
       <div
-        className="hidden lg:block"
-        style={{
-          flex: 1,
-          backgroundImage: "url(/login-bg.png)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          position: "relative",
-        }}
+        className="flex-1 lg:flex-none lg:w-[460px] overflow-y-auto lbd-hide-scrollbar px-6 lg:px-14 flex flex-col pt-10 landscape:max-lg:pt-[6vh] lg:pt-[7vh]"
+        style={{ paddingBottom: 32, scrollbarGutter: "stable" }}
       >
-        {/* subtle warm gradient for depth + legibility */}
-        <div style={{
-          position: "absolute", inset: 0,
-          background:
-            "linear-gradient(180deg, rgba(28,25,23,0.35) 0%, rgba(28,25,23,0) 35%, rgba(28,25,23,0) 60%, rgba(28,25,23,0.45) 100%)",
-        }} />
+        <div style={{ width: "100%", maxWidth: 360, marginInline: "auto" }}>
 
-        {/* Brand block — glassmorphic plate over the mountain */}
-        <div style={{
-          position: "absolute", top: 28, left: 28, zIndex: 1,
-          display: "flex", alignItems: "center", gap: 12,
-        }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-orange.png"
-            alt="Life By Design"
-            style={{
-              width: 44, height: 44, display: "block",
-              borderRadius: 10,
-              boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
-            }}
-          />
-          <span style={{
-            ...wordmarkFont,
-            fontSize: 24, fontWeight: 700, color: "#FFFFFF",
-            letterSpacing: "-0.005em",
-            padding: "6px 14px",
-            backgroundColor: "rgba(0, 0, 0, 0.30)",
-            backdropFilter: "blur(12px) saturate(140%)",
-            WebkitBackdropFilter: "blur(12px) saturate(140%)",
-            border: "1px solid rgba(255, 255, 255, 0.18)",
-            borderRadius: 12,
-            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.22)",
-            display: "inline-block",
-          }}>
-            Life By <span style={{ color: "#fd9266" }}>Design</span>
-          </span>
-        </div>
-      </div>
-
-      {/* ── RIGHT — sign-in card ─────────────────────────────────── */}
-      <div
-        className="flex flex-col px-6 lg:px-16 lg:bg-white lbd-hide-scrollbar"
-        style={{
-          position: "relative",
-          zIndex: 1,
-          width: "100%",
-          maxWidth: 560,
-          marginLeft: "auto",
-          height: "100dvh",
-          overflowY: "auto",
-          scrollbarGutter: "stable",
-          paddingTop: "9vh",
-          paddingBottom: 32,
-        }}
-      >
-        <div style={{ width: "100%", maxWidth: 380, marginInline: "auto" }}>
-
-          {/* Mobile: logo (bare) + wordmark on a glassmorphic plate */}
-          <div
-            className="flex lg:hidden"
-            style={{
-              alignItems: "center", gap: 12,
-              marginTop: "-5vh",
-              marginBottom: "calc(5vh + 18px)",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-orange.png"
-              alt="Life By Design"
-              style={{
-                width: 44, height: 44, display: "block",
-                borderRadius: 10,
-                boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
-              }}
-            />
-            <span style={{
-              ...wordmarkFont,
-              fontSize: 24, fontWeight: 700, color: "#FFFFFF",
-              letterSpacing: "-0.005em",
-              padding: "6px 14px",
-              backgroundColor: "rgba(0, 0, 0, 0.30)",
-              backdropFilter: "blur(12px) saturate(140%)",
-              WebkitBackdropFilter: "blur(12px) saturate(140%)",
-              border: "1px solid rgba(255, 255, 255, 0.18)",
-              borderRadius: 12,
-              boxShadow: "0 6px 20px rgba(0, 0, 0, 0.22)",
-              display: "inline-block",
-            }}>
-              Life By <span style={{ color: "#fd9266" }}>Design</span>
-            </span>
-          </div>
-
-          {/* Desktop: single compass logo (existing) */}
+          {/* Desktop: compass logo */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
             alt="Life By Design"
             className="hidden lg:block"
-            style={{
-              width: 56, height: 56,
-              marginBottom: 18,
-            }}
+            style={{ width: 48, height: 48, marginBottom: 20 }}
           />
 
-          {/* Frosted-glass card wrapping welcome → legal (mobile only) */}
-          <div
-            className="rounded-2xl bg-white/30 lg:bg-transparent lg:rounded-none lg:p-0"
-            style={{
-              padding: "20px 18px",
-              border: "1px solid rgba(255,255,255,0.30)",
-              boxShadow: "0 4px 16px rgba(28,25,23,0.08)",
-              backdropFilter: "blur(2px)",
-              WebkitBackdropFilter: "blur(2px)",
-            }}
-          >
-
-          {/* Welcome line */}
-          <p className={secondaryTextClass} style={{ fontSize: 14, margin: 0, marginBottom: 4 }}>
+          {/* Welcome + daily quote */}
+          <p style={{ fontSize: 13, color: "#525252", margin: "0 0 4px" }}>
             Welcome to{" "}
-            <span style={{ ...wordmarkFont, fontWeight: 700, color: "#1C1917", fontSize: 17 }}>
+            <span style={{ ...wordmarkFont, fontWeight: 700, color: "#1a1a1a", fontSize: 15 }}>
               Life By <span style={{ color: "#C2410C" }}>Design</span>
             </span>
           </p>
-
-          {/* Quote (in place of "Get started…") */}
-          <h1 style={{
-            fontSize: 30, fontWeight: 800, color: "#1C1917",
-            letterSpacing: "-0.02em", lineHeight: 1.18,
-            margin: "0 0 6px",
-          }}>
+          <h1 className="text-[22px] lg:text-[26px]" style={{ fontWeight: 800, color: "#1a1a1a", letterSpacing: "-0.02em", lineHeight: 1.18, margin: "0 0 6px" }}>
             &ldquo;{quote.text}&rdquo;
           </h1>
-          {quote.author && (
-            <p className="text-[#1C1917] lg:text-[#78716C]" style={{ fontSize: 13, margin: "0 0 28px", fontWeight: 600 }}>
-              — {quote.author}
-            </p>
-          )}
-          {!quote.author && <div style={{ height: 28 }} />}
+          {quote.author
+            ? <p style={{ fontSize: 12, color: "#737373", margin: "0 0 26px", fontWeight: 600 }}>— {quote.author}</p>
+            : <div style={{ height: 26 }} />
+          }
 
           {/* Form */}
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
             {mode === "register" && (
               <div>
-                <label className={secondaryTextClass} style={labelStyle}>Full Name</label>
+                <label style={labelStyle}>Full Name</label>
                 <input
                   type="text"
                   value={name}
@@ -302,7 +304,7 @@ function LoginForm() {
             )}
 
             <div>
-              <label className={secondaryTextClass} style={labelStyle}>Email</label>
+              <label style={labelStyle}>Email</label>
               <input
                 type="email"
                 value={email}
@@ -314,7 +316,7 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className={secondaryTextClass} style={labelStyle}>Password</label>
+              <label style={labelStyle}>Password</label>
               <div style={{ position: "relative" }}>
                 <input
                   type={showPwd ? "text" : "password"}
@@ -323,17 +325,17 @@ function LoginForm() {
                   required
                   minLength={6}
                   placeholder="••••••••"
-                  style={{ ...inputStyle, paddingRight: 42 }}
+                  style={{ ...inputStyle, paddingRight: 44 }}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPwd((v) => !v)}
+                  onClick={() => setShowPwd(v => !v)}
                   aria-label={showPwd ? "Hide password" : "Show password"}
                   style={{
-                    position: "absolute", right: 12, top: "50%",
+                    position: "absolute", right: 14, top: "50%",
                     transform: "translateY(-50%)", background: "none",
                     border: "none", cursor: "pointer", padding: 2,
-                    display: "flex", alignItems: "center", color: "#78716C",
+                    display: "flex", alignItems: "center", color: "#a3a3a3",
                   }}
                 >
                   {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -355,14 +357,12 @@ function LoginForm() {
               type="submit"
               disabled={loading}
               style={{
-                marginTop: 4,
-                padding: "13px 0", borderRadius: 12, border: "none",
-                background: loading ? "#E8C8A8" : "linear-gradient(135deg, #F97316, #EA580C)",
-                color: "#FFFFFF", fontSize: 15, fontWeight: 700,
+                marginTop: 4, padding: "12px 0",
+                borderRadius: 24, border: "none",
+                background: loading ? "#E8C8A8" : "#f97316",
+                color: "#FFFFFF", fontSize: 14, fontWeight: 600,
                 cursor: loading ? "not-allowed" : "pointer",
-                letterSpacing: "-0.01em",
-                boxShadow: loading ? "none" : "0 4px 14px rgba(234,88,12,0.32)",
-                transition: "transform 0.1s",
+                transition: "background 0.15s",
               }}
             >
               {loading
@@ -372,19 +372,11 @@ function LoginForm() {
           </form>
 
           {/* Mode toggle */}
-          <p className={secondaryTextClass} style={{ textAlign: "center", fontSize: 13, marginTop: 22 }}>
+          <p style={{ textAlign: "center", fontSize: 13, color: "#525252", marginTop: 20 }}>
             {mode === "login" ? (
               <>
                 New here?{" "}
-                <Link
-                  href="/register"
-                  scroll={false}
-                  className="text-[#7C2D12] lg:text-[#EA580C]"
-                  style={{
-                    fontWeight: 700, fontSize: 13,
-                    textDecoration: "none",
-                  }}
-                >
+                <Link href="/register" scroll={false} style={{ color: "#f97316", fontWeight: 700, textDecoration: "none" }}>
                   Create an account
                 </Link>
               </>
@@ -393,12 +385,7 @@ function LoginForm() {
                 Already have an account?{" "}
                 <button
                   onClick={() => switchMode("login")}
-                  className="text-[#7C2D12] lg:text-[#EA580C]"
-                  style={{
-                    background: "none", border: "none",
-                    fontWeight: 700, cursor: "pointer", fontSize: 13,
-                    padding: 0,
-                  }}
+                  style={{ background: "none", border: "none", color: "#f97316", fontWeight: 700, cursor: "pointer", fontSize: 13, padding: 0 }}
                 >
                   Sign in
                 </button>
@@ -407,18 +394,13 @@ function LoginForm() {
           </p>
 
           {/* Legal */}
-          <p className="text-[#1C1917] lg:text-[#78716C]" style={{
-            textAlign: "center", fontSize: 11, fontWeight: 500,
-            marginTop: 24, lineHeight: 1.5,
-          }}>
+          <p style={{ textAlign: "center", fontSize: 11, color: "#737373", fontWeight: 500, marginTop: 20, lineHeight: 1.5 }}>
             By continuing you agree to our{" "}
-            <a href="/privacy" className="text-[#7C2D12] lg:text-[#EA580C]" style={{ fontWeight: 700 }}>privacy policy</a>
+            <a href="/privacy" style={{ color: "#f97316", fontWeight: 700 }}>privacy policy</a>
             {" "}and{" "}
-            <a href="/terms" className="text-[#7C2D12] lg:text-[#EA580C]" style={{ fontWeight: 700 }}>terms of use</a>.
+            <a href="/terms" style={{ color: "#f97316", fontWeight: 700 }}>terms of use</a>.
           </p>
 
-          </div>
-          {/* end frosted-glass card */}
         </div>
       </div>
     </div>
