@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Shield, LayoutDashboard, Ticket, Database,
   ArrowLeft, ChevronRight, Send, X, RefreshCw,
   Users, Activity, CheckSquare, Target, Flame,
   Calendar, BookOpen, Star, ShoppingBag,
-  Eye, EyeOff, LogOut,
+  Eye, EyeOff, LogOut, Mail, Phone, UserCircle,
+  Briefcase, Venus, Hash, Clock, AlertCircle,
 } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import type { SupportTicket, TicketStatus, TicketPriority } from "@/lib/ticketTypes";
@@ -22,15 +23,62 @@ function fmtTime(ts: number) {
 }
 function fmtDateTime(ts: number) { return `${fmtDate(ts)}, ${fmtTime(ts)}`; }
 
-type AdminTab = "overview" | "tickets" | "data";
+type AdminTab = "overview" | "users" | "tickets" | "data";
 type DataStore = "goals" | "habits" | "tasks" | "events" | "bucketEntries" | "tickets" | "weeklyReviews" | "weekPlans" | "eveningReflections";
+
+// ── Admin API secret (same security level as hardcoded credentials) ───────────
+const ADMIN_SECRET = "LBD-Admin-Secret-2025";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000") + "/api";
+
+async function adminFetch<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { "x-admin-secret": ADMIN_SECRET },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+// ── User shape returned by /admin/users ───────────────────────────────────────
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: string | null;
+  gender: string | null;
+  createdAt: string;
+  updatedAt: string;
+  counts: {
+    goals: number; habits: number; tasks: number;
+    weekEvents: number; weekPlans: number;
+    eveningReflections: number; weeklyReviews: number;
+    bucketEntries: number; tickets: number;
+  };
+  hasVisionCanvas: boolean;
+  hasLegacyCanvas: boolean;
+}
+
+// ── Avatar helpers ────────────────────────────────────────────────────────────
+const AVATAR_PALETTE = ["#6366F1","#F97316","#3B82F6","#10B981","#EC4899","#8B5CF6","#F59E0B","#EF4444","#06B6D4"];
+function avatarColor(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff;
+  return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
+}
+function initials(name: string) {
+  return name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("");
+}
+function fmtIso(iso: string) {
+  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({ tab, setTab }: { tab: AdminTab; setTab: (t: AdminTab) => void }) {
   const navItems: { id: AdminTab; icon: React.ReactNode; label: string }[] = [
-    { id: "overview", icon: <LayoutDashboard size={15} />, label: "Overview"       },
+    { id: "overview", icon: <LayoutDashboard size={15} />, label: "Overview"        },
+    { id: "users",    icon: <Users           size={15} />, label: "Users"           },
     { id: "tickets",  icon: <Ticket          size={15} />, label: "Support Tickets" },
-    { id: "data",     icon: <Database        size={15} />, label: "Data Browser"   },
+    { id: "data",     icon: <Database        size={15} />, label: "Data Browser"    },
   ];
 
   return (
@@ -422,6 +470,341 @@ function TicketsTab() {
   );
 }
 
+// ── Users Tab ─────────────────────────────────────────────────────────────────
+function UsersTab() {
+  const [users,    setUsers]    = useState<AdminUser[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState<string | null>(null);
+  const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [search,   setSearch]   = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { setUsers(await adminFetch<AdminUser[]>("/admin/users")); }
+    catch (e: any) { setError(e.message ?? "Failed to load users"); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = users.filter(u =>
+    u.name.toLowerCase().includes(search.toLowerCase()) ||
+    u.email.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function totalItems(u: AdminUser) {
+    return Object.values(u.counts).reduce((a, b) => a + b, 0);
+  }
+
+  // ── stat modules shown in detail panel ──
+  const MODULE_STATS = (u: AdminUser) => [
+    { label: "Goals",        value: u.counts.goals,              color: "#6366F1", icon: <Target      size={14}/> },
+    { label: "Habits",       value: u.counts.habits,             color: "#F97316", icon: <Flame       size={14}/> },
+    { label: "Tasks",        value: u.counts.tasks,              color: "#3B82F6", icon: <CheckSquare size={14}/> },
+    { label: "Week Events",  value: u.counts.weekEvents,         color: "#EC4899", icon: <Calendar    size={14}/> },
+    { label: "Week Plans",   value: u.counts.weekPlans,          color: "#06B6D4", icon: <BookOpen    size={14}/> },
+    { label: "Reflections",  value: u.counts.eveningReflections, color: "#EF4444", icon: <Activity    size={14}/> },
+    { label: "Reviews",      value: u.counts.weeklyReviews,      color: "#F59E0B", icon: <Star        size={14}/> },
+    { label: "Bucket Items", value: u.counts.bucketEntries,      color: "#8B5CF6", icon: <ShoppingBag size={14}/> },
+    { label: "Tickets",      value: u.counts.tickets,            color: "#64748B", icon: <Ticket      size={14}/> },
+  ];
+
+  return (
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+
+      {/* ── Left: user list ── */}
+      <div style={{
+        width: selected ? "320px" : "100%", flexShrink: 0,
+        borderRight: selected ? "1px solid #E2E8F0" : undefined,
+        display: "flex", flexDirection: "column", overflow: "hidden",
+        transition: "width 0.2s",
+      }}>
+        {/* Header + search */}
+        <div style={{ padding: "20px 20px 12px", borderBottom: "1px solid #F1F5F9", flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#0F172A", margin: 0 }}>
+              All Users
+              <span style={{ fontWeight: 400, color: "#94A3B8", fontSize: "13px", marginLeft: 6 }}>
+                ({users.length})
+              </span>
+            </h2>
+            <button onClick={load} title="Refresh" style={{
+              width: 30, height: 30, borderRadius: 8, border: "1px solid #E2E8F0",
+              backgroundColor: "transparent", display: "flex", alignItems: "center",
+              justifyContent: "center", cursor: "pointer",
+            }}>
+              <RefreshCw size={12} color="#64748B" />
+            </button>
+          </div>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or email…"
+            style={{
+              width: "100%", padding: "8px 12px", borderRadius: 8,
+              border: "1.5px solid #E2E8F0", backgroundColor: "#F8FAFC",
+              fontSize: 12, color: "#0F172A", outline: "none", boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {loading && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 20px", gap: 10 }}>
+              <div className="animate-spin" style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid #E2E8F0", borderTopColor: "#F97316" }} />
+              <span style={{ fontSize: 13, color: "#94A3B8" }}>Loading users…</span>
+            </div>
+          )}
+          {error && (
+            <div style={{ margin: "20px", padding: "12px 14px", borderRadius: 10, backgroundColor: "#FEF2F2", border: "1px solid #FECACA", display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertCircle size={14} color="#EF4444" />
+              <span style={{ fontSize: 12, color: "#DC2626" }}>{error}</span>
+            </div>
+          )}
+          {!loading && !error && filtered.length === 0 && (
+            <p style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", padding: "48px 20px" }}>
+              {search ? "No users match your search." : "No users found."}
+            </p>
+          )}
+          {!loading && !error && filtered.map(u => {
+            const color   = avatarColor(u.id);
+            const isActive = selected?.id === u.id;
+            const total    = totalItems(u);
+            return (
+              <div key={u.id} onClick={() => setSelected(isActive ? null : u)} style={{
+                padding: "13px 20px", cursor: "pointer",
+                borderBottom: "1px solid #F1F5F9",
+                backgroundColor: isActive ? "#FFF7ED" : "transparent",
+                borderLeft: isActive ? "3px solid #F97316" : "3px solid transparent",
+                transition: "background 0.12s",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {/* Avatar */}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                    backgroundColor: color + "22",
+                    border: `2px solid ${color}44`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 700, color,
+                  }}>
+                    {initials(u.name)}
+                  </div>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", margin: "0 0 2px",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {u.name}
+                    </p>
+                    <p style={{ fontSize: 11, color: "#64748B", margin: "0 0 6px",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {u.email}
+                    </p>
+                    {/* Quick stat pills */}
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {u.counts.goals > 0 && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "#6366F1", backgroundColor: "#EEF2FF", padding: "1px 6px", borderRadius: 20 }}>
+                          {u.counts.goals} goals
+                        </span>
+                      )}
+                      {u.counts.habits > 0 && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "#EA580C", backgroundColor: "#FFF7ED", padding: "1px 6px", borderRadius: 20 }}>
+                          {u.counts.habits} habits
+                        </span>
+                      )}
+                      {u.counts.tasks > 0 && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "#2563EB", backgroundColor: "#EFF6FF", padding: "1px 6px", borderRadius: 20 }}>
+                          {u.counts.tasks} tasks
+                        </span>
+                      )}
+                      {u.counts.eveningReflections > 0 && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "#DC2626", backgroundColor: "#FEF2F2", padding: "1px 6px", borderRadius: 20 }}>
+                          {u.counts.eveningReflections} reflections
+                        </span>
+                      )}
+                      {total === 0 && (
+                        <span style={{ fontSize: 10, color: "#CBD5E1", fontStyle: "italic" }}>no data yet</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#94A3B8", flexShrink: 0, textAlign: "right" }}>
+                    <div>{fmtIso(u.createdAt)}</div>
+                    <div style={{ marginTop: 2, fontWeight: 600, color: total > 0 ? "#0F172A" : "#CBD5E1" }}>
+                      {total} items
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Right: detail panel ── */}
+      {selected && (() => {
+        const u     = selected;
+        const color = avatarColor(u.id);
+        const total = totalItems(u);
+        const stats = MODULE_STATS(u);
+        return (
+          <div style={{ flex: 1, overflowY: "auto", backgroundColor: "#F8FAFC" }}>
+            {/* Close bar */}
+            <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 20px 0" }}>
+              <button onClick={() => setSelected(null)} style={{
+                width: 28, height: 28, borderRadius: 8, border: "1px solid #E2E8F0",
+                backgroundColor: "#FFFFFF", display: "flex", alignItems: "center",
+                justifyContent: "center", cursor: "pointer",
+              }}>
+                <X size={13} color="#64748B" />
+              </button>
+            </div>
+
+            <div style={{ padding: "8px 24px 32px" }}>
+
+              {/* ── User header card ── */}
+              <div style={{
+                backgroundColor: "#FFFFFF", borderRadius: 16,
+                border: "1px solid #E2E8F0", padding: "24px",
+                marginBottom: 16,
+                boxShadow: "0 1px 4px rgba(15,23,42,0.04)",
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+                  {/* Large avatar */}
+                  <div style={{
+                    width: 56, height: 56, borderRadius: "50%", flexShrink: 0,
+                    backgroundColor: color + "18",
+                    border: `2.5px solid ${color}55`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 20, fontWeight: 800, color,
+                  }}>
+                    {initials(u.name)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F172A", margin: "0 0 3px" }}>
+                      {u.name}
+                    </h2>
+                    <p style={{ fontSize: 13, color: "#64748B", margin: "0 0 12px" }}>{u.email}</p>
+
+                    {/* Meta chips */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {u.role && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600,
+                          color: "#374151", backgroundColor: "#F1F5F9", padding: "3px 9px", borderRadius: 20 }}>
+                          <Briefcase size={10} /> {u.role}
+                        </span>
+                      )}
+                      {u.gender && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600,
+                          color: "#374151", backgroundColor: "#F1F5F9", padding: "3px 9px", borderRadius: 20 }}>
+                          <Venus size={10} /> {u.gender}
+                        </span>
+                      )}
+                      {u.phone && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600,
+                          color: "#374151", backgroundColor: "#F1F5F9", padding: "3px 9px", borderRadius: 20 }}>
+                          <Phone size={10} /> {u.phone}
+                        </span>
+                      )}
+                      <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600,
+                        color: "#374151", backgroundColor: "#F1F5F9", padding: "3px 9px", borderRadius: 20 }}>
+                        <Clock size={10} /> Joined {fmtIso(u.createdAt)}
+                      </span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11,
+                        color: "#94A3B8", backgroundColor: "#F8FAFC", padding: "3px 9px", borderRadius: 20, border: "1px solid #E2E8F0" }}>
+                        <Hash size={10} /> {u.id.slice(0, 8)}…
+                      </span>
+                    </div>
+                  </div>
+                  {/* Total badge */}
+                  <div style={{ textAlign: "center", flexShrink: 0 }}>
+                    <div style={{
+                      fontSize: 28, fontWeight: 800,
+                      color: total > 0 ? color : "#CBD5E1",
+                    }}>{total}</div>
+                    <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      total items
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Module counts grid ── */}
+              <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.1em",
+                textTransform: "uppercase", margin: "0 0 8px" }}>
+                Module Activity
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
+                {stats.map(s => (
+                  <div key={s.label} style={{
+                    backgroundColor: "#FFFFFF", borderRadius: 12,
+                    border: "1px solid #E2E8F0", padding: "14px 16px",
+                    boxShadow: "0 1px 3px rgba(15,23,42,0.03)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <div style={{
+                        width: 26, height: 26, borderRadius: 8,
+                        backgroundColor: s.color + "15",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: s.color,
+                      }}>
+                        {s.icon}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 800,
+                      color: s.value > 0 ? "#0F172A" : "#CBD5E1" }}>
+                      {s.value}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Canvas setup status ── */}
+              <p style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.1em",
+                textTransform: "uppercase", margin: "0 0 8px" }}>
+                One-Time Setup
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[
+                  { label: "Vision Canvas", done: u.hasVisionCanvas, color: "#8B5CF6" },
+                  { label: "Legacy Canvas", done: u.hasLegacyCanvas, color: "#EC4899" },
+                ].map(item => (
+                  <div key={item.label} style={{
+                    backgroundColor: "#FFFFFF", borderRadius: 12,
+                    border: `1px solid ${item.done ? item.color + "30" : "#E2E8F0"}`,
+                    padding: "14px 16px", display: "flex", alignItems: "center", gap: 10,
+                    boxShadow: item.done ? `0 0 0 0 transparent` : "none",
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                      backgroundColor: item.done ? item.color + "15" : "#F1F5F9",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <UserCircle size={16} color={item.done ? item.color : "#CBD5E1"} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600,
+                        color: item.done ? "#0F172A" : "#94A3B8" }}>
+                        {item.label}
+                      </div>
+                      <div style={{ fontSize: 10, marginTop: 1,
+                        color: item.done ? item.color : "#CBD5E1",
+                        fontWeight: 600 }}>
+                        {item.done ? "Set up" : "Not filled"}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 // ── Data Tab ──────────────────────────────────────────────────────────────────
 function DataTab() {
   const store = useAppStore();
@@ -768,7 +1151,7 @@ export default function AdminPage() {
           <span style={{ fontSize: "12px", color: "#94A3B8" }}>Admin</span>
           <ChevronRight size={12} color="#CBD5E1" />
           <span style={{ fontSize: "12px", fontWeight: 600, color: "#0F172A" }}>
-            {tab === "overview" ? "Overview" : tab === "tickets" ? "Support Tickets" : "Data Browser"}
+            {tab === "overview" ? "Overview" : tab === "users" ? "Users" : tab === "tickets" ? "Support Tickets" : "Data Browser"}
           </span>
           <button onClick={handleLogout} style={{
             marginLeft: "auto", display: "flex", alignItems: "center", gap: 6,
@@ -781,6 +1164,7 @@ export default function AdminPage() {
         </div>
         <div style={{ flex: 1, overflow: "hidden" }}>
           {tab === "overview" && <div style={{ height: "100%", overflowY: "auto" }}><OverviewTab /></div>}
+          {tab === "users"    && <UsersTab />}
           {tab === "tickets"  && <TicketsTab />}
           {tab === "data"     && <DataTab />}
         </div>

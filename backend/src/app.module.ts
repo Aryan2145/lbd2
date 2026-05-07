@@ -23,6 +23,7 @@ import { SupportModule } from './support/support.module';
 import { VisionModule } from './vision/vision.module';
 import { LegacyModule } from './legacy/legacy.module';
 import { GcalModule } from './gcal/gcal.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   controllers: [HealthController],
@@ -44,6 +45,7 @@ import { GcalModule } from './gcal/gcal.module';
     VisionModule,
     LegacyModule,
     GcalModule,
+    AdminModule,
   ],
 })
 export class AppModule {}
