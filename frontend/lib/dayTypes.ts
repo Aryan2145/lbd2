@@ -28,24 +28,11 @@ export const LIFE_AREA_COLORS: Record<LifeArea, string> = {
   health:        "#DC2626",   // red
 };
 
-export interface DailyPriority {
-  text:      string;
-  lifeArea:  LifeArea;
-  completed: boolean;
-}
-
 export interface DecisionEntry {
   id:        string;
   text:      string;
   made:      boolean;   // false = "to decide", true = "decided"
   createdAt: number;
-}
-
-export interface DayPlan {
-  date:       string;           // YYYY-MM-DD
-  priorities: DailyPriority[];  // up to 3
-  gratitude:  string;
-  decisions:  DecisionEntry[];
 }
 
 export type MoodEmoji = "🤩" | "😊" | "😐" | "😔" | "😤";
@@ -66,14 +53,14 @@ export interface StuckEntry {
 }
 
 export interface EveningReflection {
-  date:         string;                    // YYYY-MM-DD
-  energyLevel:  number;                    // 1–10
-  mood:         MoodEmoji | "";
-  highlights:   string;
-  keyLearnings: string;
-  wins:         string[];
-  notes:        string;
-  stuck:        StuckEntry[];
+  date:        string;           // YYYY-MM-DD
+  energyLevel: number;           // 1–10
+  mood:        MoodEmoji | "";
+  highlights:  string;
+  gratitude:   string;
+  decisions:   DecisionEntry[];
+  wins:        string[];
+  stuck:       StuckEntry[];
 }
 
 export interface LifeLessonEntry {

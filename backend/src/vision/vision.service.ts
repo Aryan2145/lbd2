@@ -20,7 +20,7 @@ export class VisionService {
   }
   private dStr(v: unknown): string {
     if (typeof v !== 'string' || !v) return '';
-    return this.enc.isEncrypted(v) ? this.enc.decrypt(v) : v;
+    return this.enc.isEncrypted(v) ? this.enc.decryptSafe(v) : v;
   }
 
   async get(userId: string) {

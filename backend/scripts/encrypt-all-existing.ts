@@ -167,47 +167,28 @@ async function main() {
       log('WeekPlan', p.id, 'encrypted');
     }
 
-    // ── Day Plans ───────────────────────────────────────────────────────────
-    console.log('\n── Day Plans ──');
-    const dayPlans = await prisma.dayPlan.findMany();
-    for (const d of dayPlans) {
-      if (
-        isEnc(d.priorities as any) && isEnc(d.decisions as any) &&
-        (d.gratitude == null || isEnc(d.gratitude))
-      ) { log('DayPlan', d.id, 'skipped'); continue; }
-      await prisma.dayPlan.update({
-        where: { id: d.id },
-        data: {
-          priorities: isEnc(d.priorities as any) ? d.priorities : encJson(d.priorities),
-          gratitude:  (d.gratitude && !isEnc(d.gratitude)) ? enc(d.gratitude) : d.gratitude,
-          decisions:  isEnc(d.decisions  as any) ? d.decisions  : encJson(d.decisions),
-        },
-      });
-      log('DayPlan', d.id, 'encrypted');
-    }
-
     // ── Evening Reflections ─────────────────────────────────────────────────
     console.log('\n── Evening Reflections ──');
     const evenings = await prisma.eveningReflection.findMany();
     for (const r of evenings) {
       const winsNeedEnc = (r.wins ?? []).some(w => !isEnc(w));
       if (
-        (r.mood         == null || isEnc(r.mood))         &&
-        (r.highlights   == null || isEnc(r.highlights))   &&
-        (r.keyLearnings == null || isEnc(r.keyLearnings)) &&
-        !winsNeedEnc                                       &&
-        (r.notes == null || isEnc(r.notes))               &&
+        (r.mood       == null || isEnc(r.mood))       &&
+        (r.highlights == null || isEnc(r.highlights)) &&
+        (r.gratitude  == null || isEnc(r.gratitude))  &&
+        isEnc(r.decisions as any)                     &&
+        !winsNeedEnc                                   &&
         isEnc(r.stuck as any)
       ) { log('EveningReflection', r.id, 'skipped'); continue; }
       await prisma.eveningReflection.update({
         where: { id: r.id },
         data: {
-          mood:         (r.mood         && !isEnc(r.mood))         ? enc(r.mood)         : r.mood,
-          highlights:   (r.highlights   && !isEnc(r.highlights))   ? enc(r.highlights)   : r.highlights,
-          keyLearnings: (r.keyLearnings && !isEnc(r.keyLearnings)) ? enc(r.keyLearnings) : r.keyLearnings,
-          wins:         winsNeedEnc ? (r.wins ?? []).map(w => isEnc(w) ? w : enc(w)) : r.wins,
-          notes:        (r.notes && !isEnc(r.notes)) ? enc(r.notes) : r.notes,
-          stuck:        isEnc(r.stuck as any) ? r.stuck : encJson(r.stuck),
+          mood:       (r.mood       && !isEnc(r.mood))       ? enc(r.mood)       : r.mood,
+          highlights: (r.highlights && !isEnc(r.highlights)) ? enc(r.highlights) : r.highlights,
+          gratitude:  (r.gratitude  && !isEnc(r.gratitude))  ? enc(r.gratitude)  : r.gratitude,
+          decisions:  isEnc(r.decisions as any) ? r.decisions : encJson(r.decisions),
+          wins:       winsNeedEnc ? (r.wins ?? []).map(w => isEnc(w) ? w : enc(w)) : r.wins,
+          stuck:      isEnc(r.stuck as any) ? r.stuck : encJson(r.stuck),
         },
       });
       log('EveningReflection', r.id, 'encrypted');

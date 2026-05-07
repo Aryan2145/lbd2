@@ -179,6 +179,53 @@ function addDashedBtn(
   };
 }
 
+// ── ReviewCard ────────────────────────────────────────────────────────────────
+// Defined at module scope so React doesn't see a new component type on every
+// parent re-render (which would unmount/remount and lose textarea focus).
+
+function ReviewCard({
+  title, icon, color, maxH, children,
+}: {
+  title: string; icon: React.ReactNode; color: string;
+  maxH?: number | string; children: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      backgroundColor:"#FFFFFF", borderRadius:"14px",
+      border:"1px solid #EDE5D8", boxShadow:"0 2px 8px rgba(0,0,0,0.05)",
+      display:"flex", flexDirection:"column",
+      maxHeight: maxH,
+      overflow:"hidden",
+    }}>
+      <div style={{
+        padding:"10px 16px", borderBottom:"1px solid #F0EBE4",
+        display:"flex", alignItems:"center", gap:"8px", flexShrink:0,
+        backgroundColor:"#FAF5EE",
+      }}>
+        <div style={{
+          width:26, height:26, borderRadius:"7px",
+          backgroundColor: color + "20",
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          {icon}
+        </div>
+        <span style={{ fontSize:"12px", fontWeight:700, color:"#1C1917",
+          textTransform:"uppercase", letterSpacing:"0.06em" }}>
+          {title}
+        </span>
+      </div>
+      <div style={{
+        flex:1, minHeight:0,
+        overflowY:"auto",
+        padding:"16px",
+        display:"flex", flexDirection:"column",
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function WeeklyReviewSheet({
@@ -372,13 +419,13 @@ export default function WeeklyReviewSheet({
   function renderOutcomes() {
     const outcomes = weekPlanOutcomes;
     return (
-      <div>
+      <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
         {outcomes.length === 0 ? (
-          <p style={{ color:"#78716C", fontSize:"13px", fontStyle:"italic", marginBottom:"24px" }}>
+          <p style={{ color:"#78716C", fontSize:"13px", fontStyle:"italic" }}>
             No outcomes were planned for this week.
           </p>
         ) : (
-          <div style={{ marginBottom:"24px" }}>
+          <div style={{ marginBottom:"16px" }}>
             <label style={lbl}>Planned outcomes</label>
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
               {outcomes.map((outcome, i) => {
@@ -417,6 +464,7 @@ export default function WeeklyReviewSheet({
             </div>
           </div>
         )}
+        <div style={{ flex:1 }} />
         <div>
           <label style={lbl}>Reflection on outcomes</label>
           <textarea
@@ -523,9 +571,9 @@ export default function WeeklyReviewSheet({
     }
 
     return (
-      <div>
+      <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
         {/* Stats */}
-        <div style={{ display:"flex", gap:"10px", marginBottom:"24px" }}>
+        <div style={{ display:"flex", gap:"10px", marginBottom:"16px" }}>
           {[
             { label:"Completed",  val:complete.length, color:"#065F46", bg:"#D1FAE5", border:"#6EE7B7" },
             { label:"Missed",     val:missed.length,   color:"#92400E", bg:"#FEF3C7", border:"#FCD34D" },
@@ -545,11 +593,11 @@ export default function WeeklyReviewSheet({
         </div>
 
         {weekTasks.length === 0 ? (
-          <p style={{ color:"#78716C", fontSize:"13px", fontStyle:"italic", marginBottom:"24px" }}>
+          <p style={{ color:"#78716C", fontSize:"13px", fontStyle:"italic" }}>
             No tasks had a deadline this week.
           </p>
         ) : (
-          <div style={{ marginBottom:"24px" }}>
+          <div style={{ marginBottom:"16px" }}>
             <label style={lbl}>Tasks this week</label>
             <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
               {[...complete, ...open, ...missed].map((t) => taskRow(t))}
@@ -557,6 +605,7 @@ export default function WeeklyReviewSheet({
           </div>
         )}
 
+        <div style={{ flex:1 }} />
         <div>
           <label style={lbl}>Reflection on tasks</label>
           <textarea
@@ -582,9 +631,9 @@ export default function WeeklyReviewSheet({
     );
 
     return (
-      <div>
+      <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
         {/* Habit Rate stat */}
-        <div style={{ display:"flex", gap:"10px", marginBottom:"24px" }}>
+        <div style={{ display:"flex", gap:"10px", marginBottom:"16px" }}>
           <div style={{
             width:120, padding:"12px", borderRadius:"10px",
             backgroundColor:"#D1FAE5", border:"1px solid #6EE7B7",
@@ -599,7 +648,7 @@ export default function WeeklyReviewSheet({
         </div>
 
         {scheduled.length > 0 && (
-          <div style={{ marginBottom:"24px" }}>
+          <div style={{ marginBottom:"16px" }}>
             <label style={{ ...lbl, marginBottom:"4px" }}>Completion grid</label>
             <p style={{ fontSize:"11px", color:"#78716C", marginBottom:"10px" }}>
               Click a cell to toggle binary habits.
@@ -660,6 +709,7 @@ export default function WeeklyReviewSheet({
           </div>
         )}
 
+        <div style={{ flex:1 }} />
         <div>
           <label style={lbl}>Reflection on habits</label>
           <textarea
@@ -1026,50 +1076,6 @@ export default function WeeklyReviewSheet({
             </div>
           </div>
         )}
-      </div>
-    );
-  }
-
-  // ── Layout helpers ────────────────────────────────────────────────────────
-
-  function ReviewCard({
-    title, icon, color, maxH, children,
-  }: {
-    title: string; icon: React.ReactNode; color: string;
-    maxH?: number | string; children: React.ReactNode;
-  }) {
-    return (
-      <div style={{
-        backgroundColor:"#FFFFFF", borderRadius:"14px",
-        border:"1px solid #EDE5D8", boxShadow:"0 2px 8px rgba(0,0,0,0.05)",
-        display:"flex", flexDirection:"column",
-        maxHeight: maxH,           // constrains the whole card
-        overflow:"hidden",
-      }}>
-        <div style={{
-          padding:"10px 16px", borderBottom:"1px solid #F0EBE4",
-          display:"flex", alignItems:"center", gap:"8px", flexShrink:0,
-          backgroundColor:"#FAF5EE",
-        }}>
-          <div style={{
-            width:26, height:26, borderRadius:"7px",
-            backgroundColor: color + "20",
-            display:"flex", alignItems:"center", justifyContent:"center",
-          }}>
-            {icon}
-          </div>
-          <span style={{ fontSize:"12px", fontWeight:700, color:"#1C1917",
-            textTransform:"uppercase", letterSpacing:"0.06em" }}>
-            {title}
-          </span>
-        </div>
-        <div style={{
-          flex:1, minHeight:0,     // lets flex shrink so scroll kicks in at maxH
-          overflowY:"auto",
-          padding:"16px",
-        }}>
-          {children}
-        </div>
       </div>
     );
   }

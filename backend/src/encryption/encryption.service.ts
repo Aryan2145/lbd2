@@ -58,7 +58,7 @@ export class EncryptionService implements OnModuleInit {
       throw new Error('Value is not an encrypted blob (missing version tag).');
     }
     const buf = Buffer.from(blob.slice(VERSION_TAG.length), 'base64');
-    if (buf.length < IV_BYTES + TAG_BYTES + 1) {
+    if (buf.length < IV_BYTES + TAG_BYTES) {
       throw new Error('Ciphertext is truncated or malformed.');
     }
     const iv  = buf.subarray(0, IV_BYTES);
@@ -82,6 +82,10 @@ export class EncryptionService implements OnModuleInit {
   decryptIfPresent(value: string | null | undefined, aad?: string): string | null {
     if (value == null || value === '') return value ?? null;
     return this.decrypt(value, aad);
+  }
+
+  decryptSafe(blob: string, fallback = '', aad?: string): string {
+    try { return this.decrypt(blob, aad); } catch { return fallback; }
   }
 
   isEncrypted(value: unknown): value is string {

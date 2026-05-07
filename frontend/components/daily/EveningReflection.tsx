@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Zap, Smile, Minus, CloudRain, Flame, X, CheckCircle2, Circle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { EveningReflection, MoodEmoji, DayPlan, DecisionEntry, StuckEntry } from "@/lib/dayTypes";
+import type { EveningReflection, MoodEmoji, DecisionEntry, StuckEntry } from "@/lib/dayTypes";
 import type { HabitData } from "@/components/habits/HabitCard";
 import { AREA_META, isHabitDoneOnDate, calcStreak } from "@/components/habits/HabitCard";
 import type { TaskData } from "@/components/tasks/TaskCard";
@@ -13,8 +13,6 @@ interface Props {
   date:           string;
   reflection:     EveningReflection;
   onUpdate:       (r: EveningReflection) => void;
-  plan:           DayPlan;
-  onUpdatePlan:   (d: DayPlan) => void;
   habits:         HabitData[];
   onToggleHabit:  (id: string) => void;
   onStepHabit:    (id: string, delta: number) => void;
@@ -96,7 +94,6 @@ function compassToEnergy(compassDeg: number): number {
 
 export default function EveningReflectionComponent({
   date, reflection, onUpdate,
-  plan, onUpdatePlan,
   habits, onToggleHabit, onStepHabit,
   tasks, onCompleteTask,
   events, eventGroups,
@@ -124,14 +121,14 @@ export default function EveningReflectionComponent({
     const text = newDecision.trim();
     if (!text) return;
     const entry: DecisionEntry = { id: crypto.randomUUID(), text, made: false, createdAt: Date.now() };
-    onUpdatePlan({ ...plan, decisions: [...plan.decisions, entry] });
+    onUpdate({ ...reflection, decisions: [...(reflection.decisions ?? []), entry] });
     setNewDecision("");
   }
   function toggleDecision(id: string) {
-    onUpdatePlan({ ...plan, decisions: plan.decisions.map((d) => d.id === id ? { ...d, made: !d.made } : d) });
+    onUpdate({ ...reflection, decisions: (reflection.decisions ?? []).map((d) => d.id === id ? { ...d, made: !d.made } : d) });
   }
   function deleteDecision(id: string) {
-    onUpdatePlan({ ...plan, decisions: plan.decisions.filter((d) => d.id !== id) });
+    onUpdate({ ...reflection, decisions: (reflection.decisions ?? []).filter((d) => d.id !== id) });
   }
 
   // ── Stuck helpers ──
@@ -230,8 +227,8 @@ export default function EveningReflectionComponent({
             <div className="lg:h-[260px]" style={card(A.grateful)}>
               <CardHeader color={A.grateful} label="I Am Grateful For…" />
               <textarea
-                value={plan.gratitude}
-                onChange={(e) => onUpdatePlan({ ...plan, gratitude: e.target.value })}
+                value={reflection.gratitude ?? ""}
+                onChange={(e) => onUpdate({ ...reflection, gratitude: e.target.value })}
                 placeholder="What are you grateful for today?"
                 className="ev-ta"
                 style={taStyle}
@@ -378,9 +375,9 @@ export default function EveningReflectionComponent({
                 <button onClick={addDecision} style={{ width: 34, height: 34, borderRadius: "8px", border: "none", backgroundColor: A.action, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", color: "#FFFFFF", lineHeight: 1 }}>+</button>
               </div>
               <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: "5px" }}>
-                {plan.decisions.length === 0
+                {(reflection.decisions ?? []).length === 0
                   ? <p style={{ fontSize: "12px", color: B.muted, margin: 0, fontStyle: "italic" }}>No decisions yet…</p>
-                  : plan.decisions.map((dec) => (
+                  : (reflection.decisions ?? []).map((dec) => (
                       <div key={dec.id} style={{ display: "flex", alignItems: "flex-start", gap: "8px", padding: "8px 10px", borderRadius: "8px", border: `0.5px solid ${dec.made ? A.decisions + "40" : B.border}`, backgroundColor: dec.made ? A.decisions + "0D" : B.fieldBg, flexShrink: 0 }}>
                         <button onClick={() => toggleDecision(dec.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: "1px" }}>
                           {dec.made ? <CheckCircle2 size={14} color={A.decisions} /> : <Circle size={14} color={B.secondary} />}

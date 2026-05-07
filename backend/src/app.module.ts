@@ -16,7 +16,6 @@ import { HabitsModule } from './habits/habits.module';
 import { TasksModule } from './tasks/tasks.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { WeekPlansModule } from './week-plans/week-plans.module';
-import { DayPlansModule } from './day-plans/day-plans.module';
 import { EveningReflectionsModule } from './evening-reflections/evening-reflections.module';
 import { WeeklyReviewsModule } from './weekly-reviews/weekly-reviews.module';
 import { BucketModule } from './bucket/bucket.module';
@@ -38,7 +37,6 @@ import { GcalModule } from './gcal/gcal.module';
     TasksModule,
     CalendarModule,
     WeekPlansModule,
-    DayPlansModule,
     EveningReflectionsModule,
     WeeklyReviewsModule,
     BucketModule,

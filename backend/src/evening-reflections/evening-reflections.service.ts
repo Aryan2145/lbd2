@@ -14,7 +14,7 @@ export class EveningReflectionsService {
   }
   private dStr(v: unknown): string | null {
     if (typeof v !== 'string' || !v) return null;
-    return this.enc.isEncrypted(v) ? this.enc.decrypt(v) : v;
+    return this.enc.isEncrypted(v) ? this.enc.decryptSafe(v) : v;
   }
   private eJson(v: unknown): string {
     return this.enc.encrypt(JSON.stringify(v ?? []));
@@ -29,25 +29,25 @@ export class EveningReflectionsService {
   private decryptRow(row: any) {
     return {
       ...row,
-      mood:         this.dStr(row.mood)            ?? '',
-      highlights:   this.dStr(row.highlights),
-      keyLearnings: this.dStr(row.keyLearnings),
-      wins:         (row.wins ?? []).map((w: string) =>
-                      this.enc.isEncrypted(w) ? this.enc.decrypt(w) : w),
-      notes:        this.dStr(row.notes),
-      stuck:        this.dJson(row.stuck, []),
+      mood:       this.dStr(row.mood) ?? '',
+      highlights: this.dStr(row.highlights),
+      gratitude:  this.dStr(row.gratitude),
+      decisions:  this.dJson(row.decisions, []),
+      wins:       (row.wins ?? []).map((w: string) =>
+                    this.enc.isEncrypted(w) ? this.enc.decryptSafe(w) : w),
+      stuck:      this.dJson(row.stuck, []),
     };
   }
 
   private encryptData(data: any) {
     const out: any = {};
-    if (data.energyLevel  !== undefined) out.energyLevel  = data.energyLevel;
-    if (data.mood         !== undefined) out.mood         = this.eStr(data.mood) ?? '';
-    if (data.highlights   !== undefined) out.highlights   = this.eStr(data.highlights);
-    if (data.keyLearnings !== undefined) out.keyLearnings = this.eStr(data.keyLearnings);
-    if (data.wins         !== undefined) out.wins         = (data.wins ?? []).map((w: string) => this.enc.encrypt(w));
-    if (data.notes        !== undefined) out.notes        = this.eStr(data.notes);
-    if (data.stuck        !== undefined) out.stuck        = this.eJson(data.stuck);
+    if (data.energyLevel !== undefined) out.energyLevel = data.energyLevel;
+    if (data.mood        !== undefined) out.mood        = this.eStr(data.mood) ?? '';
+    if (data.highlights  !== undefined) out.highlights  = this.eStr(data.highlights);
+    if (data.gratitude   !== undefined) out.gratitude   = this.eStr(data.gratitude);
+    if (data.decisions   !== undefined) out.decisions   = this.eJson(data.decisions);
+    if (data.wins        !== undefined) out.wins        = (data.wins ?? []).map((w: string) => w ? this.enc.encrypt(w) : w);
+    if (data.stuck       !== undefined) out.stuck       = this.eJson(data.stuck);
     return out;
   }
 

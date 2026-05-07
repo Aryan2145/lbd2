@@ -57,7 +57,7 @@ export default function TopNav() {
   }
 
   const {
-    tasks, habits, weekPlans, dayPlans,
+    tasks, habits, weekPlans,
     goals, bucketEntries,
     userProfile, updateUserProfile,
   } = useAppStore();
@@ -76,8 +76,7 @@ export default function TopNav() {
   const pendingHabits = scheduled.length - completedToday.length;
   const wPlan         = weekPlans.find((p) => p.weekStart === weekStart);
   const hasWeekly     = wPlan && ((wPlan.priorities?.length ?? 0) > 0 || (wPlan.outcomes?.length ?? 0) > 0);
-  const hasDaily      = dayPlans.some((p) => p.date === today && (p.priorities?.length ?? 0) > 0);
-  const notifCount    = overdueCount + dueTodayCount + (pendingHabits > 0 ? 1 : 0) + (!hasWeekly ? 1 : 0) + (!hasDaily ? 1 : 0);
+  const notifCount    = overdueCount + dueTodayCount + (pendingHabits > 0 ? 1 : 0) + (!hasWeekly ? 1 : 0);
 
   const initials = (userProfile.name || "?")
     .split(" ").map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2);
@@ -342,7 +341,6 @@ export default function TopNav() {
                 tasks={tasks}
                 habits={habits}
                 weekPlans={weekPlans}
-                dayPlans={dayPlans}
               />
             )}
           </div>

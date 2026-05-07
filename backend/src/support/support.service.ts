@@ -28,7 +28,7 @@ export class SupportService {
 
   private dStr(v: unknown): string {
     if (typeof v !== 'string' || !v) return '';
-    return this.enc.isEncrypted(v) ? this.enc.decrypt(v) : v;
+    return this.enc.isEncrypted(v) ? this.enc.decryptSafe(v) : v;
   }
   private eMsgs(messages: any[]): string {
     return this.enc.encrypt(JSON.stringify(msgsToDB(messages)));

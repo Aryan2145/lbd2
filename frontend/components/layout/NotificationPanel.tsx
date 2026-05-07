@@ -1,19 +1,17 @@
 "use client";
 
-import { X, AlertCircle, Clock, Calendar, Flame, BookOpen, CheckSquare } from "lucide-react";
+import { X, AlertCircle, Clock, Calendar, Flame, BookOpen } from "lucide-react";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import { toTaskDate } from "@/components/tasks/TaskCard";
 import type { HabitData } from "@/components/habits/HabitCard";
 import { isScheduledDay } from "@/components/habits/HabitCard";
 import type { WeekPlan } from "@/lib/weeklyTypes";
-import type { DayPlan } from "@/lib/dayTypes";
 
 interface Props {
   onClose:   () => void;
   tasks:     TaskData[];
   habits:    HabitData[];
   weekPlans: WeekPlan[];
-  dayPlans:  DayPlan[];
 }
 
 function fmtDate(iso: string) {
@@ -27,7 +25,7 @@ function getWeekStart(): string {
   return toTaskDate(d);
 }
 
-export default function NotificationPanel({ onClose, tasks, habits, weekPlans, dayPlans }: Props) {
+export default function NotificationPanel({ onClose, tasks, habits, weekPlans }: Props) {
   const today     = toTaskDate();
   const todayDow  = new Date().getDay();
   const weekStart = getWeekStart();
@@ -49,12 +47,11 @@ export default function NotificationPanel({ onClose, tasks, habits, weekPlans, d
   );
   const pending    = scheduled.length - completed.length;
 
-  // Plans
+  // Weekly plan
   const plan       = weekPlans.find((p) => p.weekStart === weekStart);
   const hasWeekly  = plan && ((plan.priorities?.length ?? 0) > 0 || (plan.outcomes?.length ?? 0) > 0);
-  const hasDaily   = dayPlans.some((p) => p.date === today && (p.priorities?.length ?? 0) > 0);
 
-  const total = overdue.length + dueToday.length + (pending > 0 ? 1 : 0) + (!hasWeekly ? 1 : 0) + (!hasDaily ? 1 : 0);
+  const total = overdue.length + dueToday.length + (pending > 0 ? 1 : 0) + (!hasWeekly ? 1 : 0);
 
   type Notif = { id: string; icon: React.ReactNode; bg: string; border: string; text: string; sub: string; subColor: string };
 
@@ -85,12 +82,6 @@ export default function NotificationPanel({ onClose, tasks, habits, weekPlans, d
       bg: "#F0FDFA", border: "#99F6E4",
       text: "Set up your weekly plan",
       sub: "No priorities set for this week", subColor: "#0F766E",
-    }] : []),
-    ...(!hasDaily ? [{
-      id: "daily", icon: <CheckSquare size={14} color="#2563EB" />,
-      bg: "#EFF6FF", border: "#BFDBFE",
-      text: "Complete your daily plan",
-      sub: "Set your top 3 priorities for today", subColor: "#2563EB",
     }] : []),
   ];
 

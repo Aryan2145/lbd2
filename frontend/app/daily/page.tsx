@@ -9,7 +9,7 @@ import MorningPlan from "@/components/daily/MorningPlan";
 import EveningReflectionComponent from "@/components/daily/EveningReflection";
 import TaskDetailSheet from "@/components/tasks/TaskDetailSheet";
 import type { TaskData } from "@/components/tasks/TaskCard";
-import type { DayPlan, EveningReflection } from "@/lib/dayTypes";
+import type { EveningReflection } from "@/lib/dayTypes";
 
 function getWeekStart(date: Date = new Date()): string {
   const d = new Date(date);
@@ -30,8 +30,8 @@ const navBtnStyle: React.CSSProperties = {
 export default function DailyPage() {
   const {
     goals, tasks, habits, eventGroups, weekEvents, weekPlans,
-    dayPlans, eveningReflections,
-    upsertDayPlan, upsertEveningReflection,
+    eveningReflections,
+    upsertEveningReflection, upsertWeekPlan,
     toggleHabitDay, stepHabitToday,
     closeTask, reopenTask, addTask, updateTask,
     addWeekEvent, updateWeekEvent, deleteWeekEvent,
@@ -61,15 +61,10 @@ export default function DailyPage() {
   const dow         = new Date(viewDate + "T00:00:00").getDay();
   const todayHabits = habits.filter((h) => isScheduledDay(h.frequency, h.customDays, dow));
 
-  const defaultPlan: DayPlan = {
-    date: viewDate, priorities: [], gratitude: "", decisions: [],
-  };
-  const plan = dayPlans.find((d) => d.date === viewDate) ?? defaultPlan;
-
   const defaultReflection: EveningReflection = {
     date: viewDate, energyLevel: 5, mood: "",
-    highlights: "", keyLearnings: "",
-    wins: ["", "", ""], notes: "",
+    highlights: "", gratitude: "", decisions: [],
+    wins: ["", "", ""],
     stuck: [],
   };
   const reflection = eveningReflections.find((r) => r.date === viewDate) ?? defaultReflection;
@@ -78,7 +73,6 @@ export default function DailyPage() {
   const dayName  = DAY_NAMES[dateObj.getDay()];
   const dateDisp = dateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
-  const planDone       = plan.priorities.some((p) => p.text.trim());
   const reflectionDone = reflection.highlights.trim().length > 0;
 
   const isNight    = tab === "reflection";
@@ -146,10 +140,10 @@ export default function DailyPage() {
           overflow: "hidden", backgroundColor: navBg }}>
           {(["plan", "reflection"] as const).map((t) => {
             const active = tab === t;
-            const done   = t === "plan" ? planDone : reflectionDone;
+            const done   = t === "reflection" ? reflectionDone : false;
             const Icon   = t === "plan" ? Sun : Moon;
             const label  = t === "plan" ? "Plan" : "Reflection";
-            const doneColor = t === "plan" ? "#F97316" : "#FBBF24";
+            const doneColor = "#FBBF24";
             const iconColor = active ? "#FFFFFF" : (done ? doneColor : navText);
             return (
               <button key={t} onClick={() => setTab(t)} style={{
@@ -172,9 +166,8 @@ export default function DailyPage() {
         {tab === "plan" ? (
           <MorningPlan
             date={viewDate}
-            plan={plan}
-            onUpdate={upsertDayPlan}
             weekPlan={weekPlan}
+            onUpdateWeekPlan={upsertWeekPlan}
             todayEvents={todayEvents}
             eventGroups={eventGroups}
             tasks={tasks}
@@ -191,8 +184,6 @@ export default function DailyPage() {
             date={viewDate}
             reflection={reflection}
             onUpdate={upsertEveningReflection}
-            plan={plan}
-            onUpdatePlan={upsertDayPlan}
             habits={todayHabits}
             onToggleHabit={(id) => toggleHabitDay(id, viewDate)}
             onStepHabit={stepHabitToday}

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Plus, X, Check, Clock, Lightbulb, Pencil, Trash2 } from "lucide-react";
-import type { DayPlan, LifeArea } from "@/lib/dayTypes";
+import type { LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import type { WeekPlan, WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
@@ -114,24 +114,23 @@ function ColorSelect({
 }
 
 interface Props {
-  date:           string;
-  plan:           DayPlan;
-  onUpdate:       (d: DayPlan) => void;
-  weekPlan:       WeekPlan | null;
-  todayEvents:    WeekEvent[];
-  eventGroups:    EventGroup[];
-  tasks:          TaskData[];
-  onTaskClick?:   (t: TaskData) => void;
-  onAddEvent?:    (e: WeekEvent) => void;
-  onUpdateEvent?: (e: WeekEvent) => void;
-  onDeleteEvent?: (id: string)   => void;
-  onAddTask?:     (t: TaskData)  => void;
-  onCompleteTask?:(id: string)   => void;
-  onUpdateTask?:  (t: TaskData)  => void;
+  date:              string;
+  weekPlan:          WeekPlan | null;
+  onUpdateWeekPlan?: (p: WeekPlan)  => void;
+  todayEvents:       WeekEvent[];
+  eventGroups:       EventGroup[];
+  tasks:             TaskData[];
+  onTaskClick?:      (t: TaskData)  => void;
+  onAddEvent?:       (e: WeekEvent) => void;
+  onUpdateEvent?:    (e: WeekEvent) => void;
+  onDeleteEvent?:    (id: string)   => void;
+  onAddTask?:        (t: TaskData)  => void;
+  onCompleteTask?:   (id: string)   => void;
+  onUpdateTask?:     (t: TaskData)  => void;
 }
 
 export default function MorningPlan({
-  date, plan, onUpdate, weekPlan,
+  date, weekPlan, onUpdateWeekPlan,
   todayEvents, eventGroups, tasks,
   onTaskClick,
   onAddEvent, onUpdateEvent, onDeleteEvent,
@@ -334,6 +333,52 @@ export default function MorningPlan({
             )}
           </div>
         </section>
+
+        {weekPlan && weekPlan.outcomes.length > 0 && onUpdateWeekPlan && (
+          <section>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+              <p style={sectionTitle}>This Week&apos;s Outcomes</p>
+              <span style={{ fontSize: "9px", fontWeight: 600, color: "#A8A29E" }}>
+                {weekPlan.doneOutcomes.length}/{weekPlan.outcomes.length}
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
+              {weekPlan.outcomes.map((outcome, i) => {
+                const done = weekPlan.doneOutcomes.includes(outcome);
+                return (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      const next = done
+                        ? weekPlan.doneOutcomes.filter((o) => o !== outcome)
+                        : [...weekPlan.doneOutcomes, outcome];
+                      onUpdateWeekPlan({ ...weekPlan, doneOutcomes: next });
+                    }}
+                    style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer" }}
+                  >
+                    <div style={{
+                      width: 15, height: 15, borderRadius: "4px", flexShrink: 0, marginTop: "1px",
+                      border: `1.5px solid ${done ? "#F97316" : "#C8BFB5"}`,
+                      backgroundColor: done ? "#F97316" : "#FFFFFF",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "background-color 0.15s, border-color 0.15s",
+                    }}>
+                      {done && <Check size={9} color="#FFFFFF" strokeWidth={3} />}
+                    </div>
+                    <p style={{
+                      fontSize: "13px", lineHeight: 1.4, margin: 0,
+                      color: done ? "#A16207" : "#1C1917",
+                      textDecoration: done ? "line-through" : "none",
+                      opacity: done ? 0.65 : 1,
+                    }}>
+                      {outcome}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
 
       {/* ── Main planning panel ── */}

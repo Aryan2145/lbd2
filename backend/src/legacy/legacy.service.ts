@@ -16,12 +16,12 @@ export class LegacyService {
     const roleTexts: Record<string, string> = {};
     for (const [roleId, value] of Object.entries((row.roleTexts as Record<string, string>) ?? {})) {
       roleTexts[roleId] = this.enc.isEncrypted(value)
-        ? this.enc.decrypt(value, `legacy:${userId}:role:${roleId}`)
+        ? this.enc.decryptSafe(value, '', `legacy:${userId}:role:${roleId}`)
         : value;
     }
 
     const purposeText = this.enc.isEncrypted(row.purposeText)
-      ? this.enc.decrypt(row.purposeText, `legacy:${userId}:purpose`)
+      ? this.enc.decryptSafe(row.purposeText, '', `legacy:${userId}:purpose`)
       : row.purposeText;
 
     return { roleTexts, purposeText, isSealed: row.isSealed };

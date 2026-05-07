@@ -17,7 +17,7 @@ export class BucketService {
   }
   private dStr(v: unknown): string | null {
     if (typeof v !== 'string' || !v) return null;
-    return this.enc.isEncrypted(v) ? this.enc.decrypt(v) : v;
+    return this.enc.isEncrypted(v) ? this.enc.decryptSafe(v) : v;
   }
 
   private decryptRow(row: any) {

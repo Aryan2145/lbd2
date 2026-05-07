@@ -83,7 +83,6 @@ model User {
   eventGroups        EventGroup[]
   weekEvents         WeekEvent[]
   weekPlans          WeekPlan[]
-  dayPlans           DayPlan[]
   eveningReflections EveningReflection[]
   weeklyReviews      WeeklyReview[]
   bucketEntries      BucketEntry[]
@@ -260,46 +259,27 @@ model WeekPlan {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Daily Planning
+//  Daily Reflection
 // ─────────────────────────────────────────────────────────────────────────────
 
-model DayPlan {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  date      String   // YYYY-MM-DD
-  // { text, lifeArea, completed }[]
-  priorities Json    @default("[]")
-  gratitude  String?
-  // { id, text, made, createdAt }[]
-  decisions  Json    @default("[]")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, date])
-  @@index([userId])
-  @@map("day_plans")
-}
-
 model EveningReflection {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  date         String   // YYYY-MM-DD
-  energyLevel  Int      @default(5) // 1–10
-  mood         String   @default("") // MoodEmoji or ""
-  highlights   String?
-  keyLearnings String?
-  wins         String[] // plain strings
-  notes        String?
+  date        String   // YYYY-MM-DD
+  energyLevel Int      @default(5) // 1–10
+  mood        String   @default("") // MoodEmoji or ""
+  highlights  String?
+  gratitude   String?
+  // { id, text, made, createdAt }[]
+  decisions   Json     @default("[]")
+  wins        String[] // plain strings
   // { id, text, resolved, createdAt }[]
-  stuck        Json     @default("[]")
+  stuck       Json     @default("[]")
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId])

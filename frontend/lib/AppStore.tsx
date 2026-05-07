@@ -7,7 +7,7 @@ import type { TaskData, RecurringTemplate } from "@/components/tasks/TaskCard";
 import { toTaskDate } from "@/components/tasks/TaskCard";
 import type { EventGroup, WeekEvent, WeekPlan } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
-import type { DayPlan, EveningReflection, WeeklyReview } from "@/lib/dayTypes";
+import type { EveningReflection, WeeklyReview } from "@/lib/dayTypes";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import type { SupportTicket, TicketCategory, TicketPriority } from "@/lib/ticketTypes";
 import { api } from "@/lib/api";
@@ -137,12 +137,9 @@ function mapWeekPlan(p: any): WeekPlan {
   return { weekStart: p.weekStart, priorities: p.priorities ?? [], outcomes: p.outcomes ?? [], doneOutcomes: p.doneOutcomes ?? [], dayNotes: p.dayNotes ?? {}, dayThemes: p.dayThemes ?? {} };
 }
 
-function mapDayPlan(d: any): DayPlan {
-  return { date: d.date, priorities: d.priorities ?? [], gratitude: d.gratitude ?? "", decisions: d.decisions ?? [] };
-}
 
 function mapEveningReflection(r: any): EveningReflection {
-  return { date: r.date, energyLevel: r.energyLevel ?? 5, mood: r.mood ?? "", highlights: r.highlights ?? "", keyLearnings: r.keyLearnings ?? "", wins: r.wins ?? [], notes: r.notes ?? "", stuck: r.stuck ?? [] };
+  return { date: r.date, energyLevel: r.energyLevel ?? 5, mood: r.mood ?? "", highlights: r.highlights ?? "", gratitude: r.gratitude ?? "", decisions: r.decisions ?? [], wins: r.wins ?? [], stuck: r.stuck ?? [] };
 }
 
 function mapWeeklyReview(r: any): WeeklyReview {
@@ -192,7 +189,6 @@ interface AppState {
   eventGroups:        EventGroup[];
   weekEvents:         WeekEvent[];
   weekPlans:          WeekPlan[];
-  dayPlans:           DayPlan[];
   eveningReflections: EveningReflection[];
   weeklyReviews:      WeeklyReview[];
   bucketEntries:      BucketEntry[];
@@ -224,7 +220,6 @@ interface AppState {
   deleteWeekEvent: (id: string)   => void;
   // Planning
   upsertWeekPlan:          (p: WeekPlan)          => void;
-  upsertDayPlan:           (d: DayPlan)           => void;
   upsertEveningReflection: (r: EveningReflection) => void;
   upsertWeeklyReview:      (r: WeeklyReview)      => void;
   // Bucket
@@ -251,7 +246,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [eventGroups,        setEventGroups]        = useState<EventGroup[]>([]);
   const [weekEvents,         setWeekEvents]         = useState<WeekEvent[]>([]);
   const [weekPlans,          setWeekPlans]          = useState<WeekPlan[]>([]);
-  const [dayPlans,           setDayPlans]           = useState<DayPlan[]>([]);
   const [eveningReflections, setEveningReflections] = useState<EveningReflection[]>([]);
   const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>([]);
   const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>([]);
@@ -277,7 +271,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setEventGroups       (cached.eventGroups        as EventGroup[]);
       setWeekEvents        (cached.weekEvents         as WeekEvent[]);
       setWeekPlans         (cached.weekPlans          as WeekPlan[]);
-      setDayPlans          (cached.dayPlans           as DayPlan[]);
       setEveningReflections(cached.eveningReflections as EveningReflection[]);
       setWeeklyReviews     (cached.weeklyReviews      as WeeklyReview[]);
       setBucketEntries     (cached.bucketEntries      as BucketEntry[]);
@@ -289,7 +282,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async function load() {
       const [
         apiGoals, apiHabits, apiTasks, apiGroups,
-        apiWeekPlans, apiDayPlans, apiEveningReflections,
+        apiWeekPlans, apiEveningReflections,
         apiWeeklyReviews, apiBucket, apiTickets, apiUser,
       ] = await Promise.all([
         fetchSafe<any[]>('/goals', []),
@@ -297,7 +290,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fetchSafe<any[]>('/tasks', []),
         fetchSafe<any[]>('/calendar/groups', []),
         fetchSafe<any[]>('/week-plans', []),
-        fetchSafe<any[]>('/day-plans', []),
         fetchSafe<any[]>('/evening-reflections', []),
         fetchSafe<any[]>('/weekly-reviews', []),
         fetchSafe<any[]>('/bucket', []),
@@ -320,7 +312,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       const freshWeekPlans          = apiWeekPlans.map(mapWeekPlan);
-      const freshDayPlans           = apiDayPlans.map(mapDayPlan);
       const freshEveningReflections = apiEveningReflections.map(mapEveningReflection);
       const freshWeeklyReviews      = apiWeeklyReviews.map(mapWeeklyReview);
       const freshBucket             = applyBucketOrder(apiBucket.map(mapBucketEntry), loadBucketOrder());
@@ -335,7 +326,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setEventGroups(freshGroups);
       setWeekEvents(freshEvents);
       setWeekPlans(freshWeekPlans);
-      setDayPlans(freshDayPlans);
       setEveningReflections(freshEveningReflections);
       setWeeklyReviews(freshWeeklyReviews);
       setBucketEntries(freshBucket);
@@ -351,7 +341,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         eventGroups:        freshGroups,
         weekEvents:         freshEvents,
         weekPlans:          freshWeekPlans,
-        dayPlans:           freshDayPlans,
         eveningReflections: freshEveningReflections,
         weeklyReviews:      freshWeeklyReviews,
         bucketEntries:      freshBucket,
@@ -377,7 +366,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const ctx: AppState = {
     loaded,
     goals, habits, tasks, eventGroups, weekEvents, weekPlans,
-    dayPlans, eveningReflections, weeklyReviews, bucketEntries, tickets,
+    eveningReflections, weeklyReviews, bucketEntries, tickets,
 
     // Goals
     addGoal: (g) => {
@@ -518,15 +507,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Planning (upserts)
     upsertWeekPlan: (plan) => {
       upsertBy(setWeekPlans, "weekStart", plan);
-      api.put('/week-plans', { weekStart: plan.weekStart, priorities: plan.priorities, outcomes: plan.outcomes, dayNotes: plan.dayNotes, dayThemes: plan.dayThemes }).catch(console.error);
-    },
-    upsertDayPlan: (d) => {
-      upsertBy(setDayPlans, "date", d);
-      api.put('/day-plans', { date: d.date, priorities: d.priorities, gratitude: d.gratitude, decisions: d.decisions }).catch(console.error);
+      api.put('/week-plans', { weekStart: plan.weekStart, priorities: plan.priorities, outcomes: plan.outcomes, doneOutcomes: plan.doneOutcomes, dayNotes: plan.dayNotes, dayThemes: plan.dayThemes }).catch(console.error);
     },
     upsertEveningReflection: (r) => {
       upsertBy(setEveningReflections, "date", r);
-      api.put('/evening-reflections', { date: r.date, energyLevel: r.energyLevel, mood: r.mood, highlights: r.highlights, keyLearnings: r.keyLearnings, wins: r.wins, notes: r.notes, stuck: r.stuck }).catch(console.error);
+      api.put('/evening-reflections', { date: r.date, energyLevel: r.energyLevel, mood: r.mood, highlights: r.highlights, gratitude: r.gratitude, decisions: r.decisions, wins: r.wins, stuck: r.stuck }).catch(console.error);
     },
     upsertWeeklyReview: (r) => {
       upsertBy(setWeeklyReviews, "weekStart", r);
