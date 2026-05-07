@@ -25,6 +25,8 @@ export class BucketService {
       ...row,
       title:            this.dStr(row.title)            ?? '',
       description:      this.dStr(row.description)      ?? '',
+      imageUrl:         this.dStr(row.imageUrl)         ?? '',
+      memoryPhotoUrl:   this.dStr(row.memoryPhotoUrl)   ?? null,
       changeReflection: this.dStr(row.changeReflection) ?? null,
       status: FROM_DB[row.status] ?? row.status,
     };
@@ -46,11 +48,11 @@ export class BucketService {
         title:            this.enc.encrypt(title),
         description:      this.eStr(description)      ?? '',
         lifeArea,
-        imageUrl:         imageUrl         ?? '',
+        imageUrl:         imageUrl ? this.enc.encrypt(imageUrl) : '',
         status:           TO_DB[status]    ?? 'dream',
         targetDate:       targetDate       || null,
         achievedAt:       achievedAt       ? BigInt(Math.floor(Number(achievedAt))) : null,
-        memoryPhotoUrl:   memoryPhotoUrl   || null,
+        memoryPhotoUrl:   memoryPhotoUrl ? this.enc.encrypt(memoryPhotoUrl) : null,
         changeReflection: this.eStr(changeReflection),
       },
     });
@@ -62,11 +64,11 @@ export class BucketService {
     if (data.title            !== undefined) fields.title            = this.enc.encrypt(data.title);
     if (data.description      !== undefined) fields.description      = this.eStr(data.description) ?? '';
     if (data.lifeArea         !== undefined) fields.lifeArea         = data.lifeArea;
-    if (data.imageUrl         !== undefined) fields.imageUrl         = data.imageUrl        ?? '';
+    if (data.imageUrl         !== undefined) fields.imageUrl         = data.imageUrl ? this.enc.encrypt(data.imageUrl) : '';
     if (data.status           !== undefined) fields.status           = TO_DB[data.status]   ?? data.status;
     if (data.targetDate       !== undefined) fields.targetDate       = data.targetDate       || null;
     if (data.achievedAt       !== undefined) fields.achievedAt       = data.achievedAt       ? BigInt(Math.floor(Number(data.achievedAt))) : null;
-    if (data.memoryPhotoUrl   !== undefined) fields.memoryPhotoUrl   = data.memoryPhotoUrl   || null;
+    if (data.memoryPhotoUrl   !== undefined) fields.memoryPhotoUrl   = data.memoryPhotoUrl ? this.enc.encrypt(data.memoryPhotoUrl) : null;
     if (data.changeReflection !== undefined) fields.changeReflection = this.eStr(data.changeReflection);
     const row = await this.prisma.bucketEntry.update({ where: { id }, data: fields });
     return this.decryptRow(row);

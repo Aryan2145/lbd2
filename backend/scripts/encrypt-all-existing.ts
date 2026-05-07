@@ -247,13 +247,17 @@ async function main() {
     for (const b of bucket) {
       if (
         isEnc(b.title) && isEnc(b.description) &&
+        (!b.imageUrl       || isEnc(b.imageUrl))       &&
+        (!b.memoryPhotoUrl || isEnc(b.memoryPhotoUrl)) &&
         (b.changeReflection == null || isEnc(b.changeReflection))
       ) { log('BucketEntry', b.id, 'skipped'); continue; }
       await prisma.bucketEntry.update({
         where: { id: b.id },
         data: {
-          title:            isEnc(b.title)       ? b.title       : enc(b.title),
-          description:      isEnc(b.description) ? b.description : enc(b.description),
+          title:            isEnc(b.title)            ? b.title            : enc(b.title),
+          description:      isEnc(b.description)      ? b.description      : enc(b.description),
+          imageUrl:         (b.imageUrl       && !isEnc(b.imageUrl))       ? enc(b.imageUrl)       : b.imageUrl,
+          memoryPhotoUrl:   (b.memoryPhotoUrl && !isEnc(b.memoryPhotoUrl)) ? enc(b.memoryPhotoUrl) : b.memoryPhotoUrl,
           changeReflection: (b.changeReflection && !isEnc(b.changeReflection)) ? enc(b.changeReflection) : b.changeReflection,
         },
       });
