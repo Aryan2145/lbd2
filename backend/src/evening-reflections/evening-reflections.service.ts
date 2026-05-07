@@ -1,19 +1,71 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EncryptionService } from '../encryption/encryption.service';
 
 @Injectable()
 export class EveningReflectionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private enc:    EncryptionService,
+  ) {}
 
-  findAll(userId: string) {
-    return this.prisma.eveningReflection.findMany({ where: { userId }, orderBy: { date: 'desc' } });
+  private eStr(v: string | null | undefined): string | null {
+    return v ? this.enc.encrypt(v) : (v ?? null);
+  }
+  private dStr(v: unknown): string | null {
+    if (typeof v !== 'string' || !v) return null;
+    return this.enc.isEncrypted(v) ? this.enc.decrypt(v) : v;
+  }
+  private eJson(v: unknown): string {
+    return this.enc.encrypt(JSON.stringify(v ?? []));
+  }
+  private dJson(v: unknown, fallback: unknown = []): unknown {
+    if (typeof v === 'string' && this.enc.isEncrypted(v)) {
+      try { return JSON.parse(this.enc.decrypt(v)); } catch { return fallback; }
+    }
+    return v ?? fallback;
   }
 
-  upsert(userId: string, date: string, data: any) {
-    return this.prisma.eveningReflection.upsert({
-      where: { userId_date: { userId, date } },
-      create: { userId, date, ...data },
-      update: data,
+  private decryptRow(row: any) {
+    return {
+      ...row,
+      mood:         this.dStr(row.mood)            ?? '',
+      highlights:   this.dStr(row.highlights),
+      keyLearnings: this.dStr(row.keyLearnings),
+      wins:         (row.wins ?? []).map((w: string) =>
+                      this.enc.isEncrypted(w) ? this.enc.decrypt(w) : w),
+      notes:        this.dStr(row.notes),
+      stuck:        this.dJson(row.stuck, []),
+    };
+  }
+
+  private encryptData(data: any) {
+    const out: any = {};
+    if (data.energyLevel  !== undefined) out.energyLevel  = data.energyLevel;
+    if (data.mood         !== undefined) out.mood         = this.eStr(data.mood) ?? '';
+    if (data.highlights   !== undefined) out.highlights   = this.eStr(data.highlights);
+    if (data.keyLearnings !== undefined) out.keyLearnings = this.eStr(data.keyLearnings);
+    if (data.wins         !== undefined) out.wins         = (data.wins ?? []).map((w: string) => this.enc.encrypt(w));
+    if (data.notes        !== undefined) out.notes        = this.eStr(data.notes);
+    if (data.stuck        !== undefined) out.stuck        = this.eJson(data.stuck);
+    return out;
+  }
+
+  async findAll(userId: string) {
+    const rows = await this.prisma.eveningReflection.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
     });
+    return rows.map(r => this.decryptRow(r));
+  }
+
+  async upsert(userId: string, date: string, data: any) {
+    const enc = this.encryptData(data);
+    const row = await this.prisma.eveningReflection.upsert({
+      where:  { userId_date: { userId, date } },
+      create: { userId, date, ...enc },
+      update: enc,
+    });
+    return this.decryptRow(row);
   }
 }

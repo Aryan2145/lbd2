@@ -1,19 +1,60 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EncryptionService } from '../encryption/encryption.service';
 
 @Injectable()
 export class WeekPlansService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private enc:    EncryptionService,
+  ) {}
 
-  findAll(userId: string) {
-    return this.prisma.weekPlan.findMany({ where: { userId }, orderBy: { weekStart: 'desc' } });
+  private eJson(v: unknown): string {
+    return this.enc.encrypt(JSON.stringify(v ?? []));
+  }
+  private dJson(v: unknown, fallback: unknown = []): unknown {
+    if (typeof v === 'string' && this.enc.isEncrypted(v)) {
+      try { return JSON.parse(this.enc.decrypt(v)); } catch { return fallback; }
+    }
+    return v ?? fallback;
   }
 
-  upsert(userId: string, weekStart: string, data: any) {
-    return this.prisma.weekPlan.upsert({
-      where: { userId_weekStart: { userId, weekStart } },
-      create: { userId, weekStart, ...data },
-      update: data,
+  private decryptRow(row: any) {
+    return {
+      ...row,
+      priorities:   this.dJson(row.priorities,   []),
+      outcomes:     this.dJson(row.outcomes,      []),
+      doneOutcomes: this.dJson(row.doneOutcomes,  []),
+      dayNotes:     this.dJson(row.dayNotes,      {}),
+      dayThemes:    this.dJson(row.dayThemes,     {}),
+    };
+  }
+
+  private encryptData(data: any) {
+    const out: any = {};
+    if (data.priorities   !== undefined) out.priorities   = this.eJson(data.priorities);
+    if (data.outcomes     !== undefined) out.outcomes     = this.eJson(data.outcomes);
+    if (data.doneOutcomes !== undefined) out.doneOutcomes = this.eJson(data.doneOutcomes);
+    if (data.dayNotes     !== undefined) out.dayNotes     = this.eJson(data.dayNotes);
+    if (data.dayThemes    !== undefined) out.dayThemes    = this.eJson(data.dayThemes);
+    return out;
+  }
+
+  async findAll(userId: string) {
+    const rows = await this.prisma.weekPlan.findMany({
+      where: { userId },
+      orderBy: { weekStart: 'desc' },
     });
+    return rows.map(r => this.decryptRow(r));
+  }
+
+  async upsert(userId: string, weekStart: string, data: any) {
+    const enc = this.encryptData(data);
+    const row = await this.prisma.weekPlan.upsert({
+      where:  { userId_weekStart: { userId, weekStart } },
+      create: { userId, weekStart, ...enc },
+      update: enc,
+    });
+    return this.decryptRow(row);
   }
 }
