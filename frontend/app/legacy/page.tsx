@@ -332,9 +332,9 @@ export default function LegacyPage() {
         <div className="w-full xl:w-80 xl:flex-shrink-0 xl:sticky xl:top-6">
           <p
             style={{
-              fontSize: "10px",
-              fontWeight: 700,
-              letterSpacing: "0.1em",
+              fontSize: "13px",
+              fontWeight: 800,
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
               color: "#92681A",
               marginBottom: "12px",

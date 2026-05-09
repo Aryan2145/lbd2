@@ -20,6 +20,7 @@ export interface UserProfile {
   phone:    string;
   role:     string;
   password: string;
+  gender?:  string;
 }
 
 // ── Bucket order persistence (localStorage) ──────────────────────────────────
@@ -250,7 +251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>([]);
   const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>([]);
   const [tickets,            setTickets]            = useState<SupportTicket[]>([]);
-  const [userProfile,        setUserProfile]        = useState<UserProfile>({ name: "", email: "", phone: "", role: "", password: "" });
+  const [userProfile,        setUserProfile]        = useState<UserProfile>({ name: "", email: "", phone: "", role: "", password: "", gender: "" });
 
   // Ref so async callbacks always see latest goals (for note diffing)
   const goalsRef = useRef<GoalData[]>([]);
@@ -317,7 +318,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const freshBucket             = applyBucketOrder(apiBucket.map(mapBucketEntry), loadBucketOrder());
       const freshTickets            = apiTickets.map(mapTicket);
       const freshProfile: UserProfile = apiUser
-        ? { name: apiUser.name ?? "", email: apiUser.email ?? "", phone: apiUser.phone ?? "", role: apiUser.role ?? "", password: "" }
+        ? { name: apiUser.name ?? "", email: apiUser.email ?? "", phone: apiUser.phone ?? "", role: apiUser.role ?? "", password: "", gender: apiUser.gender ?? "" }
         : userProfile;
 
       setGoals(freshGoals);

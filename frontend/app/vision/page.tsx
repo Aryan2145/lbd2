@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import WheelOfLife from "@/components/vision/WheelOfLife";
 import PolaroidCard, { type AreaData } from "@/components/vision/PolaroidCard";
-import AreaEditSheet from "@/components/vision/AreaEditSheet";
 import { RotateCcw } from "lucide-react";
 import { AREA_META } from "@/components/goals/GoalCard";
 import type { LifeArea } from "@/components/goals/GoalCard";
 import { api } from "@/lib/api";
+import { useAppStore } from "@/lib/AppStore";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const CY       = 420;
@@ -28,19 +28,20 @@ const AREAS_META = [
   { id: "health",        name: "Health",          rotation:  1.0 },
 ];
 
-// Default offsets from wheel center (dx, dy). Cards spread around the wheel.
+// Default offsets from wheel center (dx, dy).
+// 7 cards evenly distributed at ~51° apart, d=480 — verified non-overlapping for 240×230px cards.
 const DEFAULT_OFFSETS: [number, number][] = [
-  [    0, -320 ],  // Professional  — top
-  [  420, -170 ],  // Contribution  — top-right
-  [  470,   60 ],  // Wealth        — right
-  [  360,  265 ],  // Spiritual     — bottom-right
-  [ -360,  265 ],  // Personal      — bottom-left
-  [ -470,   60 ],  // Relationships — left
-  [ -420, -170 ],  // Health        — top-left
+  [    0, -360 ],  // Professional  — top
+  [  375, -270 ],  // Contribution  — top-right
+  [  470,  110 ],  // Wealth        — right
+  [  210,  430 ],  // Spiritual     — bottom-right
+  [ -210,  430 ],  // Personal      — bottom-left
+  [ -470,  110 ],  // Relationships — left
+  [ -420, -270 ],  // Health        — top-left
 ];
 
 const N = AREAS_META.length;
-const CANVAS_H = CY + 395; // bottom card center at CY+265, half-height ~110, +20 padding
+const CANVAS_H = CY + 565; // bottom cards at dy=430, half-height ~115, +20 padding
 
 type RelPos = { dx: number; dy: number };
 
@@ -64,20 +65,22 @@ function clampAwayFromWheel(dx: number, dy: number): RelPos {
 }
 
 function savePosToLS(pos: Record<string, RelPos>) {
-  try { localStorage.setItem("lbd_vision_relpos_v2", JSON.stringify(pos)); } catch {}
+  try { localStorage.setItem("lbd_vision_relpos_v4", JSON.stringify(pos)); } catch {}
 }
 
 function loadPosFromLS(): Record<string, RelPos> | null {
   try {
-    const raw = localStorage.getItem("lbd_vision_relpos_v2");
+    const raw = localStorage.getItem("lbd_vision_relpos_v4");
     return raw ? (JSON.parse(raw) as Record<string, RelPos>) : null;
   } catch { return null; }
 }
 
 export default function VisionPage() {
-  const [areas, setAreas]        = useState<AreaData[]>(EMPTY_AREAS);
-  const [editingIdx, setEditing] = useState<number | null>(null);
-  const [saving, setSaving]      = useState(false);
+  const { userProfile } = useAppStore();
+  const gender = userProfile.gender ?? "";
+
+  const [areas, setAreas] = useState<AreaData[]>(EMPTY_AREAS);
+  const [saving, setSaving] = useState(false);
   const [CX, setCX]              = useState(0);
   // Mobile-only state
   const [mobileTab, setMobileTab]       = useState<"visions" | "wheel">("visions");
@@ -141,9 +144,7 @@ export default function VisionPage() {
     };
     const onUp = (e: MouseEvent) => {
       const moved = Math.hypot(e.clientX - dragging.startMouseX, e.clientY - dragging.startMouseY);
-      if (moved < 6) {
-        setEditing(AREAS_META.findIndex((m) => m.id === dragging.id));
-      } else {
+      if (moved >= 6) {
         setRelPos((prev) => {
           const r = prev[dragging.id];
           const clamped = clampAwayFromWheel(r.dx, r.dy);
@@ -164,7 +165,7 @@ export default function VisionPage() {
 
   const resetPositions = () => {
     setRelPos(DEFAULT_REL_POS);
-    localStorage.removeItem("lbd_vision_relpos_v2");
+    localStorage.removeItem("lbd_vision_relpos_v4");
   };
 
   // ── Derived ─────────────────────────────────────────────────────────────────
@@ -194,11 +195,11 @@ export default function VisionPage() {
   };
 
   return (
-    <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
+    <div style={{ minHeight: "100%", backgroundColor: "#FFFFFF" }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="px-page" style={{
-        paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
+        paddingTop: "18px", paddingBottom: "14px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
         flexWrap: "wrap", gap: "8px",
       }}>
@@ -220,20 +221,30 @@ export default function VisionPage() {
             className="hidden lg:flex items-center"
             onClick={resetPositions}
             style={{
-              gap: "5px", padding: "6px 12px", borderRadius: "8px",
-              border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
-              fontSize: "11px", color: "#57534E", cursor: "pointer",
+              gap: "5px", padding: "6px 12px",
+              border: "none", backgroundColor: "#EA580C",
+              fontSize: "11px", fontWeight: 600, color: "#FFFFFF", cursor: "pointer",
+              borderRadius: "999px",
             }}
           >
             <RotateCcw size={11} /> Reset layout
           </button>
-          <Stat label="Areas defined" value={`${filledCount}`} unit="/7"  color="#1C1917" />
-          <Stat label="Avg. score"    value={avgScore}          unit="/10" color="#1C1917" />
+          <div style={{
+            display: "flex", alignItems: "center", gap: "20px",
+            padding: "10px 18px", borderRadius: "12px",
+            backgroundColor: "#FFFFFF",
+            border: "1.5px solid #E8DDD0",
+            boxShadow: "0 2px 8px rgba(28,25,23,0.06)",
+          }}>
+            <Stat label="Areas defined" value={`${filledCount}`} unit="/7"  color="#EA580C" />
+            <div style={{ width: 1, height: 32, backgroundColor: "#E8DDD0" }} />
+            <Stat label="Avg. score"    value={avgScore}          unit="/10" color="#EA580C" />
+          </div>
         </div>
       </div>
 
       {/* ── Mobile layout (< lg) ─────────────────────────────────────────── */}
-      <div className="block lg:hidden" style={{ backgroundColor: "#FAF5EE", minHeight: "calc(100vh - 56px)" }}>
+      <div className="block lg:hidden" style={{ backgroundColor: "#FFFFFF", minHeight: "calc(100vh - 56px)" }}>
 
         {/* Tab switcher */}
         <div style={{
@@ -251,7 +262,7 @@ export default function VisionPage() {
                 fontWeight: 600,
                 border: "none",
                 cursor: "pointer",
-                backgroundColor: mobileTab === tab ? "#FAF5EE" : "transparent",
+                backgroundColor: mobileTab === tab ? "#FFFFFF" : "transparent",
                 color: mobileTab === tab ? "#F97316" : "#78716C",
                 borderBottom: mobileTab === tab ? "2px solid #F97316" : "2px solid transparent",
                 transition: "all 0.15s",
@@ -273,10 +284,14 @@ export default function VisionPage() {
                 <PolaroidCard
                   area={areas[i]}
                   rotation={0}
-                  onClick={() => setEditing(i)}
                   accentColor={AREA_META[meta.id as LifeArea]?.color ?? "#F97316"}
                   accentBg={AREA_META[meta.id as LifeArea]?.bg ?? "#FFF7ED"}
                   cardWidth="100%"
+                  variant="canvas"
+                  onImageUpload={(url) => handleSave({ ...areas[i], imageUrl: url })}
+                  onSaveText={(text) => handleSave({ ...areas[i], text })}
+                  onSaveScore={(score) => handleSave({ ...areas[i], score })}
+                  gender={gender}
                 />
               </div>
             ))}
@@ -386,7 +401,7 @@ export default function VisionPage() {
 
                         {/* Edit button */}
                         <button
-                          onClick={() => { setWheelDetail(null); setEditing(wheelDetail); }}
+                          onClick={() => { setWheelDetail(null); setMobileTab("visions"); }}
                           style={{
                             width: "100%", padding: "12px",
                             borderRadius: "10px", border: "none",
@@ -487,13 +502,13 @@ export default function VisionPage() {
               <g key={m.id}>
                 <line
                   x1={L.x1} y1={L.y1} x2={L.x2} y2={L.y2}
-                  stroke={active ? "#F97316" : "#C9B89A"}
-                  strokeWidth={active ? 1.5 : 1}
-                  strokeDasharray={active ? "none" : "6,5"}
-                  strokeOpacity={active ? 0.45 : 0.5}
+                  stroke="#EA580C"
+                  strokeWidth={1.2}
+                  strokeDasharray="6,5"
+                  strokeOpacity={active ? 0.55 : 0.35}
                 />
                 <circle cx={L.x2} cy={L.y2} r={4.5}
-                  fill={active ? "#F97316" : "#C9A84C"} opacity={0.45} />
+                  fill="#EA580C" opacity={active ? 0.55 : 0.3} />
               </g>
             );
           })}
@@ -511,10 +526,10 @@ export default function VisionPage() {
             <WheelOfLife scores={scores} size={WHEEL_PX} />
             <div style={{ position: "absolute", bottom: -32, left: "50%",
               transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <p style={{ fontSize: "10px", color: "#44403C", marginBottom: "2px" }}>Current Balance</p>
-              <p style={{ fontSize: "14px", fontWeight: 700, color: "#78716C" }}>
+              <p style={{ fontSize: "10px", color: "#1C1917", fontWeight: 600, marginBottom: "2px" }}>Current Balance</p>
+              <p style={{ fontSize: "14px", fontWeight: 700, color: "#EA580C" }}>
                 {avgScore}{" "}
-                <span style={{ fontWeight: 400, color: "#57534E", fontSize: "12px" }}>/ 10</span>
+                <span style={{ fontWeight: 500, color: "#1C1917", fontSize: "12px" }}>/ 10</span>
               </p>
             </div>
           </div>
@@ -545,22 +560,20 @@ export default function VisionPage() {
               <PolaroidCard
                 area={areas[i]}
                 rotation={meta.rotation}
-                onClick={() => {}}
                 accentColor={AREA_META[meta.id as LifeArea]?.color ?? "#F97316"}
                 accentBg={AREA_META[meta.id as LifeArea]?.bg ?? "#FFF7ED"}
                 cardWidth={CANVAS_CARD_W}
                 variant="canvas"
+                onImageUpload={(url) => handleSave({ ...areas[i], imageUrl: url })}
+                onSaveText={(text) => handleSave({ ...areas[i], text })}
+                onSaveScore={(score) => handleSave({ ...areas[i], score })}
+                gender={gender}
               />
             </div>
           );
         })}
       </div>
 
-      <AreaEditSheet
-        area={editingIdx !== null ? areas[editingIdx] : null}
-        onClose={() => setEditing(null)}
-        onSave={handleSave}
-      />
     </div>
   );
 }
@@ -569,11 +582,11 @@ function Stat({ label, value, unit, color }: {
   label: string; value: string; unit: string; color: string;
 }) {
   return (
-    <div style={{ textAlign: "right" }}>
-      <p style={{ fontSize: "12px", fontWeight: 500, color: "#57534E", marginBottom: "2px" }}>{label}</p>
+    <div style={{ textAlign: "center" }}>
+      <p style={{ fontSize: "12px", fontWeight: 500, color: "#1C1917", marginBottom: "2px" }}>{label}</p>
       <p style={{ fontSize: "24px", fontWeight: 700, color, lineHeight: 1 }}>
         {value}
-        <span style={{ fontSize: "14px", fontWeight: 500, color: "#57534E" }}>{unit}</span>
+        <span style={{ fontSize: "14px", fontWeight: 500, color: "#1C1917" }}>{unit}</span>
       </p>
     </div>
   );

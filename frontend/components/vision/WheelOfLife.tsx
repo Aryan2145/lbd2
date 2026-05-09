@@ -10,7 +10,7 @@ const AREAS = [
   "Health",
 ];
 
-const N = AREAS.length;
+const N  = AREAS.length;
 const CX = 140;
 const CY = 140;
 const R  = 108;
@@ -44,7 +44,6 @@ function ringPath(level: number): string {
   );
 }
 
-// Pie-slice hit area for each area segment
 function sectorPath(i: number, outerR: number): string {
   const half = Math.PI / N;
   const a0 = angle(i) - half;
@@ -56,12 +55,23 @@ function sectorPath(i: number, outerR: number): string {
   return `M${CX},${CY} L${x1.toFixed(2)},${y1.toFixed(2)} A${outerR},${outerR} 0 0,1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`;
 }
 
+// 4-pointed sparkle star
+function sparklePath(cx: number, cy: number, r: number, ir: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (Math.PI / 4) * i - Math.PI / 2;
+    const rad = i % 2 === 0 ? r : ir;
+    pts.push(`${i === 0 ? "M" : "L"}${(cx + rad * Math.cos(a)).toFixed(2)},${(cy + rad * Math.sin(a)).toFixed(2)}`);
+  }
+  return pts.join(" ") + "Z";
+}
+
 interface WheelOfLifeProps {
-  scores:        number[];
-  size?:         number;
-  interactive?:  boolean;
-  activeIndex?:  number | null;
-  onAreaClick?:  (index: number) => void;
+  scores:       number[];
+  size?:        number;
+  interactive?: boolean;
+  activeIndex?: number | null;
+  onAreaClick?: (index: number) => void;
 }
 
 export default function WheelOfLife({
@@ -74,33 +84,25 @@ export default function WheelOfLife({
   const RINGS = [2, 4, 6, 8, 10];
 
   return (
-    <svg
-      viewBox="0 0 280 280"
-      width={size}
-      height={size}
-      style={{ overflow: "visible" }}
-    >
+    <svg viewBox="0 0 280 280" width={size} height={size} style={{ overflow: "visible" }}>
       <defs>
-        <radialGradient id="wheelGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#FFF7ED" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#FAF5EE" stopOpacity="0"   />
-        </radialGradient>
-        <radialGradient id="dataGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#F97316" stopOpacity="0.25" />
+        <radialGradient id="dataFill" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#F97316" stopOpacity="0.22" />
           <stop offset="100%" stopColor="#F97316" stopOpacity="0.08" />
+        </radialGradient>
+        <radialGradient id="orangeGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#F97316" stopOpacity="0.18" />
+          <stop offset="60%"  stopColor="#F97316" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#F97316" stopOpacity="0"    />
         </radialGradient>
       </defs>
 
-      {/* Background glow */}
-      <circle cx={CX} cy={CY} r={R + 20} fill="url(#wheelGlow)" />
+      {/* Orange ambient glow */}
+      <circle cx={CX} cy={CY} r={R + 10} fill="url(#orangeGlow)" />
 
-      {/* Highlighted sector (interactive) */}
+      {/* Highlighted sector */}
       {interactive && activeIndex !== null && (
-        <path
-          d={sectorPath(activeIndex, R + 4)}
-          fill="#F97316"
-          opacity={0.12}
-        />
+        <path d={sectorPath(activeIndex, R + 4)} fill="#F97316" opacity={0.10} />
       )}
 
       {/* Concentric rings */}
@@ -109,45 +111,67 @@ export default function WheelOfLife({
           key={lvl}
           d={ringPath(lvl)}
           fill="none"
-          stroke="#E8DDD0"
-          strokeWidth={lvl === 10 ? 1.5 : 0.75}
-          strokeOpacity={lvl === 10 ? 0.8 : 0.5}
+          stroke="#EA580C"
+          strokeWidth={lvl === 10 ? 1.2 : 0.75}
+          strokeOpacity={lvl === 10 ? 0.45 : 0.2}
+          strokeLinejoin="round"
         />
       ))}
 
-      {/* Axis lines */}
+      {/* Spokes */}
       {Array.from({ length: N }, (_, i) => {
         const [x2, y2] = polarPt(i, R);
         return (
-          <line key={i} x1={CX} y1={CY} x2={x2} y2={y2}
-            stroke="#E8DDD0" strokeWidth={0.75} strokeOpacity={0.6} />
+          <line key={i}
+            x1={CX} y1={CY} x2={x2} y2={y2}
+            stroke="#EA580C" strokeWidth={0.75} strokeOpacity={0.25}
+          />
         );
       })}
 
-      {/* Filled data polygon */}
-      <path d={polygonPath(scores)} fill="url(#dataGlow)" />
+      {/* Dot intersections at each ring × spoke */}
+      {RINGS.map((lvl) =>
+        Array.from({ length: N }, (_, i) => {
+          const [x, y] = polarPt(i, (lvl / 10) * R);
+          return (
+            <circle key={`${lvl}-${i}`} cx={x} cy={y} r={1.8}
+              fill="#EA580C" opacity={0.3} />
+          );
+        })
+      )}
+
+      {/* Data polygon fill */}
+      <path d={polygonPath(scores)} fill="url(#dataFill)" />
+
+      {/* Data polygon stroke */}
       <path d={polygonPath(scores)} fill="none"
-        stroke="#F97316" strokeWidth={1.75} strokeLinejoin="round" strokeOpacity={0.9} />
+        stroke="#EA580C" strokeWidth={2} strokeLinejoin="round" />
 
       {/* Data point dots */}
       {scores.map((s, i) => {
         const [x, y] = polarPt(i, (Math.max(0.5, s) / 10) * R);
         return (
-          <circle key={i} cx={x} cy={y} r={3.5}
-            fill="#FFFFFF" stroke="#F97316" strokeWidth={2}
+          <circle key={i} cx={x} cy={y} r={4.5}
+            fill="#EA580C" stroke="#FFFFFF" strokeWidth={1.5}
             style={interactive ? { cursor: "pointer" } : undefined}
             onClick={() => interactive && onAreaClick?.(i)}
           />
         );
       })}
 
-      {/* Center dot */}
-      <circle cx={CX} cy={CY} r={5}   fill="#F97316" opacity={0.6} />
-      <circle cx={CX} cy={CY} r={2.5} fill="#FFFFFF" />
+      {/* Center sparkle */}
+      <path
+        d={sparklePath(CX, CY, 7, 3)}
+        fill="none"
+        stroke="#EA580C"
+        strokeWidth={1.2}
+        strokeOpacity={0.7}
+        strokeLinejoin="round"
+      />
 
       {/* Area labels */}
       {Array.from({ length: N }, (_, i) => {
-        const [x, y] = polarPt(i, R + 20);
+        const [x, y] = polarPt(i, i === 5 ? R + 36 : R + 22);
         const a = angle(i) * (180 / Math.PI);
         const isTop    = a > -120 && a < -60;
         const isBottom = a >   60 && a <  120;
@@ -156,9 +180,9 @@ export default function WheelOfLife({
         return (
           <text key={i} x={x} y={y}
             textAnchor="middle" dominantBaseline={baseline}
-            fontSize={7.5} fontWeight={isActive ? 700 : 600}
-            fill={isActive ? "#F97316" : "#44403C"}
-            letterSpacing="0.06em"
+            fontSize={7.5} fontWeight={isActive ? 800 : 600}
+            fill={isActive ? "#EA580C" : "#1C1917"}
+            letterSpacing="0.07em"
             style={{
               fontFamily: "var(--font-geist-sans, sans-serif)",
               userSelect: "none",
@@ -171,10 +195,9 @@ export default function WheelOfLife({
         );
       })}
 
-      {/* Invisible sector hit areas — placed last so they're on top */}
+      {/* Invisible hit areas */}
       {interactive && Array.from({ length: N }, (_, i) => (
-        <path
-          key={`hit-${i}`}
+        <path key={`hit-${i}`}
           d={sectorPath(i, R + 30)}
           fill="transparent"
           style={{ cursor: "pointer" }}

@@ -7,7 +7,7 @@
  *
  * Bump the version suffix whenever the shape of any persisted slice changes.
  */
-const CACHE_KEY = "lbd_app_cache_v1";
+const CACHE_KEY = "lbd_app_cache_v2";
 
 // Chronological slices grow unbounded — cap them to the recent window so
 // localStorage stays well under quota even for long-time users.
