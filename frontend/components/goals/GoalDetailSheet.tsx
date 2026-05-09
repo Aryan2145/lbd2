@@ -226,20 +226,10 @@ export default function GoalDetailSheet({
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Backdrop */}
-      <div
-        onClick={() => { setMode("view"); onClose(); }}
-        style={{ position: "fixed", inset: 0, backgroundColor: "rgba(28,25,23,0.4)", backdropFilter: "blur(3px)", zIndex: 40 }}
-      />
-
-      {/* Modal */}
+      {/* Full-page overlay */}
       <div style={{
-        position: "fixed", top: "50%", left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: "min(1020px, 96vw)", height: "90vh",
-        backgroundColor: "#FFFFFF", borderRadius: "16px",
-        border: "1px solid #EDE5D8",
-        boxShadow: "0 24px 80px rgba(28,25,23,0.22)",
+        position: "fixed", inset: 0,
+        backgroundColor: "#FFFFFF",
         zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
 
@@ -249,11 +239,13 @@ export default function GoalDetailSheet({
           display: "flex", alignItems: "center", gap: "12px",
           flexShrink: 0, backgroundColor: "#FFFFFF",
         }}>
-          {mode === "edit" && (
-            <button onClick={() => setMode("view")} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", color: "#78716C", fontSize: "12px", fontWeight: 600 }}>
-              <ArrowLeft size={14} /> Back
-            </button>
-          )}
+          {/* Back / close button always visible as page-nav */}
+          <button
+            onClick={() => { if (mode === "edit") { setMode("view"); } else { onClose(); } }}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", color: "#78716C", fontSize: "13px", fontWeight: 600, padding: "4px 0", flexShrink: 0 }}
+          >
+            <ArrowLeft size={16} /> {mode === "edit" ? "Back" : "Goals"}
+          </button>
           <div style={{ flex: 1 }}>
             {mode === "view" ? (
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -266,16 +258,11 @@ export default function GoalDetailSheet({
               <p style={{ fontSize: "13px", fontWeight: 700, color: "#F97316", margin: 0 }}>Editing goal</p>
             )}
           </div>
-          <div style={{ display: "flex", gap: "6px" }}>
-            {mode === "view" && (
-              <button onClick={enterEdit} style={{ width: 32, height: 32, borderRadius: "8px", backgroundColor: "#FFF7ED", border: "1px solid #FED7AA", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Pencil size={13} color="#F97316" />
-              </button>
-            )}
-            <button onClick={() => { setMode("view"); onClose(); }} style={{ width: 32, height: 32, borderRadius: "8px", backgroundColor: "#F5F0EB", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <X size={15} color="#78716C" />
+          {mode === "view" && (
+            <button onClick={enterEdit} style={{ width: 32, height: 32, borderRadius: "8px", backgroundColor: "#FFF7ED", border: "1px solid #FED7AA", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Pencil size={13} color="#F97316" />
             </button>
-          </div>
+          )}
         </div>
 
         {/* Body */}
