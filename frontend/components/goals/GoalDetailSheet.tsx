@@ -309,9 +309,9 @@ export default function GoalDetailSheet({
 
               {/* ── Header card ── */}
               <div style={{ position: "relative", backgroundColor: "#F8FAFB", borderRadius: "16px", border: "1px solid #E5E9EE", padding: "20px 20px 0", marginBottom: "20px" }}>
-                {/* Edit button */}
-                <button onClick={enterEdit} style={{ position: "absolute", top: 14, right: 14, width: 30, height: 30, borderRadius: "8px", backgroundColor: "#FFF7ED", border: "1px solid #FED7AA", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Pencil size={12} color="#F97316" />
+                {/* Edit button — floats at top-right corner of card */}
+                <button onClick={enterEdit} style={{ position: "absolute", top: -12, right: -10, width: 28, height: 28, borderRadius: "8px", backgroundColor: "#F8FAFB", border: "1px solid #E5E9EE", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                  <Pencil size={12} color="#6B7280" />
                 </button>
 
                 {/* Top row: icon + text + ring */}
