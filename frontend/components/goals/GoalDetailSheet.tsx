@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Pencil, Check, Flame, CheckCircle2, Circle,
-  ChevronDown, ChevronUp, ArrowLeft, XCircle, CalendarDays, Sparkles, Lock,
+  ChevronDown, ChevronUp, ArrowLeft, XCircle, CalendarDays, Clock, Sparkles, Lock,
   Briefcase, Globe, DollarSign, BookOpen, Heart, Activity, type LucideIcon,
 } from "lucide-react";
 import DualSlider from "./DualSlider";
@@ -329,45 +329,68 @@ export default function GoalDetailSheet({
             {/* Left main panel */}
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", minWidth: 0 }}>
 
-              {/* Goal header */}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", marginBottom: "18px" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h2 style={{ fontSize: "20px", fontWeight: 800, color: "#1C1917", lineHeight: 1.35, margin: "0 0 6px" }}>
-                    {goal.statement}
-                  </h2>
-                  {goal.outcome && (
-                    <p style={{ fontSize: "12px", color: "#78716C", fontStyle: "italic", margin: "0 0 10px", lineHeight: 1.5 }}>
-                      &ldquo;{goal.outcome}&rdquo;
-                    </p>
-                  )}
-                  <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#78716C" }}>
-                      <CalendarDays size={11} color="#A8A29E" /> Target: {fmtShort(goal.deadline)}
+              {/* ── Header card ── */}
+              <div style={{ backgroundColor: "#F8FAFB", borderRadius: "16px", border: "1px solid #E5E9EE", padding: "20px 20px 0", marginBottom: "20px" }}>
+
+                {/* Top row: icon + text + ring */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", marginBottom: "18px" }}>
+
+                  {/* Area icon */}
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 4px 14px ${color}40` }}>
+                    <AreaIcon size={26} color="#FFFFFF" />
+                  </div>
+
+                  {/* Text */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color, display: "inline-block", marginBottom: "4px" }}>
+                      {areaLabel}
                     </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#78716C" }}>
-                      <Sparkles size={11} color="#A8A29E" /> Created: {fmtShort(new Date(goal.createdAt).toISOString().slice(0, 10))}
-                    </span>
+                    <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#1C1917", lineHeight: 1.3, margin: "0 0 5px" }}>
+                      {goal.statement}
+                    </h2>
+                    {goal.outcome && (
+                      <p style={{ fontSize: "13px", color: "#6B7280", fontStyle: "italic", margin: "0 0 10px", lineHeight: 1.5 }}>
+                        &ldquo;{goal.outcome}&rdquo;
+                      </p>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "#6B7280" }}>
+                        <CalendarDays size={12} color="#9CA3AF" /> Target: {fmtShort(goal.deadline)}
+                      </span>
+                      <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "#6B7280" }}>
+                        <Clock size={12} color="#9CA3AF" /> Created: {fmtShort(new Date(goal.createdAt).toISOString().slice(0, 10))}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress ring */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                    <CircularProgress value={goal.progress} color={color} />
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#6B7280", margin: "2px 0 0", textAlign: "center" }}>Overall Progress</p>
                   </div>
                 </div>
-                <CircularProgress value={goal.progress} color={color} />
-              </div>
 
-              {/* Stats bar */}
-              <div style={{ display: "flex", backgroundColor: areaBg, borderRadius: "12px", border: `1px solid ${color}20`, overflow: "hidden", marginBottom: "18px" }}>
-                {[
-                  { value: milestones.length, label: "Milestones" },
-                  { value: tasks.length,       label: "Tasks" },
-                  { value: linkedHabits.length, label: "Habits" },
-                  { value: daysLeft,            label: "Days Left" },
-                ].map((s, i) => (
-                  <div key={i} style={{ flex: 1, padding: "11px 6px", textAlign: "center", borderRight: `1px solid ${color}20` }}>
-                    <p style={{ fontSize: "20px", fontWeight: 800, color, margin: "0 0 1px", lineHeight: 1 }}>{s.value}</p>
-                    <p style={{ fontSize: "10px", fontWeight: 600, color: "#78716C", margin: 0 }}>{s.label}</p>
+                {/* Stats chips row */}
+                <div style={{ display: "flex", gap: "8px", paddingBottom: "16px", flexWrap: "wrap" }}>
+                  {[
+                    { value: milestones.length, label: "Milestones" },
+                    { value: tasks.length,       label: "Tasks" },
+                    { value: linkedHabits.length, label: "Habits" },
+                    { value: daysLeft,            label: "Days Left" },
+                  ].map(s => (
+                    <div key={s.label} style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E9EE", borderRadius: "10px", padding: "8px 18px", textAlign: "center" }}>
+                      <p style={{ fontSize: "20px", fontWeight: 800, color: "#1C1917", margin: "0 0 1px", lineHeight: 1 }}>{s.value}</p>
+                      <p style={{ fontSize: "10px", fontWeight: 500, color: "#6B7280", margin: 0 }}>{s.label}</p>
+                    </div>
+                  ))}
+                  {/* Health chip */}
+                  <div style={{ backgroundColor: HEALTH_BG[health], border: `1px solid ${HEALTH_COLOR[health]}30`, borderRadius: "10px", padding: "8px 18px", textAlign: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", marginBottom: "1px" }}>
+                      <Activity size={13} color={HEALTH_COLOR[health]} />
+                      <p style={{ fontSize: "14px", fontWeight: 800, color: HEALTH_COLOR[health], margin: 0, lineHeight: 1 }}>{health}</p>
+                    </div>
+                    <p style={{ fontSize: "10px", fontWeight: 500, color: "#6B7280", margin: 0 }}>Goal Health</p>
                   </div>
-                ))}
-                <div style={{ flex: 1, padding: "11px 6px", textAlign: "center" }}>
-                  <p style={{ fontSize: "13px", fontWeight: 800, color: HEALTH_COLOR[health], margin: "0 0 1px", lineHeight: 1 }}>{health}</p>
-                  <p style={{ fontSize: "10px", fontWeight: 600, color: "#78716C", margin: 0 }}>Goal Health</p>
                 </div>
               </div>
 
@@ -769,8 +792,7 @@ function CircularProgress({ value, color }: { value: number; color: string }) {
           strokeDasharray={c} strokeDashoffset={offset}
           strokeLinecap="round" transform="rotate(-90 48 48)"
           style={{ transition: "stroke-dashoffset 0.4s ease" }} />
-        <text x="48" y="44" textAnchor="middle" dominantBaseline="middle" fontSize="17" fontWeight="800" fill={color}>{value}%</text>
-        <text x="48" y="62" textAnchor="middle" dominantBaseline="middle" fontSize="8" fill="#A8A29E" fontWeight="600">Overall</text>
+        <text x="48" y="48" textAnchor="middle" dominantBaseline="middle" fontSize="18" fontWeight="800" fill={color}>{value}%</text>
       </svg>
     </div>
   );
