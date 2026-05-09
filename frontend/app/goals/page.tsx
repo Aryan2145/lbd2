@@ -102,7 +102,7 @@ export default function GoalsPage() {
   };
 
   return (
-    <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
+    <div style={{ minHeight: "100%", backgroundColor: "#FFFFFF" }}>
 
       {/* Header */}
       <div className="px-page" style={{ paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
