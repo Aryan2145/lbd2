@@ -233,41 +233,19 @@ export default function GoalDetailSheet({
         zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
 
-        {/* Top bar */}
-        <div style={{
-          padding: "13px 20px", borderBottom: "1px solid #EDE5D8",
-          display: "flex", alignItems: "center", gap: "12px",
-          flexShrink: 0, backgroundColor: "#FFFFFF",
-        }}>
-          {/* Back / close button always visible as page-nav */}
-          <button
-            onClick={() => { if (mode === "edit") { setMode("view"); } else { onClose(); } }}
-            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", color: "#78716C", fontSize: "13px", fontWeight: 600, padding: "4px 0", flexShrink: 0 }}
-          >
-            <ArrowLeft size={16} /> {mode === "edit" ? "Back" : "Goals"}
-          </button>
-          <div style={{ flex: 1 }}>
-            {mode === "view" ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: 26, height: 26, borderRadius: "50%", backgroundColor: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <AreaIcon size={13} color="#FFFFFF" />
-                </div>
-                <span style={{ fontSize: "12px", fontWeight: 700, color }}>{areaLabel}</span>
-              </div>
-            ) : (
-              <p style={{ fontSize: "13px", fontWeight: 700, color: "#F97316", margin: 0 }}>Editing goal</p>
-            )}
-          </div>
-          {mode === "view" && (
-            <button onClick={enterEdit} style={{ width: 32, height: 32, borderRadius: "8px", backgroundColor: "#FFF7ED", border: "1px solid #FED7AA", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Pencil size={13} color="#F97316" />
-            </button>
-          )}
-        </div>
+        {/* Floating back arrow — no dedicated bar */}
+        <button
+          onClick={() => { if (mode === "edit") { setMode("view"); } else { onClose(); } }}
+          style={{ position: "absolute", top: 14, left: 18, zIndex: 10, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", color: "#78716C", fontSize: "13px", fontWeight: 600, padding: "4px 6px", borderRadius: "8px" }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F5F0EB"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
+        >
+          <ArrowLeft size={15} /> {mode === "edit" ? "Back" : "Goals"}
+        </button>
 
         {/* Body */}
         {mode === "edit" ? (
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "52px 28px 24px" }}>
             <EditField label="Life Area">
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 {(Object.keys(AREA_META) as LifeArea[]).map(a => (
@@ -327,10 +305,14 @@ export default function GoalDetailSheet({
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
             {/* Left main panel */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", minWidth: 0 }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "48px 24px 20px", minWidth: 0 }}>
 
               {/* ── Header card ── */}
-              <div style={{ backgroundColor: "#F8FAFB", borderRadius: "16px", border: "1px solid #E5E9EE", padding: "20px 20px 0", marginBottom: "20px" }}>
+              <div style={{ position: "relative", backgroundColor: "#F8FAFB", borderRadius: "16px", border: "1px solid #E5E9EE", padding: "20px 20px 0", marginBottom: "20px" }}>
+                {/* Edit button */}
+                <button onClick={enterEdit} style={{ position: "absolute", top: 14, right: 14, width: 30, height: 30, borderRadius: "8px", backgroundColor: "#FFF7ED", border: "1px solid #FED7AA", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Pencil size={12} color="#F97316" />
+                </button>
 
                 {/* Top row: icon + text + ring */}
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", marginBottom: "18px" }}>
