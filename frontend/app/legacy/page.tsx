@@ -12,7 +12,7 @@ import PurposeBox, {
 const ROLES = [
   {
     id: "spouse",
-    title: "Partner",
+    title: "Husband / Wife",
     question: "Your partner is sitting alone in a coffee shop, thinking about you. What do you want to be true in their mind in that moment?",
   },
   {
@@ -165,7 +165,7 @@ export default function LegacyPage() {
   const progressPct = (completedCount / ROLES.length) * 100;
 
   return (
-    <div className="min-h-full" style={{ backgroundColor: "#FAF5EE" }}>
+    <div className="min-h-full" style={{ backgroundColor: "#FFFFFF" }}>
 
       {/* Achievement Toast */}
       {showAchievement && (
@@ -193,26 +193,29 @@ export default function LegacyPage() {
           <p
             style={{
               fontSize: "10px",
-              fontWeight: 600,
-              letterSpacing: "0.1em",
+              fontWeight: 700,
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
               color: "#F97316",
-              marginBottom: "4px",
+              marginBottom: "6px",
             }}
           >
-            Identity
+            Legacy
           </p>
           <h1
             style={{
-              fontSize: "22px",
-              fontWeight: 700,
+              fontSize: "26px",
+              fontWeight: 800,
               color: "#1C1917",
               letterSpacing: "-0.02em",
               margin: 0,
-              lineHeight: 1.2,
+              lineHeight: 1.15,
+              paddingBottom: "6px",
+              borderBottom: "3px solid #F97316",
+              display: "inline-block",
             }}
           >
-            Your Legacy
+            My Legacy
           </h1>
         </div>
 
@@ -220,8 +223,8 @@ export default function LegacyPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
 
           <div style={{ textAlign: "right" }}>
-            <p style={{ fontSize: "11px", color: "#57534E", marginBottom: "2px" }}>
-              Roles complete
+            <p style={{ fontSize: "11px", color: "#44403C", marginBottom: "2px", fontWeight: 500 }}>
+              People considered
             </p>
             <p
               style={{
@@ -254,33 +257,46 @@ export default function LegacyPage() {
 
       {/* Full-width quote banner */}
       <div
-        className="px-6 sm:px-12"
+        className="px-4 sm:px-6 lg:px-8"
         style={{
-          paddingTop: "32px",
-          paddingBottom: "32px",
+          paddingTop: "20px",
+          paddingBottom: "20px",
           borderBottom: "1px solid #EDE5D8",
-          backgroundColor: "#FDFAF7",
-          textAlign: "center",
+          backgroundColor: "#FFFFFF",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "16px",
         }}
       >
+        <span style={{
+          fontSize: "52px",
+          lineHeight: 0.8,
+          color: "#F97316",
+          fontFamily: "Georgia, serif",
+          flexShrink: 0,
+          marginTop: "4px",
+          opacity: 0.7,
+        }}>"</span>
         <p
           style={{
-            fontSize: "18px",
+            fontSize: "19px",
             color: "#44403C",
             lineHeight: 1.75,
             margin: 0,
             fontWeight: 400,
           }}
         >
-          Years from now, you are gone. What do you want the people who knew you to say in their most honest moments?{" "}
-          <span style={{ color: "#1C1917", fontWeight: 700 }}>
+          Years from now, you are gone. What do you want the people who{" "}
+          <em>knew you</em> to say in their most honest moments?
+          <br />
+          <span style={{ color: "#F97316", fontWeight: 700 }}>
             The pattern in their answers becomes your purpose.
           </span>
         </p>
       </div>
 
       {/* Main content: 3×2 grid + Your North Star column */}
-      <div className="flex flex-col xl:flex-row gap-6 px-4 sm:px-6 lg:px-8 py-6 pb-8 items-start">
+      <div className="flex flex-col xl:flex-row gap-6 px-4 sm:px-6 lg:px-8 pt-4 pb-8 items-start">
 
         {/* Left: 3×2 role cards grid */}
         <div style={{ flex: 1, minWidth: 0, width: "100%" }}>
@@ -317,10 +333,10 @@ export default function LegacyPage() {
           <p
             style={{
               fontSize: "10px",
-              fontWeight: 600,
+              fontWeight: 700,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              color: "#F97316",
+              color: "#92681A",
               marginBottom: "12px",
             }}
           >

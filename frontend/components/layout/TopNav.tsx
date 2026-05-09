@@ -213,8 +213,8 @@ export default function TopNav() {
       {/* ── Header bar ─────────────────────────────────────────────────────── */}
       <header style={{
         height: "56px",
-        backgroundColor: "#FFFFFF",
-        borderBottom: "1px solid #E8DDD0",
+        backgroundColor: "#EA580C",
+        borderBottom: "1px solid rgba(0,0,0,0.1)",
         display: "flex",
         alignItems: "center",
         paddingLeft: "16px",
@@ -232,31 +232,38 @@ export default function TopNav() {
           onClick={() => setMobileOpen(true)}
           style={{
             width: "34px", height: "34px", borderRadius: "8px",
-            border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+            border: "1px solid rgba(255,255,255,0.3)", backgroundColor: "transparent",
             cursor: "pointer",
           }}
         >
-          <Menu size={16} color="#78716C" />
+          <Menu size={16} color="#FFFFFF" />
         </button>
 
         {/* Logo */}
         <Link
           href="/legacy"
           style={{
-            display: "flex", alignItems: "center", gap: "8px",
+            display: "flex", alignItems: "center", gap: "9px",
             textDecoration: "none", flexShrink: 0,
-            marginRight: "8px",
+            marginRight: "12px",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.png"
-            alt=""
-            style={{ width: 28, height: 28, display: "block" }}
-          />
+          <div style={{
+            width: 30, height: 30, borderRadius: 8,
+            backgroundColor: "rgba(255,255,255,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt=""
+              style={{ width: 20, height: 20, display: "block" }}
+            />
+          </div>
           <span
             className="hidden sm:inline"
-            style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", letterSpacing: "-0.01em" }}
+            style={{ fontSize: "15px", fontWeight: 700, color: "#FFFFFF", letterSpacing: "-0.02em" }}
           >
             Life By Design
           </span>
@@ -265,19 +272,22 @@ export default function TopNav() {
         {/* Nav links — desktop only */}
         <nav
           className="hidden md:flex"
-          style={{ alignItems: "center", gap: "2px", flex: 1, justifyContent: "center" }}
+          style={{ alignItems: "center", gap: "1px", flex: 1, justifyContent: "center" }}
         >
           {NAV.map(({ href, label }) => {
             const active = isActive(href);
             return (
               <Link key={href} href={href} style={{
-                padding: "5px 11px", borderRadius: "20px",
-                fontSize: "12px", fontWeight: active ? 600 : 400,
-                color: active ? "#EA580C" : "#78716C",
-                backgroundColor: active ? "#FFF7ED" : "transparent",
+                padding: "6px 12px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                fontWeight: active ? 600 : 400,
+                color: "#FFFFFF",
+                backgroundColor: active ? "rgba(255,255,255,0.18)" : "transparent",
                 textDecoration: "none",
                 whiteSpace: "nowrap",
-                border: active ? "1px solid #FED7AA" : "1px solid transparent",
+                borderBottom: active ? "2px solid rgba(255,255,255,0.9)" : "2px solid transparent",
+                transition: "all 0.15s",
               }}>
                 {label}
               </Link>
@@ -297,14 +307,14 @@ export default function TopNav() {
             onClick={() => toggle("search")}
             style={{
               alignItems: "center", gap: "6px",
-              padding: "5px 12px", borderRadius: "20px",
-              border: `1px solid ${panel === "search" ? "#FED7AA" : "#E8DDD0"}`,
-              backgroundColor: panel === "search" ? "#FFF7ED" : "#FAF5EE",
-              fontSize: "12px", color: panel === "search" ? "#EA580C" : "#A8A29E",
+              padding: "6px 13px", borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.3)",
+              backgroundColor: panel === "search" ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)",
+              fontSize: "12px", color: "rgba(255,255,255,0.85)",
               cursor: "pointer",
             }}
           >
-            <Search size={12} />
+            <Search size={12} color="rgba(255,255,255,0.85)" />
             <span>Search</span>
           </button>
 
@@ -314,21 +324,21 @@ export default function TopNav() {
               onClick={() => toggle("notifications")}
               style={{
                 width: "34px", height: "34px", borderRadius: "50%",
-                border: `1px solid ${panel === "notifications" ? "#FED7AA" : "#E8DDD0"}`,
-                backgroundColor: panel === "notifications" ? "#FFF7ED" : "#FFFFFF",
+                border: "1px solid rgba(255,255,255,0.3)",
+                backgroundColor: panel === "notifications" ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 cursor: "pointer", position: "relative",
               }}
             >
-              <Bell size={14} color={panel === "notifications" ? "#EA580C" : "#78716C"} />
+              <Bell size={14} color="#FFFFFF" />
               {notifCount > 0 && (
                 <span style={{
                   position: "absolute", top: "4px", right: "4px",
                   width: notifCount > 9 ? "14px" : "8px", height: "8px",
-                  borderRadius: "4px", backgroundColor: "#F97316",
-                  border: "1.5px solid #FFFFFF",
+                  borderRadius: "4px", backgroundColor: "#FFFFFF",
+                  border: "1.5px solid #C2410C",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "7px", fontWeight: 700, color: "#FFFFFF",
+                  fontSize: "7px", fontWeight: 700, color: "#C2410C",
                 }}>
                   {notifCount > 9 ? "9+" : ""}
                 </span>
@@ -351,12 +361,13 @@ export default function TopNav() {
               onClick={() => toggle("profile")}
               style={{
                 width: "34px", height: "34px", borderRadius: "50%",
-                background: "linear-gradient(135deg, #F97316, #EA580C)",
+                backgroundColor: "#FFFFFF",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "13px", fontWeight: 700, color: "#FFFFFF",
+                fontSize: "12px", fontWeight: 800, color: "#C2410C",
                 cursor: "pointer",
-                border: panel === "profile" ? "2px solid #EA580C" : "2px solid transparent",
+                border: panel === "profile" ? "2px solid rgba(255,255,255,0.6)" : "2px solid rgba(255,255,255,0.3)",
                 boxSizing: "border-box", flexShrink: 0,
+                letterSpacing: "-0.01em",
               }}
             >
               {initials}

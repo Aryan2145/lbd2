@@ -7,6 +7,8 @@ import {
   Edit3,
   ArrowRight,
   CheckCircle,
+  FileText,
+  BrainCircuit,
 } from "lucide-react";
 
 export type SynthesisState =
@@ -55,7 +57,7 @@ export default function PurposeBox({
     <div
       className="rounded-2xl overflow-hidden transition-all duration-500"
       style={{
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "#FFFDF5",
         border: isSealed ? "2px solid #C9A84C" : "1.5px solid #E8DDD0",
         boxShadow: isSealed
           ? "0 0 0 4px rgba(201,168,76,0.1), 0 8px 32px rgba(201,168,76,0.15)"
@@ -65,18 +67,21 @@ export default function PurposeBox({
       {/* Header */}
       <div
         className="px-5 pt-5 pb-4 flex items-start justify-between"
-        style={{ borderBottom: "1px solid #F2EAE0" }}
+        style={{
+          background: "linear-gradient(135deg, #92681A 0%, #5C3D0A 100%)",
+          borderBottom: "1px solid #5C3D0A",
+        }}
       >
         <div>
           <p
-            className="text-[10px] font-semibold tracking-widest uppercase"
-            style={{ color: "#F97316" }}
+            className="text-[10px] font-bold tracking-widest uppercase"
+            style={{ color: "#FFFFFF" }}
           >
             Your Purpose
           </p>
           <h3
-            className="text-sm font-semibold mt-0.5"
-            style={{ color: "#1C1917" }}
+            className="text-sm font-bold mt-0.5"
+            style={{ color: "#FFFFFF" }}
           >
             North Star Statement
           </h3>
@@ -84,8 +89,8 @@ export default function PurposeBox({
         <div className="flex items-center gap-2 mt-0.5">
           {isSealed && (
             <span
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
-              style={{ backgroundColor: "#F5E6C0", color: "#92681A" }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+              style={{ backgroundColor: "rgba(255,255,255,0.25)", color: "#FFFFFF" }}
             >
               <Lock size={9} />
               Sealed
@@ -95,7 +100,7 @@ export default function PurposeBox({
             <button
               onClick={onEdit}
               className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md transition-colors duration-150"
-              style={{ color: "#78716C", backgroundColor: "#F5F0EB" }}
+              style={{ color: "#FFFFFF", backgroundColor: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.35)" }}
             >
               <Edit3 size={10} />
               Edit
@@ -153,8 +158,8 @@ export default function PurposeBox({
               onClick={() => onSaveEdit(editText)}
               className="flex-1 py-2 rounded-xl text-xs font-medium text-white transition-all duration-150"
               style={{
-                background: "linear-gradient(135deg, #F97316, #EA580C)",
-                boxShadow: "0 2px 10px rgba(249,115,22,0.25)",
+                background: "linear-gradient(135deg, #C9A84C, #A87A22)",
+                boxShadow: "0 4px 20px rgba(201,168,76,0.35)",
               }}
             >
               Save Changes
@@ -162,7 +167,7 @@ export default function PurposeBox({
             <button
               onClick={onCancelEdit}
               className="px-4 py-2 rounded-xl text-xs transition-all duration-150"
-              style={{ backgroundColor: "#F5F0EB", color: "#78716C" }}
+              style={{ backgroundColor: "#FEE2E2", color: "#B91C1C", fontWeight: 600 }}
             >
               Cancel
             </button>
@@ -188,7 +193,7 @@ export default function PurposeBox({
             <button
               onClick={onEdit}
               className="w-full py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-150"
-              style={{ backgroundColor: "#F5F0EB", color: "#78716C" }}
+              style={{ background: "linear-gradient(135deg, #92681A, #5C3D0A)", color: "#FFFFFF", fontWeight: 600, boxShadow: "0 2px 10px rgba(92,61,10,0.3)" }}
             >
               <Edit3 size={11} />
               Refine Purpose
@@ -201,40 +206,77 @@ export default function PurposeBox({
 }
 
 function IdleBox() {
+  const steps = [
+    { Icon: FileText,    title: "Reflect deeply across all areas of life", desc: "Your honest answers shape your legacy." },
+    { Icon: BrainCircuit, title: "AI analyzes your unique patterns",         desc: "We find the themes that define your impact." },
+    { Icon: CheckCircle, title: "Receive your Legacy Summary",              desc: "A personalized legacy statement just for you." },
+  ];
+
   return (
     <div
-      className="rounded-2xl flex flex-col items-center justify-center text-center py-12 px-8"
       style={{
         backgroundColor: "#FFFFFF",
-        border: "1.5px dashed #E8DDD0",
-        minHeight: "280px",
+        border: "1.5px solid #E8DDD0",
+        borderRadius: "16px",
+        overflow: "hidden",
       }}
     >
-      <div
-        className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4"
-        style={{ backgroundColor: "#FFF7ED" }}
-      >
-        <Sparkles size={18} style={{ color: "#F97316" }} />
+      {/* Top decorative area */}
+      <div style={{
+        background: "linear-gradient(160deg, #FFF7ED 0%, #FFEDD5 100%)",
+        padding: "28px 20px 22px",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "12px",
+        borderBottom: "1px solid #FED7AA",
+        textAlign: "center",
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%",
+          backgroundColor: "rgba(249,115,22,0.12)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <Sparkles size={22} color="#F97316" />
+        </div>
+        <div>
+          <p style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: "0 0 4px" }}>
+            Your North Star Awaits
+          </p>
+          <p style={{ fontSize: "12px", color: "#44403C", margin: 0, lineHeight: 1.55 }}>
+            We're synthesizing all your reflections to uncover the legacy only you can leave.
+          </p>
+        </div>
       </div>
-      <p className="text-sm font-semibold mb-1.5" style={{ color: "#1C1917" }}>
-        Your North Star Awaits
-      </p>
-      <p
-        className="text-xs leading-relaxed"
-        style={{ color: "#78716C", maxWidth: "200px" }}
-      >
-        Complete all six role reflections to unlock the AI synthesis.
-      </p>
 
-      {/* Ghost lines */}
-      <div className="mt-7 w-full space-y-2">
-        {[100, 82, 91, 72].map((w, i) => (
-          <div
-            key={i}
-            className="h-2 rounded-full"
-            style={{ width: `${w}%`, backgroundColor: "#F2EAE0", margin: "0 auto" }}
-          />
+      {/* Steps */}
+      <div style={{ padding: "16px 20px 18px" }}>
+        {steps.map(({ Icon, title, desc }, i) => (
+          <div key={i} style={{ display: "flex", gap: "12px", marginBottom: i < 2 ? "14px" : "16px", alignItems: "flex-start" }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: "8px",
+              backgroundColor: "#FFF7ED",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Icon size={14} color="#F97316" />
+            </div>
+            <div>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", margin: "0 0 2px" }}>{title}</p>
+              <p style={{ fontSize: "11px", color: "#44403C", margin: 0 }}>{desc}</p>
+            </div>
+          </div>
         ))}
+
+        <button
+          disabled
+          style={{
+            width: "100%", padding: "10px", borderRadius: "10px",
+            border: "1px solid #FED7AA", backgroundColor: "#FFF7ED",
+            color: "#EA580C", fontSize: "13px", fontWeight: 600,
+            cursor: "default", opacity: 0.9,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+          }}
+        >
+          <Lock size={13} />
+          Complete more reflections to unlock
+        </button>
       </div>
     </div>
   );
@@ -280,7 +322,7 @@ export function NextStepCard() {
         <p className="text-sm font-semibold" style={{ color: "#1C1917" }}>
           Build Your Vision Board
         </p>
-        <p className="text-xs mt-0.5" style={{ color: "#78716C" }}>
+        <p className="text-xs mt-0.5" style={{ color: "#44403C" }}>
           Map your 7 life areas in 10 years
         </p>
       </div>

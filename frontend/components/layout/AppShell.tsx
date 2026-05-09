@@ -58,7 +58,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const { loaded } = useAppStore();
   const pathname   = usePathname();
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "#FAF5EE", position: "relative" }}>
+    <div className="flex flex-col h-full" style={{ backgroundColor: "#FFFFFF", position: "relative" }}>
       {!loaded && <TopLoadingBar />}
       <TopNav />
       <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
