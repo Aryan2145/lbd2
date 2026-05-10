@@ -1,21 +1,20 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Pencil, Check, Flame, CheckCircle2, Circle,
-  ChevronDown, ChevronUp, ArrowLeft, XCircle, CalendarDays, Clock, Sparkles, Lock,
+  ChevronDown, ChevronUp, ArrowLeft, XCircle, CalendarDays, Clock, Sparkles, Lock, MoreHorizontal,
   Briefcase, Globe, DollarSign, BookOpen, Heart, Activity, type LucideIcon,
 } from "lucide-react";
-import DualSlider from "./DualSlider";
 import type { GoalData, GoalNote, LifeArea, Milestone } from "./GoalCard";
 import { AREA_META } from "./GoalCard";
-import type { HabitData } from "@/components/habits/HabitCard";
+import type { HabitData, HabitFrequency, HabitType } from "@/components/habits/HabitCard";
 import {
   AREA_META as HABIT_AREA_META, FREQ_LABEL, calcStreak,
   isHabitDoneOnDate, isScheduledDay, toLocalDate,
 } from "@/components/habits/HabitCard";
 import type { TaskData } from "@/components/tasks/TaskCard";
-import { Q_META, daysUntil } from "@/components/tasks/TaskCard";
+import { Q_META, daysUntil, toTaskDate, type EisenhowerQ } from "@/components/tasks/TaskCard";
 import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -126,20 +125,37 @@ interface Props {
   onDelete:       (id: string) => void;
   onUpdateTask?:  (t: TaskData)  => void;
   onUpdateHabit?: (h: HabitData) => void;
-  onAddTask?:     (goalId: string, milestoneId: string) => void;
-  onAddHabit?:    (goalId: string, milestoneId: string) => void;
+  onSaveTask?:    (t: TaskData)  => void;
+  onSaveHabit?:   (h: HabitData) => void;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function GoalDetailSheet({
   goal, linkedHabits, tasks, onClose, onUpdate, onDelete,
-  onUpdateTask, onUpdateHabit, onAddTask, onAddHabit,
+  onUpdateTask, onUpdateHabit, onSaveTask, onSaveHabit,
 }: Props) {
   const [mode,             setMode]             = useState<"view" | "edit">("view");
   const [noteText,         setNoteText]         = useState("");
   const [popupMilestoneId, setPopupMilestoneId] = useState<string | null>(null);
   const [expandedId,       setExpandedId]       = useState<string | null>(null);
   const [userInteracted,   setUserInteracted]   = useState(false);
+  const [taskCreateCtx,    setTaskCreateCtx]    = useState<{ goalId: string; milestoneId: string } | null>(null);
+  const [tcForm,           setTcForm]           = useState({ title: "", description: "", quadrant: "Q2" as EisenhowerQ, deadline: "" });
+  const [tcDelegateTo,     setTcDelegateTo]     = useState("");
+  const [tcDelegateNudge,  setTcDelegateNudge]  = useState(false);
+  const [tcQ4Bang,         setTcQ4Bang]         = useState(false);
+
+  const [habitCreateCtx,   setHabitCreateCtx]   = useState<{ goalId: string; milestoneId: string } | null>(null);
+  const [hcName,           setHcName]           = useState("");
+  const [hcDesc,           setHcDesc]           = useState("");
+  const [hcArea,           setHcArea]           = useState<LifeArea>("health");
+  const [hcFrequency,      setHcFrequency]      = useState<HabitFrequency>("daily");
+  const [hcCustomDays,     setHcCustomDays]     = useState<number[]>([1,2,3,4,5]);
+  const [hcType,           setHcType]           = useState<HabitType>("binary");
+  const [hcTarget,         setHcTarget]         = useState(1);
+  const [hcUnit,           setHcUnit]           = useState("");
+  const [hcCue,            setHcCue]            = useState("");
+  const [hcReward,         setHcReward]         = useState("");
 
   // Edit form
   const [eOutcome,   setEOutcome]   = useState("");
@@ -233,19 +249,16 @@ export default function GoalDetailSheet({
         zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
 
-        {/* Floating back arrow — no dedicated bar */}
-        <button
-          onClick={() => { if (mode === "edit") { setMode("view"); } else { onClose(); } }}
-          style={{ position: "absolute", top: 14, left: 18, zIndex: 10, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", color: "#78716C", fontSize: "13px", fontWeight: 600, padding: "4px 6px", borderRadius: "8px" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F5F0EB"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
-        >
-          <ArrowLeft size={15} /> {mode === "edit" ? "Back" : "Goals"}
-        </button>
-
         {/* Body */}
         {mode === "edit" ? (
-          <div style={{ flex: 1, overflowY: "auto", padding: "52px 28px 24px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 28px 24px" }}>
+            {/* Back button — scrolls with content */}
+            <button
+              onClick={() => setMode("view")}
+              style={{ display: "flex", alignItems: "center", gap: "5px", color: "#1C1917", fontSize: "13px", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "16px 0 12px", marginBottom: "4px" }}
+            >
+              <ArrowLeft size={15} /> Back
+            </button>
             <EditField label="Life Area">
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 {(Object.keys(AREA_META) as LifeArea[]).map(a => (
@@ -305,76 +318,87 @@ export default function GoalDetailSheet({
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
             {/* Left main panel */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "48px 24px 20px", minWidth: 0 }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 20px", minWidth: 0 }}>
+
+              {/* Back button — scrolls with content */}
+              <button
+                onClick={onClose}
+                style={{ display: "flex", alignItems: "center", gap: "5px", color: "#1C1917", fontSize: "13px", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "16px 0 12px", marginBottom: "4px" }}
+              >
+                <ArrowLeft size={15} /> Goals
+              </button>
 
               {/* ── Header card ── */}
-              <div style={{ position: "relative", backgroundColor: "#F8FAFB", borderRadius: "16px", border: "1px solid #E5E9EE", padding: "20px 20px 0", marginBottom: "20px" }}>
-                {/* Edit button — floats at top-right corner of card */}
-                <button onClick={enterEdit} style={{ position: "absolute", top: -12, right: -10, width: 28, height: 28, borderRadius: "8px", backgroundColor: "#F8FAFB", border: "1px solid #E5E9EE", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                  <Pencil size={12} color="#6B7280" />
+              <div style={{ position: "relative", backgroundColor: areaBg, borderRadius: "16px", border: `1px solid ${color}30`, padding: "20px", marginBottom: "20px" }}>
+                {/* Edit button */}
+                <button onClick={enterEdit} style={{ position: "absolute", top: -12, right: -10, width: 28, height: 28, borderRadius: "8px", backgroundColor: areaBg, border: `1px solid ${color}30`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                  <Pencil size={12} color={color} />
                 </button>
 
-                {/* Top row: icon + text + ring */}
-                <div style={{ display: "flex", alignItems: "flex-start", gap: "16px", marginBottom: "18px" }}>
+                {/* Card body: left | right (ring) */}
+                <div style={{ display: "flex", alignItems: "stretch", gap: "20px" }}>
 
-                  {/* Area icon */}
-                  <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 4px 14px ${color}40` }}>
-                    <AreaIcon size={26} color="#FFFFFF" />
-                  </div>
+                  {/* Left column */}
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
 
-                  {/* Text */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: "12px", fontWeight: 700, color, display: "inline-block", marginBottom: "4px" }}>
-                      {areaLabel}
-                    </span>
-                    <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#1C1917", lineHeight: 1.3, margin: "0 0 5px" }}>
-                      {goal.statement}
-                    </h2>
-                    {goal.outcome && (
-                      <p style={{ fontSize: "13px", color: "#6B7280", fontStyle: "italic", margin: "0 0 10px", lineHeight: 1.5 }}>
-                        &ldquo;{goal.outcome}&rdquo;
-                      </p>
-                    )}
-                    <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "#6B7280" }}>
-                        <CalendarDays size={12} color="#9CA3AF" /> Target: {fmtShort(goal.deadline)}
-                      </span>
-                      <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "#6B7280" }}>
-                        <Clock size={12} color="#9CA3AF" /> Created: {fmtShort(new Date(goal.createdAt).toISOString().slice(0, 10))}
-                      </span>
+                    {/* Icon + text */}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
+                      <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 4px 14px ${color}40` }}>
+                        <AreaIcon size={26} color="#FFFFFF" />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color, display: "inline-block", marginBottom: "4px" }}>
+                          {areaLabel}
+                        </span>
+                        <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#1C1917", lineHeight: 1.3, margin: "0 0 5px" }}>
+                          {goal.statement}
+                        </h2>
+                        {goal.outcome && (
+                          <p style={{ fontSize: "13px", color: "#374151", fontStyle: "italic", margin: "0 0 10px", lineHeight: 1.5 }}>
+                            &ldquo;{goal.outcome}&rdquo;
+                          </p>
+                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+                          <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "#374151" }}>
+                            <CalendarDays size={12} color="#6B7280" /> Target: {fmtShort(goal.deadline)}
+                          </span>
+                          <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "#374151" }}>
+                            <Clock size={12} color="#6B7280" /> Created: {fmtShort(new Date(goal.createdAt).toISOString().slice(0, 10))}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Stats chips */}
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      {[
+                        { value: milestones.length, label: "Milestones" },
+                        { value: tasks.length,       label: "Tasks" },
+                        { value: linkedHabits.length, label: "Habits" },
+                        { value: daysLeft,            label: "Days Left" },
+                      ].map(s => (
+                        <div key={s.label} style={{ flex: 1, backgroundColor: "#FFFFFF", border: `1px solid ${color}25`, borderRadius: "10px", padding: "10px 6px", textAlign: "center" }}>
+                          <p style={{ fontSize: "20px", fontWeight: 800, color, margin: "0 0 1px", lineHeight: 1 }}>{s.value}</p>
+                          <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", margin: 0 }}>{s.label}</p>
+                        </div>
+                      ))}
+                      {/* Health chip */}
+                      <div style={{ flex: 1, backgroundColor: HEALTH_BG[health], border: `1px solid ${HEALTH_COLOR[health]}40`, borderRadius: "10px", padding: "10px 6px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                        <p style={{ fontSize: "14px", fontWeight: 800, color: HEALTH_COLOR[health], margin: "0 0 2px", lineHeight: 1 }}>{health}</p>
+                        <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", margin: 0 }}>Goal Health</p>
+                      </div>
+                    </div>
+
+                  </div>{/* end left column */}
+
+                  {/* Right column — ring vertically centered */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0, borderLeft: `1px solid ${color}20`, paddingLeft: "20px" }}>
+                    <CircularProgress value={goal.progress} color={color} onChange={handleProgress} />
+                    <p style={{ fontSize: "11px", fontWeight: 700, color: "#374151", margin: "4px 0 0", textAlign: "center" }}>Overall Progress</p>
                   </div>
 
-                  {/* Progress ring */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                    <CircularProgress value={goal.progress} color={color} />
-                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#6B7280", margin: "2px 0 0", textAlign: "center" }}>Overall Progress</p>
-                  </div>
-                </div>
-
-                {/* Stats chips row */}
-                <div style={{ display: "flex", gap: "8px", paddingBottom: "16px", flexWrap: "wrap" }}>
-                  {[
-                    { value: milestones.length, label: "Milestones" },
-                    { value: tasks.length,       label: "Tasks" },
-                    { value: linkedHabits.length, label: "Habits" },
-                    { value: daysLeft,            label: "Days Left" },
-                  ].map(s => (
-                    <div key={s.label} style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E9EE", borderRadius: "10px", padding: "8px 18px", textAlign: "center" }}>
-                      <p style={{ fontSize: "20px", fontWeight: 800, color: "#1C1917", margin: "0 0 1px", lineHeight: 1 }}>{s.value}</p>
-                      <p style={{ fontSize: "10px", fontWeight: 500, color: "#6B7280", margin: 0 }}>{s.label}</p>
-                    </div>
-                  ))}
-                  {/* Health chip */}
-                  <div style={{ backgroundColor: HEALTH_BG[health], border: `1px solid ${HEALTH_COLOR[health]}30`, borderRadius: "10px", padding: "8px 18px", textAlign: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", marginBottom: "1px" }}>
-                      <Activity size={13} color={HEALTH_COLOR[health]} />
-                      <p style={{ fontSize: "14px", fontWeight: 800, color: HEALTH_COLOR[health], margin: 0, lineHeight: 1 }}>{health}</p>
-                    </div>
-                    <p style={{ fontSize: "10px", fontWeight: 500, color: "#6B7280", margin: 0 }}>Goal Health</p>
-                  </div>
-                </div>
-              </div>
+                </div>{/* end card body */}
+              </div>{/* end header card */}
 
               {/* Stale alert */}
               {stale && (
@@ -386,224 +410,245 @@ export default function GoalDetailSheet({
                 </div>
               )}
 
-              {/* Update Progress slider */}
-              <div style={{ marginBottom: "20px" }}>
-                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#A8A29E", marginBottom: "10px" }}>Update Progress</p>
-                <DualSlider value={goal.progress} onChange={handleProgress} startLabel="Not started" endLabel="Complete" />
-              </div>
-
               {/* Milestone Roadmap */}
               {milestones.length > 0 && (
                 <div style={{ marginBottom: "20px" }}>
-                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#A8A29E", marginBottom: "14px" }}>Milestone Roadmap</p>
 
-                  {/* Horizontal stepper */}
-                  <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "16px", overflowX: "auto", paddingBottom: "4px" }}>
-                    {milestones.map((m, idx) => {
-                      const isCompleted = m.completed;
-                      const isCurrent   = m.id === firstIncompleteId;
-                      const isLocked    = !isCompleted && !isCurrent;
-                      return (
-                        <div key={m.id} style={{ display: "flex", alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none", maxWidth: 110 }}>
-                            <div
-                              onClick={() => toggleExpand(m.id)}
-                              style={{
-                                width: isLocked ? 26 : 32, height: isLocked ? 26 : 32, borderRadius: "50%",
-                                backgroundColor: isCompleted || isCurrent ? color : "#EDE8E1",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                boxShadow: isCurrent ? `0 0 0 4px ${color}28` : "none",
-                                cursor: "pointer", flexShrink: 0,
-                              }}>
-                              {isCompleted && <Check size={14} color="#fff" strokeWidth={3} />}
-                              {isCurrent   && <div style={{ width: 11, height: 11, borderRadius: "50%", backgroundColor: "#fff" }} />}
-                              {isLocked    && <Lock size={10} color="#A8A29E" />}
-                            </div>
-                            <div style={{ textAlign: "center", marginTop: "6px", padding: "0 2px" }}>
-                              <p style={{ fontSize: "10px", fontWeight: 700, color: isLocked ? "#A8A29E" : "#1C1917", margin: "0 0 1px", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 100 }}>
-                                {idx + 1}. {m.title}
-                              </p>
-                              <p style={{ fontSize: "9px", fontWeight: 600, margin: "0 0 1px", color: isCompleted ? "#16A34A" : isCurrent ? color : "#A8A29E" }}>
-                                {isCompleted ? "Completed" : isCurrent ? "In Progress" : "Locked"}
-                              </p>
-                              <p style={{ fontSize: "9px", color: "#A8A29E", margin: 0 }}>{fmtShort(m.deadline)}</p>
-                            </div>
-                          </div>
-                          {idx < milestones.length - 1 && (
-                            <div style={{ flex: 1, height: "2px", marginTop: isLocked ? 12 : 15, backgroundColor: m.completed ? color : `${color}25`, minWidth: 8 }} />
-                          )}
-                        </div>
-                      );
-                    })}
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                      <Activity size={15} color="#374151" />
+                      <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>Milestone Roadmap</span>
+                    </div>
+                    <button onClick={() => setPopupMilestoneId(milestones[0]?.id ?? null)} style={{ fontSize: "12px", fontWeight: 600, color, background: "none", border: `1.5px solid ${color}40`, borderRadius: "20px", padding: "4px 12px", cursor: "pointer" }}>
+                      View Details
+                    </button>
                   </div>
 
-                  {/* Expandable milestone cards */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {milestones.map((m, idx) => {
-                      const isCompleted = m.completed;
-                      const isCurrent   = m.id === firstIncompleteId;
-                      const isLocked    = !isCompleted && !isCurrent;
-                      const isExpanded  = activeExpandedId === m.id;
-                      const mTasks  = tasks.filter(t => t.linkedMilestoneId === m.id && t.linkedGoalId === goal.id);
-                      const mHabits = linkedHabits.filter(h => h.linkedMilestoneId === m.id);
-                      const completedMT = mTasks.filter(t => t.status === "complete").length;
-                      const statusLabel = isCompleted ? "Completed" : isCurrent ? "In Progress" : "Locked";
-                      const statusColor = isCompleted ? "#16A34A" : isCurrent ? color : "#A8A29E";
-                      const statusBg    = isCompleted ? "#F0FDF4"  : isCurrent ? `${color}18` : "#F5F0EB";
+                  {/* Timeline + cards */}
+                  <div style={{ overflowX: "auto", paddingBottom: "4px" }}>
+                    <div style={{ display: "flex", width: "100%", minWidth: `${milestones.length * 120}px` }}>
+                      {milestones.map((m, idx) => {
+                        const isCompleted = m.completed;
+                        const isCurrent   = m.id === firstIncompleteId;
+                        const isLocked    = !isCompleted && !isCurrent;
+                        const isExpanded  = activeExpandedId === m.id;
+                        const prevDeadline = idx === 0
+                          ? new Date(goal.createdAt).toISOString().slice(0, 10)
+                          : milestones[idx - 1].deadline;
+                        const dateRange = `${fmtShort(prevDeadline).replace(/,\s*\d{4}$/, "")} – ${fmtShort(m.deadline)}`;
 
-                      return (
-                        <div key={m.id} style={{ borderRadius: "12px", border: `1px solid ${isExpanded ? color + "50" : "#EDE5D8"}`, overflow: "hidden", boxShadow: isExpanded ? `0 2px 12px ${color}15` : "none" }}>
-                          {/* Header */}
-                          <div onClick={() => toggleExpand(m.id)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", cursor: "pointer", backgroundColor: isExpanded ? areaBg : "#FFFFFF" }}>
-                            <span style={{ fontSize: "10px", fontWeight: 600, color: "#A8A29E", flexShrink: 0 }}>
-                              {idx + 1} of {milestones.length}
-                            </span>
-                            <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                              <p style={{ fontSize: "14px", fontWeight: 700, color: isLocked ? "#A8A29E" : "#1C1917", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {m.title}
-                              </p>
-                              {isLocked && <Lock size={12} color="#A8A29E" style={{ flexShrink: 0 }} />}
-                              <span style={{ fontSize: "10px", fontWeight: 700, color: statusColor, backgroundColor: statusBg, padding: "2px 8px", borderRadius: "20px", flexShrink: 0 }}>
-                                {statusLabel}
-                              </span>
+                        const nodeColor   = isCompleted ? "#16A34A" : isCurrent ? color : "#D1D5DB";
+                        const statusLabel = isCompleted ? "Completed" : isCurrent ? "In Progress" : "Locked";
+                        const statusColor = isCompleted ? "#16A34A" : isCurrent ? color : "#374151";
+
+                        return (
+                          <div key={m.id} style={{ display: "flex", alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+                            {/* Node column */}
+                            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+
+                              {/* Timeline row — fixed height so all connectors sit at same Y */}
+                              <div style={{ display: "flex", alignItems: "center", width: "100%", height: 36, marginBottom: "14px" }}>
+                                {/* Left connector */}
+                                <div style={{ flex: 1, height: 2, backgroundColor: idx === 0 ? "transparent" : milestones[idx - 1].completed ? "#16A34A" : `${color}30` }} />
+                                {/* Circle */}
+                                <div style={{
+                                  width: 30,
+                                  height: 30,
+                                  borderRadius: "50%", flexShrink: 0,
+                                  backgroundColor: nodeColor,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  boxShadow: isCurrent ? `0 0 0 5px ${color}22` : "none",
+                                  border: isLocked ? "2px solid #D1D5DB" : "none",
+                                }}>
+                                  {isCompleted && <Check size={13} color="#fff" strokeWidth={3} />}
+                                  {isCurrent   && <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#fff" }} />}
+                                  {isLocked    && <Lock size={10} color="#9CA3AF" />}
+                                </div>
+                                {/* Right connector */}
+                                <div style={{ flex: 1, height: 2, backgroundColor: idx === milestones.length - 1 ? "transparent" : m.completed ? "#16A34A" : `${color}30` }} />
+                              </div>
+
+                              {/* Card */}
+                              <div
+                                onClick={() => toggleExpand(m.id)}
+                                style={{
+                                  position: "relative",
+                                  width: "calc(100% - 16px)",
+                                  maxWidth: 180,
+                                  borderRadius: "10px",
+                                  border: `1.5px solid ${isExpanded ? color : isCurrent ? `${color}50` : "#E5E9EE"}`,
+                                  backgroundColor: isCurrent || isExpanded ? `${color}08` : "#FFFFFF",
+                                  padding: "10px 12px",
+                                  cursor: "pointer",
+                                  boxShadow: isExpanded ? `0 2px 10px ${color}15` : "none",
+                                  transition: "border-color 0.15s",
+                                }}
+                              >
+                                {isLocked && (
+                                  <div style={{ position: "absolute", top: 6, right: 6 }}>
+                                    <Lock size={11} color="#9CA3AF" />
+                                  </div>
+                                )}
+                                <p style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917", margin: "0 0 4px", lineHeight: 1.3, paddingRight: isLocked ? "14px" : 0 }}>
+                                  <span style={{ color: isCurrent ? color : "#1C1917" }}>{idx + 1}.</span> {m.title}
+                                </p>
+                                <p style={{ fontSize: "11px", fontWeight: 600, color: statusColor, margin: "0 0 4px" }}>{statusLabel}</p>
+                                <p style={{ fontSize: "12px", fontWeight: 500, color: "#374151", margin: 0 }}>{dateRange}</p>
+                              </div>
+
                             </div>
-                            {isExpanded ? <ChevronUp size={14} color="#A8A29E" /> : <ChevronDown size={14} color="#A8A29E" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Expanded detail panel */}
+                  {activeExpandedId && (() => {
+                    const m = milestones.find(x => x.id === activeExpandedId);
+                    if (!m) return null;
+                    const mIdx        = milestones.findIndex(x => x.id === m.id);
+                    const isCompleted = m.completed;
+                    const isCurrent   = m.id === firstIncompleteId;
+                    const isLocked    = !isCompleted && !isCurrent;
+                    const statusLabel = isCompleted ? "Completed" : isCurrent ? "In Progress" : "Locked";
+                    const statusColor = isCompleted ? "#16A34A" : isCurrent ? color : "#374151";
+                    const statusBg    = isCompleted ? "#F0FDF4"  : isCurrent ? `${color}15` : "#F3F4F6";
+                    const mTasks      = tasks.filter(t => t.linkedMilestoneId === m.id && t.linkedGoalId === goal.id);
+                    const mHabits     = linkedHabits.filter(h => h.linkedMilestoneId === m.id);
+                    const completedMT = mTasks.filter(t => t.status === "complete").length;
+                    const progressPct = mTasks.length > 0 ? Math.round((completedMT / mTasks.length) * 100) : 0;
+                    return (
+                      <div style={{ marginTop: "14px", borderRadius: "14px", border: `1px solid ${color}30`, backgroundColor: areaBg, overflow: "hidden", boxShadow: `0 2px 16px ${color}12` }}>
+
+                        {/* ── Panel header ── */}
+                        <div style={{ padding: "16px 20px 14px", borderBottom: `1px solid ${color}20` }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+
+                            {/* Left: label + title + status */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: "13px", color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>
+                                Milestone {mIdx + 1} of {milestones.length}
+                              </p>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "6px" }}>
+                                <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1C1917", margin: 0, lineHeight: 1.2 }}>{m.title}</h3>
+                                <span style={{ fontSize: "11px", fontWeight: 700, color: statusColor, backgroundColor: statusBg, padding: "3px 10px", borderRadius: "20px", flexShrink: 0 }}>{statusLabel}</span>
+                              </div>
+                            </div>
+
+                            {/* Right: Progress + Due date + menu */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
+                              <div>
+                                <p style={{ fontSize: "10px", fontWeight: 600, color: "#374151", margin: "0 0 4px" }}>Progress</p>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <div style={{ width: 80, height: 5, borderRadius: 3, backgroundColor: `${color}18` }}>
+                                    <div style={{ height: "100%", borderRadius: 3, backgroundColor: color, width: `${progressPct}%` }} />
+                                  </div>
+                                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>{progressPct}%</span>
+                                </div>
+                              </div>
+                              <div>
+                                <p style={{ fontSize: "10px", fontWeight: 600, color: "#374151", margin: "0 0 4px" }}>Due date</p>
+                                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                  <CalendarDays size={12} color="#374151" />
+                                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917" }}>{fmtShort(m.deadline)}</span>
+                                </div>
+                              </div>
+                              {/* ⋮ menu */}
+                              <button onClick={() => setPopupMilestoneId(m.id)} style={{ width: 28, height: 28, borderRadius: "8px", border: "1px solid #E5E9EE", backgroundColor: "#F9F9F9", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <MoreHorizontal size={14} color="#6B7280" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ── Tasks + Habits columns ── */}
+                        <div style={{ padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+
+                          {/* Tasks */}
+                          <div style={{ padding: "14px 16px", borderRadius: "10px", border: `1px solid ${color}20`, backgroundColor: "#FFFFFF" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "10px", marginBottom: "12px", borderBottom: `1px solid ${color}20` }}>
+                              <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Tasks ({mTasks.length})</span>
+                              <button onClick={e => { e.stopPropagation(); setTaskCreateCtx({ goalId: goal.id, milestoneId: m.id }); setTcForm({ title: "", description: "", quadrant: "Q2", deadline: "" }); setTcDelegateTo(""); setTcDelegateNudge(false); setTcQ4Bang(false); }} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                                <Plus size={12} /> Add Task
+                              </button>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", minHeight: 108, maxHeight: 180, overflowY: "auto" }}>
+                            {mTasks.length === 0 ? (
+                              <p style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>No tasks yet</p>
+                            ) : mTasks.map(t => {
+                                  const isDone  = t.status === "complete";
+                                  const isOpen  = t.status === "open";
+                                  const days    = daysUntil(t.deadline);
+                                  const overdue = days < 0 && isOpen;
+                                  const qm      = Q_META[t.quadrant];
+                                  return (
+                                    <div key={t.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5" }}>
+                                      <button
+                                        onClick={e => { e.stopPropagation(); if (isOpen) onUpdateTask?.({ ...t, status: "complete", closedAt: Date.now(), variance: Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86400000) }); }}
+                                        style={{ width: 18, height: 18, borderRadius: "50%", border: isDone ? "none" : "1.5px solid #D1D5DB", backgroundColor: isDone ? "#16A34A" : "#FFFFFF", flexShrink: 0, cursor: isOpen ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        {isDone && <Check size={10} color="#fff" strokeWidth={3} />}
+                                      </button>
+                                      <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: isDone ? "#6B7280" : "#1C1917", textDecoration: isDone ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
+                                        <CalendarDays size={11} color="#9CA3AF" />
+                                        <span style={{ fontSize: "11px", color: overdue ? "#DC2626" : "#374151" }}>
+                                          {overdue ? `${Math.abs(days)}d late` : days === 0 ? "Today" : fmtShort(t.deadline).replace(/,\s*\d{4}$/, "")}
+                                        </span>
+                                      </div>
+                                      <span style={{ fontSize: "10px", fontWeight: 700, flexShrink: 0, color: isDone ? "#16A34A" : qm.color, backgroundColor: isDone ? "#F0FDF4" : `${qm.color}15`, padding: "2px 7px", borderRadius: "10px" }}>
+                                        {isDone ? "Done" : qm.label.split(" ")[0]}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                            </div>
                           </div>
 
-                          {/* Expanded body */}
-                          {isExpanded && (
-                            <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${color}20` }}>
-                              {/* Progress row */}
-                              <div style={{ display: "flex", alignItems: "center", gap: "16px", margin: "12px 0 14px" }}>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                                    <span style={{ fontSize: "11px", color: "#78716C" }}>Progress</span>
-                                    <span style={{ fontSize: "11px", fontWeight: 700, color }}>
-                                      {mTasks.length > 0 ? `${completedMT}/${mTasks.length} tasks` : "—"}
-                                    </span>
-                                  </div>
-                                  <div style={{ height: 5, borderRadius: 3, backgroundColor: `${color}20` }}>
-                                    <div style={{ height: "100%", borderRadius: 3, backgroundColor: color, width: mTasks.length > 0 ? `${(completedMT / mTasks.length) * 100}%` : "0%" }} />
-                                  </div>
-                                </div>
-                                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                  <p style={{ fontSize: "9px", color: "#A8A29E", margin: "0 0 1px" }}>Due date</p>
-                                  <p style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{fmtShort(m.deadline)}</p>
-                                </div>
-                              </div>
-
-                              {/* Tasks + Habits columns */}
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                                {/* Tasks */}
-                                <div>
-                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917" }}>Tasks ({mTasks.length})</span>
-                                    <button onClick={e => { e.stopPropagation(); onAddTask?.(goal.id, m.id); onClose(); }} style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "10px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                                      <Plus size={10} /> Add
-                                    </button>
-                                  </div>
-                                  {mTasks.length === 0 ? (
-                                    <p style={{ fontSize: "11px", color: "#A8A29E", fontStyle: "italic", margin: 0 }}>No tasks yet</p>
-                                  ) : (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                      {mTasks.slice(0, 5).map(t => {
-                                        const isDone  = t.status === "complete";
-                                        const isOpen  = t.status === "open";
-                                        const days    = daysUntil(t.deadline);
-                                        const overdue = days < 0 && isOpen;
-                                        const qm = Q_META[t.quadrant];
-                                        return (
-                                          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 8px", borderRadius: "6px", backgroundColor: "#F9F7F5", borderLeft: `3px solid ${isDone ? "#D1D5DB" : qm.color}` }}>
-                                            <button
-                                              onClick={e => { e.stopPropagation(); if (isOpen) onUpdateTask?.({ ...t, status: "complete", closedAt: Date.now(), variance: Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86400000) }); }}
-                                              style={{ width: 16, height: 16, borderRadius: "50%", border: isDone ? "none" : `2px solid ${qm.color}`, backgroundColor: isDone ? "#16A34A" : "#FFFFFF", flexShrink: 0, cursor: isOpen ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                              {isDone && <Check size={9} color="#fff" strokeWidth={3} />}
-                                            </button>
-                                            <span style={{ flex: 1, fontSize: "11px", fontWeight: 500, color: isDone ? "#9CA3AF" : "#1C1917", textDecoration: isDone ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                              {t.title}
-                                            </span>
-                                            <span style={{ fontSize: "9px", fontWeight: 600, flexShrink: 0, color: overdue ? "#DC2626" : "#A8A29E" }}>
-                                              {overdue ? `${Math.abs(days)}d late` : days === 0 ? "Today" : fmtShort(t.deadline).split(",")[0]}
-                                            </span>
-                                          </div>
-                                        );
-                                      })}
-                                      {mTasks.length > 5 && (
-                                        <button onClick={() => setPopupMilestoneId(m.id)} style={{ fontSize: "11px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: "2px 0", textAlign: "left" }}>
-                                          View all →
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Habits */}
-                                <div>
-                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917" }}>Habits ({mHabits.length})</span>
-                                    <button onClick={e => { e.stopPropagation(); onAddHabit?.(goal.id, m.id); onClose(); }} style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "10px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                                      <Plus size={10} /> Add
-                                    </button>
-                                  </div>
-                                  {mHabits.length === 0 ? (
-                                    <p style={{ fontSize: "11px", color: "#A8A29E", fontStyle: "italic", margin: 0 }}>No habits yet</p>
-                                  ) : (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                      {mHabits.slice(0, 5).map(h => {
-                                        const hm     = HABIT_AREA_META[h.area];
-                                        const hDone  = isHabitDoneOnDate(h, today);
-                                        const streak = calcStreak(h);
-                                        let donePct  = 0;
-                                        {
-                                          let done = 0, sched = 0;
-                                          const now2 = new Date();
-                                          for (let i = 0; i < 30; i++) {
-                                            const d = new Date(now2); d.setDate(now2.getDate() - i);
-                                            if (d.getTime() < h.createdAt) break;
-                                            if (!isScheduledDay(h.frequency, h.customDays, d.getDay())) continue;
-                                            sched++;
-                                            if (isHabitDoneOnDate(h, toLocalDate(d))) done++;
-                                          }
-                                          donePct = sched > 0 ? Math.round(done / sched * 100) : 0;
-                                        }
-                                        return (
-                                          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 8px", borderRadius: "6px", backgroundColor: hDone ? "#F0FDF4" : "#F9F7F5", borderLeft: `3px solid ${hm.color}` }}>
-                                            <div
-                                              onClick={() => { if (h.type === "binary") { const c = hDone ? h.completions.filter(d => d !== today) : [...h.completions, today]; onUpdateHabit?.({ ...h, completions: c }); } }}
-                                              style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0, backgroundColor: hDone ? "#16A34A" : "#FFFFFF", border: hDone ? "none" : `2px solid ${hm.color}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: h.type === "binary" ? "pointer" : "default" }}>
-                                              {hDone && <Check size={9} color="#fff" strokeWidth={3} />}
-                                            </div>
-                                            <span style={{ flex: 1, fontSize: "11px", fontWeight: 500, color: "#1C1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
-                                            {streak > 0 && <span style={{ fontSize: "10px", fontWeight: 700, color: "#F97316", display: "flex", alignItems: "center", gap: "2px", flexShrink: 0 }}><Flame size={10} color="#F97316" />{streak}</span>}
-                                            <span style={{ fontSize: "10px", fontWeight: 700, flexShrink: 0, color: donePct >= 80 ? "#16A34A" : donePct >= 50 ? "#F97316" : "#DC2626" }}>{donePct}%</span>
-                                          </div>
-                                        );
-                                      })}
-                                      {mHabits.length > 5 && (
-                                        <button onClick={() => setPopupMilestoneId(m.id)} style={{ fontSize: "11px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: "2px 0", textAlign: "left" }}>
-                                          View all →
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Card footer actions */}
-                              <div style={{ display: "flex", gap: "8px", marginTop: "12px", paddingTop: "12px", borderTop: `1px solid ${color}15` }}>
-                                <button onClick={() => toggleMilestone(m.id)} style={{ padding: "6px 12px", borderRadius: "8px", border: `1.5px solid ${m.completed ? "#E8DDD0" : color}`, backgroundColor: m.completed ? "#FFFFFF" : `${color}12`, fontSize: "11px", fontWeight: 600, color: m.completed ? "#78716C" : color, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
-                                  {m.completed ? <><Circle size={12} /> Mark Incomplete</> : <><Check size={12} /> Mark Complete</>}
-                                </button>
-                                <button onClick={() => setPopupMilestoneId(m.id)} style={{ padding: "6px 12px", borderRadius: "8px", border: "1.5px solid #EDE5D8", backgroundColor: "#FFFFFF", fontSize: "11px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>
-                                  Details
-                                </button>
-                              </div>
+                          {/* Habits */}
+                          <div style={{ padding: "14px 16px", borderRadius: "10px", border: `1px solid ${color}20`, backgroundColor: "#FFFFFF" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "10px", marginBottom: "12px", borderBottom: `1px solid ${color}20` }}>
+                              <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Habits ({mHabits.length})</span>
+                              <button onClick={e => { e.stopPropagation(); setHabitCreateCtx({ goalId: goal.id, milestoneId: m.id }); setHcName(""); setHcDesc(""); setHcArea("health"); setHcFrequency("daily"); setHcCustomDays([1,2,3,4,5]); setHcType("binary"); setHcTarget(1); setHcUnit(""); setHcCue(""); setHcReward(""); }} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                                <Plus size={12} /> Add Habit
+                              </button>
                             </div>
-                          )}
+                            <div style={{ display: "flex", flexDirection: "column", minHeight: 108, maxHeight: 180, overflowY: "auto" }}>
+                            {mHabits.length === 0 ? (
+                              <p style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>No habits yet</p>
+                            ) : mHabits.map(h => {
+                                  const hDone  = isHabitDoneOnDate(h, today);
+                                  const streak = calcStreak(h);
+                                  let donePct  = 0;
+                                  { let done = 0, sched = 0; const now2 = new Date();
+                                    for (let i = 0; i < 30; i++) { const d = new Date(now2); d.setDate(now2.getDate() - i); if (d.getTime() < h.createdAt) break; if (!isScheduledDay(h.frequency, h.customDays, d.getDay())) continue; sched++; if (isHabitDoneOnDate(h, toLocalDate(d))) done++; }
+                                    donePct = sched > 0 ? Math.round(done / sched * 100) : 0; }
+                                  const pctColor = donePct >= 80 ? "#16A34A" : donePct >= 50 ? "#F97316" : "#DC2626";
+                                  return (
+                                    <div key={h.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5" }}>
+                                      <div
+                                        onClick={() => { if (h.type === "binary") { const c = hDone ? h.completions.filter(d => d !== today) : [...h.completions, today]; onUpdateHabit?.({ ...h, completions: c }); } }}
+                                        style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, backgroundColor: hDone ? "#16A34A" : "#FFFFFF", border: hDone ? "none" : "1.5px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", cursor: h.type === "binary" ? "pointer" : "default" }}>
+                                        {hDone && <Check size={10} color="#fff" strokeWidth={3} />}
+                                      </div>
+                                      <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: "#1C1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
+                                      {streak > 0 && (
+                                        <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 700, color: "#F97316", flexShrink: 0 }}>
+                                          <Flame size={11} color="#F97316" />{streak} day streak
+                                        </span>
+                                      )}
+                                      <span style={{ fontSize: "12px", fontWeight: 700, color: pctColor, flexShrink: 0 }}>{donePct}%</span>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -641,7 +686,7 @@ export default function GoalDetailSheet({
             </div>
 
             {/* Right sidebar */}
-            <div style={{ width: 255, borderLeft: "1px solid #EDE5D8", overflowY: "auto", padding: "20px 16px", flexShrink: 0, backgroundColor: "#FAFAF9" }}>
+            <div style={{ width: 320, borderLeft: "1px solid #EDE5D8", overflowY: "auto", padding: "20px 20px", flexShrink: 0, backgroundColor: "#FAFAF9" }}>
 
               {/* Goal Health */}
               <div style={{ backgroundColor: HEALTH_BG[health], borderRadius: "12px", padding: "14px", border: `1px solid ${HEALTH_COLOR[health]}25`, marginBottom: "14px" }}>
@@ -752,9 +797,307 @@ export default function GoalDetailSheet({
             onUpdateGoal={onUpdate}
             onUpdateTask={onUpdateTask}
             onUpdateHabit={onUpdateHabit}
-            onAddTask={onAddTask}
-            onAddHabit={onAddHabit}
+            onOpenTaskCreate={(goalId, milestoneId) => { setTaskCreateCtx({ goalId, milestoneId }); setTcForm({ title: "", description: "", quadrant: "Q2", deadline: "" }); setTcDelegateTo(""); setTcDelegateNudge(false); setTcQ4Bang(false); }}
+            onOpenHabitCreate={(goalId, milestoneId) => { setHabitCreateCtx({ goalId, milestoneId }); setHcName(""); setHcDesc(""); setHcArea("health"); setHcFrequency("daily"); setHcCustomDays([1,2,3,4,5]); setHcType("binary"); setHcTarget(1); setHcUnit(""); setHcCue(""); setHcReward(""); }}
           />
+        );
+      })()}
+      {/* ── Task Create Modal ── */}
+      {taskCreateCtx && (() => {
+        const tcToday          = toTaskDate();
+        const deadlineTodayNudge = tcForm.deadline === tcToday && tcForm.quadrant !== "Q1";
+        const dateError        = validateDate(tcForm.deadline, { required: true });
+        const canSave          = (tcForm.quadrant === "Q4" || (tcForm.title.trim().length > 0 && !dateError));
+        const tcColor          = AREA_META[goal.area].color;
+        const Q_LABELS: Record<EisenhowerQ, { main: string; hint: string }> = {
+          Q1: { main: "Urgent + Important",        hint: "Do it today, no excuses."       },
+          Q2: { main: "Important, Not Urgent",     hint: "Plan it and schedule it."       },
+          Q3: { main: "Urgent, Not Important",     hint: "Hand it off to someone."        },
+          Q4: { main: "Not Urgent, Not Important", hint: "Hmm… do you really need this?" },
+        };
+        function selectQuadrant(q: EisenhowerQ) {
+          setTcForm(p => ({
+            ...p, quadrant: q,
+            deadline: q === "Q1" ? tcToday : (p.quadrant === "Q1" ? "" : p.deadline),
+          }));
+          setTcDelegateNudge(false);
+        }
+        function closeModal() {
+          setTaskCreateCtx(null);
+          setTcDelegateTo(""); setTcDelegateNudge(false); setTcQ4Bang(false);
+        }
+        function handleTaskSave() {
+          if (tcForm.quadrant === "Q4") {
+            setTcQ4Bang(true);
+            setTimeout(() => { closeModal(); }, 2400);
+            return;
+          }
+          if (!canSave) return;
+          if (tcForm.quadrant === "Q3" && !tcDelegateTo.trim()) { setTcDelegateNudge(true); return; }
+          const description = tcForm.quadrant === "Q3" && tcDelegateTo.trim()
+            ? `Delegated to: ${tcDelegateTo.trim()}${tcForm.description.trim() ? "\n" + tcForm.description.trim() : ""}`
+            : tcForm.description.trim();
+          onSaveTask?.({
+            id: crypto.randomUUID(), kind: "one-time",
+            title: tcForm.title.trim(), description,
+            deadline: tcForm.deadline, quadrant: tcForm.quadrant,
+            status: "open", createdAt: Date.now(),
+            linkedGoalId: taskCreateCtx!.goalId,
+            linkedMilestoneId: taskCreateCtx!.milestoneId || undefined,
+          });
+          closeModal();
+        }
+        const inputSt: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid #E8DDD0", fontSize: "13px", color: "#1C1917", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF" };
+        const labelSt: React.CSSProperties = { fontSize: "11px", fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px", display: "block" };
+        return (
+          <>
+            <div onClick={closeModal} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(28,25,23,0.45)", zIndex: 200, backdropFilter: "blur(3px)" }} />
+            <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 480, maxWidth: "calc(100vw - 32px)", backgroundColor: "#FFFFFF", borderRadius: "18px", zIndex: 201, boxShadow: "0 24px 64px rgba(28,25,23,0.18)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
+
+              {/* Q4 bang overlay */}
+              {tcQ4Bang && (
+                <div style={{ position: "absolute", inset: 0, zIndex: 10, backgroundColor: "#F9FAFB", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "18px", padding: "48px", textAlign: "center" }}>
+                  <span style={{ fontSize: "60px", lineHeight: 1 }}>🗑️</span>
+                  <p style={{ fontSize: "21px", fontWeight: 800, color: "#1C1917", margin: 0, lineHeight: 1.3 }}>Not urgent AND<br />not important?</p>
+                  <p style={{ fontSize: "14px", color: "#57534E", lineHeight: 1.7, margin: 0 }}>Seriously, just forget about it.<br />Not everything deserves space on your list.</p>
+                  <p style={{ fontSize: "11px", color: "#A8A29E", margin: 0 }}>Closing in a moment... ✌️</p>
+                </div>
+              )}
+
+              {/* Header */}
+              <div style={{ padding: "18px 24px", borderBottom: "1px solid #EDE5D8", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)", flexShrink: 0 }}>
+                <div>
+                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: tcColor, margin: "0 0 3px" }}>New Task</p>
+                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Add Task</h2>
+                </div>
+                <button onClick={closeModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={15} color="#78716C" />
+                </button>
+              </div>
+
+              {/* Scrollable body */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+
+                {/* Title */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={labelSt}>Title *</label>
+                  <input autoFocus value={tcForm.title} onChange={e => setTcForm(p => ({ ...p, title: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") handleTaskSave(); }} placeholder="What needs to be done?" style={inputSt} onFocus={e => { e.currentTarget.style.borderColor = tcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                </div>
+
+                {/* Description */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={labelSt}>Description</label>
+                  <textarea value={tcForm.description} onChange={e => setTcForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional notes…" rows={2} style={{ ...inputSt, resize: "none", lineHeight: 1.5 }} onFocus={e => { e.currentTarget.style.borderColor = tcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                </div>
+
+                {/* Priority */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={labelSt}>Priority</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    {(["Q1","Q2","Q3","Q4"] as EisenhowerQ[]).map(q => {
+                      const qm = Q_META[q];
+                      const selected = tcForm.quadrant === q;
+                      const todayHint = deadlineTodayNudge && q === "Q1";
+                      return (
+                        <button key={q} onClick={() => selectQuadrant(q)} style={{ padding: "9px 11px", borderRadius: "10px", cursor: "pointer", textAlign: "left", border: `2px solid ${selected ? "#FFFFFF" : "transparent"}`, backgroundColor: qm.color, boxShadow: selected ? `0 0 0 2px ${qm.color}` : "none", transition: "box-shadow 0.15s" }}>
+                          <p style={{ fontSize: "11px", fontWeight: 700, color: "#FFFFFF", margin: "0 0 2px" }}>{Q_LABELS[q].main}</p>
+                          <p style={{ fontSize: "10px", fontWeight: 500, color: "#FFFFFF", margin: 0, lineHeight: 1.3 }}>{Q_LABELS[q].hint}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Delegate To (Q3 only) */}
+                {tcForm.quadrant === "Q3" && (
+                  <div style={{ marginBottom: "14px" }}>
+                    <label style={labelSt}>Delegate to *</label>
+                    <input value={tcDelegateTo} onChange={e => { setTcDelegateTo(e.target.value); if (tcDelegateNudge) setTcDelegateNudge(false); }} placeholder="Who will handle this?" style={{ ...inputSt, borderColor: tcDelegateNudge ? "#DC2626" : "#E8DDD0", backgroundColor: tcDelegateNudge ? "#FEF2F2" : "#FFFFFF" }} onFocus={e => { e.currentTarget.style.borderColor = tcDelegateNudge ? "#DC2626" : tcColor; }} onBlur={e => { e.currentTarget.style.borderColor = tcDelegateNudge ? "#DC2626" : "#E8DDD0"; }} />
+                    {tcDelegateNudge && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, margin: "5px 0 0" }}>👆 You&apos;re delegating — someone has to own this!</p>}
+                  </div>
+                )}
+
+                {/* Deadline */}
+                <div style={{ marginBottom: "8px" }}>
+                  <label style={labelSt}>{tcForm.quadrant === "Q1" ? "Deadline — locked to today 🔒" : "Deadline *"}</label>
+                  <input type="date" value={tcForm.deadline} disabled={tcForm.quadrant === "Q1"} min={todayDateStr()} max={MAX_DATE_STR} onChange={e => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: e.target.value })); }} style={{ ...inputSt, opacity: tcForm.quadrant === "Q1" ? 0.7 : 1, cursor: tcForm.quadrant === "Q1" ? "not-allowed" : "default", backgroundColor: tcForm.quadrant === "Q1" ? "#FEF3F2" : "#FFFFFF", borderColor: dateError && tcForm.quadrant !== "Q1" ? "#FCA5A5" : "#E8DDD0" }} onFocus={e => { if (tcForm.quadrant !== "Q1") e.currentTarget.style.borderColor = tcColor; }} onBlur={e => { e.currentTarget.style.borderColor = dateError && tcForm.quadrant !== "Q1" ? "#FCA5A5" : "#E8DDD0"; }} />
+                  {tcForm.quadrant === "Q1" && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, margin: "5px 0 0" }}>🔥 It&apos;s urgent — this one&apos;s happening today, no rescheduling!</p>}
+                  {tcForm.quadrant !== "Q1" && dateError && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, margin: "5px 0 0" }}>{dateError}</p>}
+                  {deadlineTodayNudge && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginTop: "8px", padding: "9px 12px", borderRadius: "8px", backgroundColor: "#FEF2F2", border: "1.5px solid #FCA5A5" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "7px" }}>
+                        <AlertTriangle size={13} color="#DC2626" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, margin: 0, lineHeight: 1.5 }}>Deadline is today — set it as Urgent + Important for maximum focus!</p>
+                      </div>
+                      <button onClick={() => selectQuadrant("Q1")} style={{ padding: "4px 10px", borderRadius: "6px", border: "none", backgroundColor: "#DC2626", color: "#FFFFFF", fontSize: "10px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Set Q1</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: "14px 24px", borderTop: "1px solid #EDE5D8", display: "flex", gap: "8px", flexShrink: 0 }}>
+                <button onClick={closeModal} style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>Cancel</button>
+                <button onClick={handleTaskSave} disabled={!canSave} style={{ flex: 2, padding: "10px", borderRadius: "10px", border: "none", background: canSave ? `linear-gradient(135deg, ${tcColor}, ${tcColor}CC)` : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSave ? "#FFFFFF" : "#A8A29E", cursor: canSave ? "pointer" : "default", boxShadow: canSave ? `0 2px 8px ${tcColor}40` : "none" }}>Add Task</button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* ── Habit Create Modal ── */}
+      {habitCreateCtx && (() => {
+        const hcColor  = AREA_META[goal.area].color;
+        const canSave  = hcName.trim().length > 0 && (hcType === "binary" || hcTarget >= 1);
+        const DAYS_LBL = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+        const FREQS    = Object.keys(FREQ_LABEL) as HabitFrequency[];
+        const AREAS    = Object.keys(HABIT_AREA_META) as LifeArea[];
+        function closeHabitModal() { setHabitCreateCtx(null); }
+        function handleHabitSave() {
+          if (!canSave) return;
+          onSaveHabit?.({
+            id: crypto.randomUUID(), name: hcName.trim(), description: hcDesc.trim(),
+            area: hcArea, frequency: hcFrequency,
+            customDays: hcFrequency === "custom" ? hcCustomDays : [],
+            cue: hcCue.trim(), reward: hcReward.trim(),
+            type: hcType, target: hcType === "binary" ? 1 : hcTarget,
+            unit: hcType === "binary" ? "" : hcUnit.trim(),
+            completions: [], measurements: {},
+            linkedGoalId: habitCreateCtx!.goalId,
+            linkedMilestoneId: habitCreateCtx!.milestoneId || undefined,
+            createdAt: Date.now(),
+          });
+          closeHabitModal();
+        }
+        const inSt: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", color: "#1C1917", outline: "none", fontFamily: "inherit" };
+        const lbSt: React.CSSProperties = { fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "6px", display: "block" };
+        return (
+          <>
+            <div onClick={closeHabitModal} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(28,25,23,0.45)", zIndex: 200, backdropFilter: "blur(3px)" }} />
+            <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 500, maxWidth: "calc(100vw - 32px)", backgroundColor: "#FFFFFF", borderRadius: "18px", zIndex: 201, boxShadow: "0 24px 64px rgba(28,25,23,0.18)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
+
+              {/* Header */}
+              <div style={{ padding: "18px 24px", borderBottom: "1px solid #EDE5D8", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)", flexShrink: 0 }}>
+                <div>
+                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: hcColor, margin: "0 0 3px" }}>New Habit</p>
+                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Build a new habit</h2>
+                </div>
+                <button onClick={closeHabitModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={15} color="#78716C" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+
+                {/* Name */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={lbSt}>Habit name *</label>
+                  <input autoFocus value={hcName} onChange={e => setHcName(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && canSave) handleHabitSave(); }} placeholder="e.g. Morning meditation" style={inSt} onFocus={e => { e.currentTarget.style.borderColor = hcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                </div>
+
+                {/* Description */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={lbSt}>Description (optional)</label>
+                  <input value={hcDesc} onChange={e => setHcDesc(e.target.value)} placeholder="e.g. 10 mins of breath-focused meditation" style={inSt} onFocus={e => { e.currentTarget.style.borderColor = hcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                </div>
+
+                {/* Habit type */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={lbSt}>Habit type</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    {(["binary","measurable"] as HabitType[]).map(t => (
+                      <button key={t} onClick={() => setHcType(t)} style={{ padding: "10px 12px", borderRadius: "10px", textAlign: "left", border: `1.5px solid ${hcType === t ? hcColor : "#E8DDD0"}`, backgroundColor: hcType === t ? `${hcColor}10` : "#FFFFFF", cursor: "pointer" }}>
+                        <p style={{ fontSize: "12px", fontWeight: 700, margin: "0 0 2px", color: hcType === t ? hcColor : "#1C1917" }}>{t === "binary" ? "Yes / No" : "Measurable"}</p>
+                        <p style={{ fontSize: "10px", color: "#6B7280", margin: 0 }}>{t === "binary" ? "Done or not done" : "Track a daily count"}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Target + Unit (measurable only) */}
+                {hcType === "measurable" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+                    <div>
+                      <label style={lbSt}>Daily target</label>
+                      <input type="number" min={1} value={hcTarget} onChange={e => setHcTarget(Math.max(1, parseInt(e.target.value) || 1))} style={inSt} onFocus={e => { e.currentTarget.style.borderColor = hcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                    </div>
+                    <div>
+                      <label style={lbSt}>Unit (e.g. pages, mins)</label>
+                      <input value={hcUnit} onChange={e => setHcUnit(e.target.value)} placeholder="pages" style={inSt} onFocus={e => { e.currentTarget.style.borderColor = hcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Life area */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={lbSt}>Life area</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {AREAS.map(a => {
+                      const m = HABIT_AREA_META[a];
+                      return (
+                        <button key={a} onClick={() => setHcArea(a)} style={{ padding: "5px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 600, border: `1.5px solid ${hcArea === a ? m.color : "#E8DDD0"}`, backgroundColor: hcArea === a ? m.bg : "#FFFFFF", color: hcArea === a ? m.color : "#374151", cursor: "pointer" }}>
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Frequency */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={lbSt}>How often?</label>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {FREQS.map(f => (
+                      <button key={f} onClick={() => setHcFrequency(f)} style={{ padding: "6px 14px", borderRadius: "20px", fontSize: "12px", fontWeight: 600, border: `1.5px solid ${hcFrequency === f ? "#F97316" : "#E8DDD0"}`, backgroundColor: hcFrequency === f ? "#FFF7ED" : "#FFFFFF", color: hcFrequency === f ? "#F97316" : "#374151", cursor: "pointer" }}>
+                        {FREQ_LABEL[f]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom days */}
+                {hcFrequency === "custom" && (
+                  <div style={{ marginBottom: "14px" }}>
+                    <label style={lbSt}>Which days?</label>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      {DAYS_LBL.map((day, i) => (
+                        <button key={i} onClick={() => setHcCustomDays(p => p.includes(i) ? p.filter(x => x !== i) : [...p, i].sort())} style={{ width: 36, height: 36, borderRadius: "50%", fontSize: "10px", fontWeight: 700, border: `1.5px solid ${hcCustomDays.includes(i) ? "#F97316" : "#E8DDD0"}`, backgroundColor: hcCustomDays.includes(i) ? "#F97316" : "#FFFFFF", color: hcCustomDays.includes(i) ? "#FFFFFF" : "#374151", cursor: "pointer" }}>
+                          {day[0]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Habit loop */}
+                <div style={{ padding: "14px", borderRadius: "10px", backgroundColor: "#FAFAFA", border: "1px solid #EDE5D8" }}>
+                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#A8A29E", marginBottom: "10px" }}>Habit Loop (optional)</p>
+                  <div style={{ marginBottom: "10px" }}>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>Cue — what triggers this habit?</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: "12px", color: "#A8A29E", whiteSpace: "nowrap" }}>After I</span>
+                      <input value={hcCue} onChange={e => setHcCue(e.target.value)} placeholder="wake up / finish lunch…" style={{ ...inSt, flex: 1 }} onFocus={e => { e.currentTarget.style.borderColor = hcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>Reward — how will you celebrate?</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: "12px", color: "#A8A29E", whiteSpace: "nowrap" }}>I will</span>
+                      <input value={hcReward} onChange={e => setHcReward(e.target.value)} placeholder="enjoy a coffee / feel proud…" style={{ ...inSt, flex: 1 }} onFocus={e => { e.currentTarget.style.borderColor = hcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: "14px 24px", borderTop: "1px solid #EDE5D8", display: "flex", gap: "8px", flexShrink: 0 }}>
+                <button onClick={closeHabitModal} style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>Cancel</button>
+                <button onClick={handleHabitSave} disabled={!canSave} style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: canSave ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSave ? "#FFFFFF" : "#A8A29E", cursor: canSave ? "pointer" : "default", boxShadow: canSave ? "0 2px 8px rgba(249,115,22,0.3)" : "none" }}>Add Habit</button>
+              </div>
+            </div>
+          </>
         );
       })()}
     </>
@@ -762,19 +1105,61 @@ export default function GoalDetailSheet({
 }
 
 // ── Circular progress ring ────────────────────────────────────────────────────
-function CircularProgress({ value, color }: { value: number; color: string }) {
-  const r = 38;
-  const c = 2 * Math.PI * r;
-  const offset = c - (value / 100) * c;
+function CircularProgress({ value, color, onChange }: { value: number; color: string; onChange?: (v: number) => void }) {
+  const SIZE = 148;
+  const CX = 74, CY = 74, R = 58;
+  const circ = 2 * Math.PI * R;
+  const offset = circ - (value / 100) * circ;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragging = useRef(false);
+
+  // Drag-handle position on arc
+  const thumbAngleRad = ((value / 100) * 360 - 90) * (Math.PI / 180);
+  const thumbX = CX + R * Math.cos(thumbAngleRad);
+  const thumbY = CY + R * Math.sin(thumbAngleRad);
+
+  const getVal = useCallback((clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return value;
+    const rect = svg.getBoundingClientRect();
+    const dx = clientX - rect.left - (rect.width / 2);
+    const dy = clientY - rect.top - (rect.height / 2);
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    if (angle < 0) angle += 360;
+    return Math.min(100, Math.max(0, Math.round((angle / 360) * 100)));
+  }, [value]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!onChange) return;
+    e.preventDefault();
+    dragging.current = true;
+    onChange(getVal(e.clientX, e.clientY));
+    const onMove = (ev: MouseEvent) => { ev.preventDefault(); if (dragging.current) onChange(getVal(ev.clientX, ev.clientY)); };
+    const onUp   = () => { dragging.current = false; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [onChange, getVal]);
+
   return (
-    <div style={{ flexShrink: 0 }}>
-      <svg width="96" height="96" viewBox="0 0 96 96">
-        <circle cx="48" cy="48" r={r} fill="none" stroke={`${color}20`} strokeWidth="7" />
-        <circle cx="48" cy="48" r={r} fill="none" stroke={color} strokeWidth="7"
-          strokeDasharray={c} strokeDashoffset={offset}
-          strokeLinecap="round" transform="rotate(-90 48 48)"
-          style={{ transition: "stroke-dashoffset 0.4s ease" }} />
-        <text x="48" y="48" textAnchor="middle" dominantBaseline="middle" fontSize="18" fontWeight="800" fill={color}>{value}%</text>
+    <div style={{ flexShrink: 0, userSelect: "none" }}>
+      <svg ref={svgRef} width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}
+        onMouseDown={handleMouseDown}
+        style={{ display: "block", cursor: onChange ? "grab" : "default" }}
+      >
+        {/* Track */}
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke={`${color}18`} strokeWidth="5" />
+        {/* Progress arc */}
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke={color} strokeWidth="5"
+          strokeDasharray={circ} strokeDashoffset={offset}
+          strokeLinecap="round" transform={`rotate(-90 ${CX} ${CY})`}
+          style={{ transition: dragging.current ? "none" : "stroke-dashoffset 0.3s ease" }} />
+        {/* Percentage text */}
+        <text x={CX} y={CY + 5} textAnchor="middle" dominantBaseline="middle" fontSize="24" fontWeight="800" fill="#1C1917">{value}%</text>
+        {/* Drag handle thumb */}
+        {onChange && (
+          <circle cx={thumbX} cy={thumbY} r={9} fill={color} stroke="#FFFFFF" strokeWidth="2.5"
+            style={{ filter: `drop-shadow(0 1px 4px ${color}90)`, cursor: "grab" }} />
+        )}
       </svg>
     </div>
   );
@@ -826,19 +1211,19 @@ type PopupView = "milestone" | "task" | "habit";
 
 function MilestonePopup({
   milestone, milestoneIndex, goal, mTasks, mHabits,
-  onClose, onUpdateGoal, onUpdateTask, onUpdateHabit, onAddTask, onAddHabit,
+  onClose, onUpdateGoal, onUpdateTask, onUpdateHabit, onOpenTaskCreate, onOpenHabitCreate,
 }: {
-  milestone:      Milestone;
-  milestoneIndex: number;
-  goal:           GoalData;
-  mTasks:         TaskData[];
-  mHabits:        HabitData[];
-  onClose:        () => void;
-  onUpdateGoal:   (g: GoalData)  => void;
-  onUpdateTask?:  (t: TaskData)  => void;
-  onUpdateHabit?: (h: HabitData) => void;
-  onAddTask?:     (goalId: string, milestoneId: string) => void;
-  onAddHabit?:    (goalId: string, milestoneId: string) => void;
+  milestone:            Milestone;
+  milestoneIndex:       number;
+  goal:                 GoalData;
+  mTasks:               TaskData[];
+  mHabits:              HabitData[];
+  onClose:              () => void;
+  onUpdateGoal:         (g: GoalData)  => void;
+  onUpdateTask?:        (t: TaskData)  => void;
+  onUpdateHabit?:       (h: HabitData) => void;
+  onOpenTaskCreate?:    (goalId: string, milestoneId: string) => void;
+  onOpenHabitCreate?:   (goalId: string, milestoneId: string) => void;
 }) {
   const [view,           setView]          = useState<PopupView>("milestone");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -1038,12 +1423,12 @@ function MilestonePopup({
                 </div>
               ) : (
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                  <button onClick={() => { onAddTask?.(goal.id, milestone.id); onClose(); }} style={{ padding: "7px 12px", borderRadius: "8px", border: "1.5px dashed #C4B5A0", backgroundColor: "transparent", fontSize: "12px", fontWeight: 600, color: "#7C3AED", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                  <button onClick={() => { onOpenTaskCreate?.(goal.id, milestone.id); }} style={{ padding: "7px 12px", borderRadius: "8px", border: "1.5px dashed #C4B5A0", backgroundColor: "transparent", fontSize: "12px", fontWeight: 600, color: "#7C3AED", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#7C3AED"; (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F5F3FF"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#C4B5A0"; (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
                     <Plus size={12} /> Task
                   </button>
-                  <button onClick={() => { onAddHabit?.(goal.id, milestone.id); onClose(); }} style={{ padding: "7px 12px", borderRadius: "8px", border: "1.5px dashed #C4B5A0", backgroundColor: "transparent", fontSize: "12px", fontWeight: 600, color: "#2563EB", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                  <button onClick={() => { onOpenHabitCreate?.(goal.id, milestone.id); }} style={{ padding: "7px 12px", borderRadius: "8px", border: "1.5px dashed #C4B5A0", backgroundColor: "transparent", fontSize: "12px", fontWeight: 600, color: "#2563EB", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#2563EB"; (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#EFF6FF"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#C4B5A0"; (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
                     <Plus size={12} /> Habit

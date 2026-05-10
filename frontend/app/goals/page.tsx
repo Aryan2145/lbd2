@@ -5,8 +5,6 @@ import { Plus, Target, Check, Search, X, ChevronDown } from "lucide-react";
 import GoalCard, { type GoalData, type LifeArea, AREA_META } from "@/components/goals/GoalCard";
 import GoalCreateSheet from "@/components/goals/GoalCreateSheet";
 import GoalDetailSheet from "@/components/goals/GoalDetailSheet";
-import TaskCreateSheet from "@/components/tasks/TaskCreateSheet";
-import HabitCreateSheet from "@/components/habits/HabitCreateSheet";
 import { useAppStore } from "@/lib/AppStore";
 
 const ALL_AREAS: LifeArea[] = [
@@ -72,8 +70,6 @@ export default function GoalsPage() {
     : [];
   const showSearch = q.length > 0;
   const [detailGoal, setDetailGoal] = useState<GoalData | null>(null);
-  const [taskPrefill,  setTaskPrefill]  = useState<{ goalId: string; milestoneId: string } | null>(null);
-  const [habitPrefill, setHabitPrefill] = useState<{ goalId: string; milestoneId: string } | null>(null);
 
   const filtered    = applyFilter(goals, selectedAreas, statusFilter);
 
@@ -386,25 +382,8 @@ export default function GoalsPage() {
         onDelete={(id) => { deleteGoal(id); setDetailGoal(null); }}
         onUpdateTask={updateTask}
         onUpdateHabit={updateHabit}
-        onAddTask={(goalId, milestoneId) => setTaskPrefill({ goalId, milestoneId })}
-        onAddHabit={(goalId, milestoneId) => setHabitPrefill({ goalId, milestoneId })}
-      />
-      <TaskCreateSheet
-        open={!!taskPrefill}
-        onClose={() => setTaskPrefill(null)}
-        onSaveTask={(t) => { addTask(t); setTaskPrefill(null); }}
-        onSaveTemplate={() => {}}
-        goals={goals}
-        initialGoalId={taskPrefill?.goalId}
-        initialMilestoneId={taskPrefill?.milestoneId}
-      />
-      <HabitCreateSheet
-        open={!!habitPrefill}
-        onClose={() => setHabitPrefill(null)}
-        onSave={(h) => { addHabit(h); setHabitPrefill(null); }}
-        goals={goals}
-        initialGoalId={habitPrefill?.goalId}
-        initialMilestoneId={habitPrefill?.milestoneId}
+        onSaveTask={addTask}
+        onSaveHabit={addHabit}
       />
     </div>
   );
