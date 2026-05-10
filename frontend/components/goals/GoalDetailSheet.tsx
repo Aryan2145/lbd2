@@ -519,7 +519,7 @@ export default function GoalDetailSheet({
                       const progressPct = mTasks.length > 0 ? Math.round((completedMT / mTasks.length) * 100) : 0;
 
                       return (
-                        <div key={m.id} style={{ borderRadius: "12px", border: `1px solid ${isExpanded ? `${color}35` : "#E5E9EE"}`, overflow: "hidden", backgroundColor: isExpanded ? areaBg : "#FFFFFF", boxShadow: isExpanded ? `0 2px 12px ${color}10` : "none" }}>
+                        <div key={m.id} style={{ borderRadius: "12px", border: `1px solid ${isExpanded ? `${color}50` : `${color}25`}`, overflow: "hidden", backgroundColor: areaBg, boxShadow: isExpanded ? `0 2px 12px ${color}18` : `0 1px 4px ${color}10` }}>
 
                           {/* Collapsed row — always visible */}
                           <div onClick={() => toggleExpand(m.id)} style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", borderBottom: isExpanded ? `1px solid ${color}20` : "none" }}>
@@ -534,7 +534,7 @@ export default function GoalDetailSheet({
                               }}
                               style={{
                                 width: 20, height: 20, borderRadius: "6px", flexShrink: 0,
-                                border: `2px solid ${isCompleted ? "#16A34A" : "#D1D5DB"}`,
+                                border: `2px solid ${isCompleted ? "#16A34A" : `${color}50`}`,
                                 backgroundColor: isCompleted ? "#16A34A" : "#FFFFFF",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 cursor: "pointer", transition: "border-color 0.15s, background-color 0.15s",
@@ -544,7 +544,7 @@ export default function GoalDetailSheet({
                             </div>
 
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: "11px", fontWeight: 600, color: "#6B7280", margin: "0 0 3px" }}>Milestone {mIdx + 1} of {milestones.length}</p>
+                              <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", margin: "0 0 3px" }}>Milestone {mIdx + 1} of {milestones.length}</p>
                               <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
                                 <p style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</p>
                                 {isLocked && (
