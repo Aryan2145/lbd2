@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Pencil, Check, Flame, CheckCircle2, Circle,
-  ChevronDown, ChevronUp, ArrowLeft, XCircle, CalendarDays, Clock, Sparkles, Lock, MoreHorizontal,
-  Briefcase, Globe, DollarSign, BookOpen, Heart, Activity, type LucideIcon,
+  ChevronDown, ChevronUp, ArrowLeft, XCircle, CalendarDays, Clock, Sparkles, Lock,
+  Briefcase, Globe, DollarSign, BookOpen, Heart, Activity, LayoutGrid, Target,
+  Zap, CheckSquare, type LucideIcon,
 } from "lucide-react";
 import type { GoalData, GoalNote, LifeArea, Milestone } from "./GoalCard";
 import { AREA_META } from "./GoalCard";
@@ -701,29 +702,56 @@ export default function GoalDetailSheet({
             </div>
 
             {/* Right sidebar */}
-            <div style={{ width: 320, borderLeft: "1px solid #EDE5D8", overflowY: "auto", padding: "20px 20px", flexShrink: 0, backgroundColor: "#FAFAF9" }}>
+            <div style={{ width: 320, borderLeft: "1px solid #EDE5D8", overflowY: "auto", padding: "20px", flexShrink: 0, backgroundColor: "#FAFAF9" }}>
 
               {/* Goal Health */}
-              <div style={{ backgroundColor: HEALTH_BG[health], borderRadius: "12px", padding: "14px", border: `1px solid ${HEALTH_COLOR[health]}25`, marginBottom: "14px" }}>
-                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#A8A29E", margin: "0 0 5px" }}>Goal Health</p>
-                <p style={{ fontSize: "22px", fontWeight: 800, color: HEALTH_COLOR[health], margin: "0 0 5px", lineHeight: 1 }}>{health}</p>
-                <p style={{ fontSize: "11px", color: "#57534E", lineHeight: 1.5, margin: 0 }}>{HEALTH_DESC[health]}</p>
+              <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #E5E9EE", marginBottom: "14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                  <Heart size={14} color={HEALTH_COLOR[health]} fill={HEALTH_COLOR[health]} />
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Goal Health</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "30px", fontWeight: 800, color: HEALTH_COLOR[health], lineHeight: 1 }}>{health}</span>
+                  <Activity size={20} color={HEALTH_COLOR[health]} />
+                </div>
+                {/* Sparkline */}
+                <svg width="100%" height="44" viewBox="0 0 260 44" preserveAspectRatio="none" style={{ display: "block", marginBottom: "10px" }}>
+                  <defs>
+                    <linearGradient id={`sg-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={HEALTH_COLOR[health]} stopOpacity="0.22" />
+                      <stop offset="100%" stopColor={HEALTH_COLOR[health]} stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M0,34 C30,30 50,26 80,22 C110,18 130,20 160,15 C190,10 220,12 260,6" fill="none" stroke={HEALTH_COLOR[health]} strokeWidth="2" strokeLinecap="round" />
+                  <path d="M0,34 C30,30 50,26 80,22 C110,18 130,20 160,15 C190,10 220,12 260,6 L260,44 L0,44 Z" fill={`url(#sg-${goal.id})`} />
+                </svg>
+                <p style={{ fontSize: "12px", color: "#57534E", lineHeight: 1.5, margin: "0 0 12px" }}>{HEALTH_DESC[health]}</p>
+                <button style={{ width: "100%", padding: "8px", borderRadius: "8px", border: "1.5px solid #E5E9EE", backgroundColor: "#FFFFFF", fontSize: "12px", fontWeight: 600, color: "#2563EB", cursor: "pointer" }}>
+                  View Health Insights →
+                </button>
               </div>
 
               {/* Goal Summary */}
-              <div style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "14px", border: "1px solid #EDE5D8", marginBottom: "14px" }}>
-                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#A8A29E", margin: "0 0 10px" }}>Goal Summary</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {[
-                    { label: "Active Milestones", value: milestones.filter(m => !m.completed).length },
-                    { label: "Total Tasks",        value: tasks.length },
-                    { label: "Tasks Completed",    value: `${completedT} (${tasks.length > 0 ? Math.round(completedT / tasks.length * 100) : 0}%)` },
-                    { label: "Active Habits",      value: linkedHabits.length },
-                    { label: "Habit Consistency",  value: `${consistency}%` },
-                  ].map(row => (
-                    <div key={row.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: "11px", color: "#78716C" }}>{row.label}</span>
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: "#1C1917" }}>{row.value}</span>
+              <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #E5E9EE", marginBottom: "14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "14px" }}>
+                  <LayoutGrid size={14} color="#2563EB" />
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Goal Summary</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {([
+                    { icon: <Target size={12} color="#EA580C" />,     label: "Total Milestones",   value: milestones.length },
+                    { icon: <CheckSquare size={12} color="#F97316" />, label: "Active Milestones",  value: milestones.filter(m => !m.completed).length },
+                    { icon: <Circle size={12} color="#2563EB" />,      label: "Total Tasks",        value: tasks.length },
+                    { icon: <CheckCircle2 size={12} color="#16A34A" />,label: "Tasks Completed",    value: `${completedT} (${tasks.length > 0 ? Math.round(completedT / tasks.length * 100) : 0}%)` },
+                    { icon: <Flame size={12} color="#EA580C" />,       label: "Active Habits",      value: linkedHabits.length },
+                    { icon: <Zap size={12} color="#7C3AED" />,         label: "Habit Consistency",  value: `${consistency}%` },
+                  ] as { icon: React.ReactNode; label: string; value: string | number }[]).map(row => (
+                    <div key={row.label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ width: 26, height: 26, borderRadius: "7px", backgroundColor: "#F9F9F9", border: "1px solid #E5E9EE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {row.icon}
+                      </div>
+                      <span style={{ fontSize: "12px", color: "#57534E", flex: 1 }}>{row.label}</span>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>{row.value}</span>
                     </div>
                   ))}
                 </div>
@@ -731,26 +759,43 @@ export default function GoalDetailSheet({
 
               {/* Upcoming Deadlines */}
               {upcomingTasks.length > 0 && (
-                <div style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "14px", border: "1px solid #EDE5D8", marginBottom: "14px" }}>
-                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#A8A29E", margin: "0 0 10px" }}>Upcoming Deadlines</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {upcomingTasks.map((t, i) => {
+                <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #E5E9EE", marginBottom: "14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <CalendarDays size={14} color="#EA580C" />
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Upcoming Deadlines</span>
+                    </div>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#2563EB", cursor: "pointer" }}>View all</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {upcomingTasks.map((t) => {
                       const days    = daysUntil(t.deadline);
                       const overdue = days < 0;
-                      const qm = Q_META[t.quadrant];
-                      const mName = milestones.find(m => m.id === t.linkedMilestoneId)?.title ?? "";
+                      const qm      = Q_META[t.quadrant];
+                      const mIdx    = milestones.findIndex(m => m.id === t.linkedMilestoneId);
                       return (
-                        <div key={t.id} style={{ paddingBottom: i < upcomingTasks.length - 1 ? "8px" : 0, borderBottom: i < upcomingTasks.length - 1 ? "1px solid #F2EAE0" : "none" }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "6px", marginBottom: "3px" }}>
-                            <p style={{ fontSize: "11px", fontWeight: 600, color: "#1C1917", margin: 0, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</p>
-                            <span style={{ fontSize: "10px", fontWeight: 600, color: overdue ? "#DC2626" : "#78716C", flexShrink: 0 }}>
-                              {overdue ? `${Math.abs(days)}d late` : fmtShort(t.deadline).split(",")[0]}
-                            </span>
+                        <div key={t.id} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                          {/* Icon + vertical line */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                            <div style={{ width: 20, height: 20, borderRadius: "5px", backgroundColor: qm.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <Check size={11} color="#FFFFFF" strokeWidth={3} />
+                            </div>
+                            <div style={{ width: 1.5, height: 20, backgroundColor: `${qm.color}35`, marginTop: "3px" }} />
                           </div>
-                          {mName && <p style={{ fontSize: "9px", color: "#A8A29E", margin: "0 0 3px" }}>{mName.slice(0, 22)}{mName.length > 22 ? "…" : ""}</p>}
-                          <span style={{ fontSize: "9px", fontWeight: 700, color: qm.color, backgroundColor: qm.bg, padding: "1px 6px", borderRadius: "10px" }}>
-                            {qm.label.split(" ")[0]}
-                          </span>
+                          {/* Text */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "6px", marginBottom: "3px" }}>
+                              <p style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917", margin: 0, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</p>
+                              <span style={{ fontSize: "11px", fontWeight: 600, color: overdue ? "#DC2626" : "#57534E", flexShrink: 0 }}>
+                                {overdue ? `${Math.abs(days)}d late` : fmtShort(t.deadline).split(",")[0]}
+                              </span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                              {mIdx >= 0 && <span style={{ fontSize: "11px", color: "#78716C" }}>Milestone {mIdx + 1}</span>}
+                              {mIdx >= 0 && <span style={{ fontSize: "11px", color: "#C4B5A0" }}>·</span>}
+                              <span style={{ fontSize: "11px", fontWeight: 600, color: qm.color }}>{qm.label}</span>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
@@ -758,18 +803,21 @@ export default function GoalDetailSheet({
                 </div>
               )}
 
-              {/* AI Insights — Coming Soon */}
-              <div style={{ backgroundColor: "#F5F0FF", borderRadius: "12px", padding: "14px", border: "1px solid #DDD6FE" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-                  <Sparkles size={13} color="#7C3AED" />
-                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#7C3AED", margin: 0 }}>AI Insights</p>
+              {/* AI Insights */}
+              <div style={{ backgroundColor: "#F5F0FF", borderRadius: "14px", padding: "16px", border: "1px solid #DDD6FE" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Sparkles size={14} color="#7C3AED" />
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#7C3AED" }}>AI Insights</span>
+                  </div>
+                  <Sparkles size={13} color="#C4B5FD" />
                 </div>
-                <p style={{ fontSize: "11px", color: "#78716C", lineHeight: 1.5, margin: "0 0 10px" }}>
+                <p style={{ fontSize: "12px", color: "#57534E", lineHeight: 1.5, margin: "0 0 12px" }}>
                   Personalized goal insights and suggestions coming soon.
                 </p>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: 700, color: "#7C3AED", backgroundColor: "#EDE9FE", padding: "4px 10px", borderRadius: "20px" }}>
-                  <Sparkles size={9} color="#7C3AED" /> Coming Soon
-                </span>
+                <button style={{ width: "100%", padding: "8px", borderRadius: "8px", border: "1.5px solid #C4B5FD", backgroundColor: "transparent", fontSize: "12px", fontWeight: 600, color: "#7C3AED", cursor: "pointer" }}>
+                  View All Insights →
+                </button>
               </div>
             </div>
           </div>
