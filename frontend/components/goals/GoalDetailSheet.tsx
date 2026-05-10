@@ -725,7 +725,7 @@ export default function GoalDetailSheet({
                   <path d="M0,34 C30,30 50,26 80,22 C110,18 130,20 160,15 C190,10 220,12 260,6" fill="none" stroke={HEALTH_COLOR[health]} strokeWidth="2" strokeLinecap="round" />
                   <path d="M0,34 C30,30 50,26 80,22 C110,18 130,20 160,15 C190,10 220,12 260,6 L260,44 L0,44 Z" fill={`url(#sg-${goal.id})`} />
                 </svg>
-                <p style={{ fontSize: "12px", color: "#57534E", lineHeight: 1.5, margin: 0 }}>{HEALTH_DESC[health]}</p>
+                <p style={{ fontSize: "12px", color: "#1C1917", lineHeight: 1.5, margin: 0 }}>{HEALTH_DESC[health]}</p>
               </div>
 
               {/* Goal Summary */}
