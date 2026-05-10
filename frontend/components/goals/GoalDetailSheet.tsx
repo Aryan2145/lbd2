@@ -580,9 +580,7 @@ export default function GoalDetailSheet({
                                     <span style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917" }}>{fmtShort(m.deadline)}</span>
                                   </div>
                                 </div>
-                                <button onClick={e => { e.stopPropagation(); setPopupMilestoneId(m.id); }} style={{ width: 28, height: 28, borderRadius: "8px", border: "1px solid #E5E9EE", backgroundColor: "#F9F9F9", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                  <MoreHorizontal size={14} color="#6B7280" />
-                                </button>
+
                               </div>
 
                               {/* Tasks + Habits */}
