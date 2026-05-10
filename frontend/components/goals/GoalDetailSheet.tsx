@@ -523,6 +523,26 @@ export default function GoalDetailSheet({
 
                           {/* Collapsed row — always visible */}
                           <div onClick={() => toggleExpand(m.id)} style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", borderBottom: isExpanded ? `1px solid ${color}20` : "none" }}>
+                            {/* Completion checkbox */}
+                            <div
+                              onClick={e => {
+                                e.stopPropagation();
+                                const updated = milestones.map(ms =>
+                                  ms.id === m.id ? { ...ms, completed: !ms.completed } : ms
+                                );
+                                onUpdate({ ...goal, milestones: updated });
+                              }}
+                              style={{
+                                width: 20, height: 20, borderRadius: "6px", flexShrink: 0,
+                                border: `2px solid ${isCompleted ? "#16A34A" : "#D1D5DB"}`,
+                                backgroundColor: isCompleted ? "#16A34A" : "#FFFFFF",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: "pointer", transition: "border-color 0.15s, background-color 0.15s",
+                              }}
+                            >
+                              {isCompleted && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
+                            </div>
+
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <p style={{ fontSize: "11px", fontWeight: 600, color: "#6B7280", margin: "0 0 3px" }}>Milestone {mIdx + 1} of {milestones.length}</p>
                               <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
