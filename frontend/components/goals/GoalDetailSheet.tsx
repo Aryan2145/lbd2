@@ -535,7 +535,7 @@ export default function GoalDetailSheet({
                   </div>
 
                   {/* Scrollable milestone accordion list */}
-                  <div style={{ maxHeight: 560, overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px", paddingRight: "2px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
                     {milestones.map((m, mIdx) => {
                       const isCompleted = m.completed;
                       const isCurrent   = m.id === firstIncompleteId;
