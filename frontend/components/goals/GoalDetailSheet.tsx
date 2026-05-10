@@ -964,7 +964,7 @@ export default function GoalDetailSheet({
             unit: hcType === "binary" ? "" : hcUnit.trim(),
             completions: [], measurements: {},
             linkedGoalId: habitCreateCtx!.goalId,
-            linkedMilestoneId: habitCreateCtx!.milestoneId || undefined,
+            linkedMilestoneId: habitCreateCtx!.milestoneId || "",
             createdAt: Date.now(),
           });
           closeHabitModal();
