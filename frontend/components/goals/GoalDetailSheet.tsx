@@ -834,11 +834,7 @@ export default function GoalDetailSheet({
                 <Check size={14} /> Save changes
               </button>
             </>
-          ) : (
-            <button onClick={() => { onDelete(goal.id); onClose(); }} style={{ padding: "8px 16px", borderRadius: "8px", border: "1.5px solid #FCA5A5", backgroundColor: "#FEF2F2", fontSize: "11px", fontWeight: 600, color: "#DC2626", cursor: "pointer" }}>
-              Delete goal
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
