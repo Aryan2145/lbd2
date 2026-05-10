@@ -146,6 +146,34 @@ export default function GoalDetailSheet({
   const [tcDelegateNudge,  setTcDelegateNudge]  = useState(false);
   const [tcQ4Bang,         setTcQ4Bang]         = useState(false);
 
+  const [taskEditTarget,   setTaskEditTarget]   = useState<TaskData | null>(null);
+  const [habitEditTarget,  setHabitEditTarget]  = useState<HabitData | null>(null);
+  const [msCreateOpen,     setMsCreateOpen]     = useState(false);
+  const [msTitle,          setMsTitle]          = useState("");
+  const [msDeadline,       setMsDeadline]       = useState("");
+  const [removingIds,      setRemovingIds]      = useState<Set<string>>(new Set());
+  const removeTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // If a task is unticked from anywhere (e.g. milestone card), clear it from removingIds
+  const { useEffect } = React;
+  useEffect(() => {
+    setRemovingIds(prev => {
+      if (prev.size === 0) return prev;
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of prev) {
+        const t = tasks.find(t => t.id === id);
+        if (!t || t.status !== "complete") {
+          next.delete(id);
+          clearTimeout(removeTimeouts.current.get(id));
+          removeTimeouts.current.delete(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [tasks]);
+
   const [habitCreateCtx,   setHabitCreateCtx]   = useState<{ goalId: string; milestoneId: string } | null>(null);
   const [hcName,           setHcName]           = useState("");
   const [hcDesc,           setHcDesc]           = useState("");
@@ -189,12 +217,12 @@ export default function GoalDetailSheet({
   const activeExpandedId  = userInteracted ? expandedId : firstIncompleteId;
 
   const health     = calcGoalHealth(goal);
-  const completedT = tasks.filter(t => t.status === "complete").length;
+  const goalTasks  = tasks.filter(t => t.linkedGoalId === goal.id);
+  const completedT = goalTasks.filter(t => t.status === "complete").length;
   const consistency = calcHabitConsistency(linkedHabits);
   const upcomingTasks = [...tasks]
-    .filter(t => t.deadline)
-    .sort((a, b) => a.deadline.localeCompare(b.deadline))
-    .slice(0, 3);
+    .filter(t => t.linkedGoalId === goal.id && t.deadline)
+    .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const enterEdit = () => {
@@ -412,8 +440,7 @@ export default function GoalDetailSheet({
               )}
 
               {/* Milestone Roadmap */}
-              {milestones.length > 0 && (
-                <div style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "20px" }}>
 
                   {/* Header */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
@@ -421,10 +448,12 @@ export default function GoalDetailSheet({
                       <Activity size={15} color="#374151" />
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>Milestone Roadmap</span>
                     </div>
-                    <button onClick={() => setPopupMilestoneId(milestones[0]?.id ?? null)} style={{ fontSize: "12px", fontWeight: 600, color, background: "none", border: `1.5px solid ${color}40`, borderRadius: "20px", padding: "4px 12px", cursor: "pointer" }}>
-                      View Details
+                    <button onClick={() => { setMsTitle(""); setMsDeadline(""); setMsCreateOpen(true); }} style={{ fontSize: "12px", fontWeight: 600, color: "#FFFFFF", background: color, border: "none", borderRadius: "20px", padding: "4px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                      <Plus size={12} color="#FFFFFF" /> Create Milestone
                     </button>
                   </div>
+
+              {milestones.length > 0 && (<>
 
                   {/* Timeline + cards */}
                   <div style={{ overflowX: "auto", paddingBottom: "4px" }}>
@@ -440,7 +469,7 @@ export default function GoalDetailSheet({
                         const dateRange = `${fmtShort(prevDeadline).replace(/,\s*\d{4}$/, "")} – ${fmtShort(m.deadline)}`;
 
                         const nodeColor   = isCompleted ? "#16A34A" : isCurrent ? color : "#D1D5DB";
-                        const statusLabel = isCompleted ? "Completed" : isCurrent ? "In Progress" : "Locked";
+                        const statusLabel = isCompleted ? "Completed" : isCurrent ? "In Progress" : "Yet to Start";
                         const statusColor = isCompleted ? "#16A34A" : isCurrent ? color : "#374151";
 
                         return (
@@ -545,23 +574,23 @@ export default function GoalDetailSheet({
                             </div>
 
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", margin: "0 0 3px" }}>Milestone {mIdx + 1} of {milestones.length}</p>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                                <p style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</p>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", margin: "0 0 3px" }}>
+                                <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", margin: 0 }}>Milestone {mIdx + 1} of {milestones.length}</p>
                                 {isLocked && (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 600, color: "#6B7280", backgroundColor: "#F3F4F6", padding: "2px 8px", borderRadius: "20px", flexShrink: 0 }}>
-                                    <Lock size={10} color="#6B7280" /> Locked
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "10px", fontWeight: 600, color: "#374151", backgroundColor: "#E5E7EB", padding: "1px 7px", borderRadius: "20px", flexShrink: 0 }}>
+                                    <Lock size={9} color="#374151" /> Yet to Start
                                   </span>
                                 )}
-                                {isCompleted && <span style={{ fontSize: "11px", fontWeight: 700, color: "#16A34A", backgroundColor: "#F0FDF4", padding: "2px 8px", borderRadius: "20px", flexShrink: 0 }}>✓ Completed</span>}
-                                {isCurrent   && <span style={{ fontSize: "11px", fontWeight: 700, color, backgroundColor: `${color}15`, padding: "2px 8px", borderRadius: "20px", flexShrink: 0 }}>In Progress</span>}
+                                {isCompleted && <span style={{ fontSize: "10px", fontWeight: 700, color: "#16A34A", backgroundColor: "#F0FDF4", padding: "1px 7px", borderRadius: "20px", flexShrink: 0 }}>✓ Completed</span>}
+                                {isCurrent   && <span style={{ fontSize: "10px", fontWeight: 700, color, backgroundColor: `${color}15`, padding: "1px 7px", borderRadius: "20px", flexShrink: 0 }}>In Progress</span>}
                               </div>
+                              <p style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", margin: 0, lineHeight: "1.4", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</p>
                             </div>
                             {isExpanded ? <ChevronUp size={16} color="#6B7280" style={{ flexShrink: 0 }} /> : <ChevronDown size={16} color="#6B7280" style={{ flexShrink: 0 }} />}
                           </div>
 
                           {/* Expanded detail */}
-                          {isExpanded && (
+                          <div style={{ maxHeight: isExpanded ? 700 : 0, overflow: "hidden", transition: "max-height 0.32s ease" }}>
                             <div>
                               {/* Sub-header: progress + due + menu */}
                               <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "20px", borderBottom: `1px solid ${color}20` }}>
@@ -605,11 +634,11 @@ export default function GoalDetailSheet({
                                       const overdue = days < 0 && isOpen;
                                       const qm      = Q_META[t.quadrant];
                                       return (
-                                        <div key={t.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5" }}>
-                                          <button onClick={e => { e.stopPropagation(); if (isOpen) onUpdateTask?.({ ...t, status: "complete", closedAt: Date.now(), variance: Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86400000) }); }} style={{ width: 18, height: 18, borderRadius: "50%", border: isDone ? "none" : "1.5px solid #D1D5DB", backgroundColor: isDone ? "#16A34A" : "#FFFFFF", flexShrink: 0, cursor: isOpen ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <div key={t.id} onClick={e => { e.stopPropagation(); const dp = "Delegated to: "; const dl = t.description.startsWith(dp) ? t.description.split("\n")[0].slice(dp.length) : ""; const ad = t.description.startsWith(dp) ? t.description.split("\n").slice(1).join("\n") : t.description; setTaskEditTarget(t); setTaskCreateCtx({ goalId: t.linkedGoalId, milestoneId: t.linkedMilestoneId || "" }); setTcForm({ title: t.title, description: ad, quadrant: t.quadrant, deadline: t.deadline }); setTcDelegateTo(dl); setTcDelegateNudge(false); setTcQ4Bang(false); }} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5", cursor: "pointer" }}>
+                                          <button onClick={e => { e.stopPropagation(); onUpdateTask?.(isDone ? { ...t, status: "open", closedAt: undefined, variance: undefined } : { ...t, status: "complete", closedAt: Date.now(), variance: Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86400000) }); }} style={{ width: 18, height: 18, borderRadius: "50%", border: isDone ? "none" : "1.5px solid #D1D5DB", backgroundColor: isDone ? "#16A34A" : "#FFFFFF", flexShrink: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                             {isDone && <Check size={10} color="#fff" strokeWidth={3} />}
                                           </button>
-                                          <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: isDone ? "#6B7280" : "#1C1917", textDecoration: isDone ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+                                          <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, lineHeight: "1.4", color: isDone ? "#6B7280" : "#1C1917", textDecoration: isDone ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
                                           <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
                                             <CalendarDays size={11} color="#9CA3AF" />
                                             <span style={{ fontSize: "11px", color: overdue ? "#DC2626" : "#374151" }}>{overdue ? `${Math.abs(days)}d late` : days === 0 ? "Today" : fmtShort(t.deadline).replace(/,\s*\d{4}$/, "")}</span>
@@ -641,11 +670,11 @@ export default function GoalDetailSheet({
                                         donePct = sched > 0 ? Math.round(done / sched * 100) : 0; }
                                       const pctColor = donePct >= 80 ? "#16A34A" : donePct >= 50 ? "#F97316" : "#DC2626";
                                       return (
-                                        <div key={h.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5" }}>
-                                          <div onClick={() => { if (h.type === "binary") { const c = hDone ? h.completions.filter(d => d !== today) : [...h.completions, today]; onUpdateHabit?.({ ...h, completions: c }); } }} style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, backgroundColor: hDone ? "#16A34A" : "#FFFFFF", border: hDone ? "none" : "1.5px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", cursor: h.type === "binary" ? "pointer" : "default" }}>
+                                        <div key={h.id} onClick={e => { e.stopPropagation(); setHabitEditTarget(h); setHabitCreateCtx({ goalId: h.linkedGoalId, milestoneId: h.linkedMilestoneId || "" }); setHcName(h.name); setHcDesc(h.description); setHcArea(h.area); setHcFrequency(h.frequency); setHcCustomDays(h.customDays?.length ? h.customDays : [1,2,3,4,5]); setHcType(h.type); setHcTarget(h.target); setHcUnit(h.unit); setHcCue(h.cue || ""); setHcReward(h.reward || ""); }} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5", cursor: "pointer" }}>
+                                          <div onClick={e => { e.stopPropagation(); if (h.type === "binary") { const c = hDone ? h.completions.filter(d => d !== today) : [...h.completions, today]; onUpdateHabit?.({ ...h, completions: c }); } }} style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, backgroundColor: hDone ? "#16A34A" : "#FFFFFF", border: hDone ? "none" : "1.5px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", cursor: h.type === "binary" ? "pointer" : "default" }}>
                                             {hDone && <Check size={10} color="#fff" strokeWidth={3} />}
                                           </div>
-                                          <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: "#1C1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
+                                          <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, lineHeight: "1.4", color: "#1C1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
                                           {streak > 0 && (
                                             <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 700, color: "#F97316", flexShrink: 0 }}>
                                               <Flame size={11} color="#F97316" />{streak} day streak
@@ -660,45 +689,44 @@ export default function GoalDetailSheet({
 
                               </div>
                             </div>
-                          )}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
+              </>)}
+              </div>
 
-              {/* Notes */}
+              {/* PROGRESS NOTES — commented out
               <div>
-                <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#A8A29E", marginBottom: "10px" }}>Progress Notes</p>
-                <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-                  <textarea ref={noteRef} value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Log an update, obstacle, or win…" rows={2}
-                    onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNote(); }}
-                    style={{ flex: 1, padding: "8px 10px", borderRadius: "8px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "12px", color: "#1C1917", resize: "none", outline: "none", lineHeight: 1.5, fontFamily: "inherit" }}
-                    onFocus={e => { e.currentTarget.style.borderColor = "#F97316"; }}
-                    onBlur={e  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
-                  <button onClick={addNote} disabled={!noteText.trim()} style={{ alignSelf: "flex-end", width: 34, height: 34, borderRadius: "8px", border: "none", flexShrink: 0, background: noteText.trim() ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0", cursor: noteText.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Plus size={14} color={noteText.trim() ? "#FFFFFF" : "#A8A29E"} />
-                  </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "14px" }}>
+                  <Pencil size={13} color={color} />
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>Progress Notes</span>
+                  {goal.notes.length > 0 && (
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#FFFFFF", backgroundColor: color, borderRadius: "20px", padding: "1px 8px" }}>
+                      {goal.notes.length}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: "8px", marginBottom: "14px", alignItems: "flex-end" }}>
+                  <textarea ref={noteRef} value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Log an update, obstacle, or win…" rows={2} onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNote(); }} style={{ flex: 1, padding: "10px 12px", borderRadius: "10px", border: `1.5px solid ${color}30`, backgroundColor: areaBg, fontSize: "12px", color: "#1C1917", resize: "none", outline: "none", lineHeight: 1.5, fontFamily: "inherit" }} onFocus={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.boxShadow = `0 0 0 3px ${color}15`; }} onBlur={e => { e.currentTarget.style.borderColor = `${color}30`; e.currentTarget.style.boxShadow = "none"; }} />
+                  <button onClick={addNote} disabled={!noteText.trim()} style={{ flexShrink: 0, width: 36, height: 36, borderRadius: "10px", border: "none", backgroundColor: noteText.trim() ? color : `${color}40`, cursor: noteText.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", transition: "background-color 0.15s" }}><Plus size={16} color="#FFFFFF" /></button>
                 </div>
                 {goal.notes.length === 0 ? (
-                  <p style={{ fontSize: "12px", color: "#A8A29E", textAlign: "center", padding: "12px 0" }}>No notes yet.</p>
+                  <p style={{ fontSize: "12px", color: "#6B7280", textAlign: "center", padding: "12px 0", margin: 0 }}>No notes yet. Add your first update above.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {goal.notes.map(note => (
-                      <div key={note.id} style={{ backgroundColor: "#FFFFFF", border: "1px solid #EDE5D8", borderRadius: "8px", padding: "10px 12px", position: "relative" }}>
-                        <p style={{ fontSize: "12px", color: "#1C1917", lineHeight: 1.5, margin: 0, paddingRight: "20px" }}>{note.text}</p>
-                        <p style={{ fontSize: "9px", color: "#A8A29E", marginTop: "4px" }}>{fmtTs(note.timestamp)}</p>
-                        <button onClick={() => deleteNote(note.id)} style={{ position: "absolute", top: "8px", right: "8px", width: 20, height: 20, borderRadius: "4px", border: "none", backgroundColor: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; }}>
-                          <Trash2 size={11} color="#DC2626" />
-                        </button>
+                      <div key={note.id} style={{ backgroundColor: areaBg, border: `1px solid ${color}20`, borderLeft: `3px solid ${color}`, borderRadius: "10px", padding: "10px 36px 10px 14px", position: "relative" }}>
+                        <p style={{ fontSize: "12px", color: "#1C1917", lineHeight: 1.6, margin: "0 0 5px" }}>{note.text}</p>
+                        <p style={{ fontSize: "10px", fontWeight: 600, color: "#374151", margin: 0 }}>{fmtTs(note.timestamp)}</p>
+                        <button onClick={() => deleteNote(note.id)} style={{ position: "absolute", top: "10px", right: "10px", width: 22, height: 22, borderRadius: "6px", border: "none", backgroundColor: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#FEE2E2"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}><Trash2 size={12} color="#DC2626" /></button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+              END PROGRESS NOTES */}
             </div>
 
             {/* Right sidebar */}
@@ -738,8 +766,8 @@ export default function GoalDetailSheet({
                   {([
                     { icon: <Target size={12} color="#EA580C" />,     label: "Total Milestones",   value: milestones.length },
                     { icon: <CheckSquare size={12} color="#F97316" />, label: "Active Milestones",  value: milestones.filter(m => !m.completed).length },
-                    { icon: <Circle size={12} color="#2563EB" />,      label: "Total Tasks",        value: tasks.length },
-                    { icon: <CheckCircle2 size={12} color="#16A34A" />,label: "Tasks Completed",    value: `${completedT} (${tasks.length > 0 ? Math.round(completedT / tasks.length * 100) : 0}%)` },
+                    { icon: <Circle size={12} color="#2563EB" />,      label: "Total Tasks",        value: goalTasks.length },
+                    { icon: <CheckCircle2 size={12} color="#16A34A" />,label: `Tasks Completed (${goalTasks.length > 0 ? Math.round(completedT / goalTasks.length * 100) : 0}%)`, value: completedT },
                     { icon: <Flame size={12} color="#EA580C" />,       label: "Active Habits",      value: linkedHabits.length },
                     { icon: <Zap size={12} color="#7C3AED" />,         label: "Habit Consistency",  value: `${consistency}%` },
                   ] as { icon: React.ReactNode; label: string; value: string | number }[]).map(row => (
@@ -761,22 +789,37 @@ export default function GoalDetailSheet({
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <CalendarDays size={14} color="#EA580C" />
                       <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Upcoming Deadlines</span>
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: "#FFFFFF", backgroundColor: "#EA580C", borderRadius: "20px", padding: "1px 7px", lineHeight: "18px" }}>
+                        {upcomingTasks.filter(t => t.status !== "complete").length}
+                      </span>
                     </div>
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#2563EB", cursor: "pointer" }}>View all</span>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {upcomingTasks.map((t) => {
+                  <div style={{ display: "flex", flexDirection: "column", maxHeight: 165, overflowY: "auto", paddingRight: "4px" }}>
+                    {upcomingTasks.filter(t => t.status !== "complete" || removingIds.has(t.id)).map((t, tIdx, tArr) => {
                       const done    = t.status === "complete";
                       const days    = daysUntil(t.deadline);
                       const overdue = days < 0 && !done;
                       const qm      = Q_META[t.quadrant];
                       const mIdx    = milestones.findIndex(m => m.id === t.linkedMilestoneId);
+                      const isRemoving = removingIds.has(t.id);
                       return (
-                        <div key={t.id} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                        <div key={t.id} style={{ overflow: "hidden", maxHeight: isRemoving ? 0 : 120, opacity: isRemoving ? 0 : 1, marginBottom: isRemoving ? 0 : "12px", transition: "max-height 0.35s ease, opacity 0.35s ease, margin-bottom 0.35s ease" }}>
+                        <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                           {/* Checkbox + vertical line */}
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
                             <div
-                              onClick={() => onUpdateTask?.({ ...t, status: done ? "open" : "complete" })}
+                              onClick={() => {
+                                const nowDone = !done;
+                                onUpdateTask?.({ ...t, status: nowDone ? "complete" : "open", ...(nowDone ? { closedAt: Date.now(), variance: Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86400000) } : {}) });
+                                if (nowDone) {
+                                  const tid = setTimeout(() => setRemovingIds(prev => new Set([...prev, t.id])), 1000);
+                                  removeTimeouts.current.set(t.id, tid);
+                                } else {
+                                  clearTimeout(removeTimeouts.current.get(t.id));
+                                  removeTimeouts.current.delete(t.id);
+                                  setRemovingIds(prev => { const n = new Set(prev); n.delete(t.id); return n; });
+                                }
+                              }}
                               style={{
                                 width: 20, height: 20, borderRadius: "5px", cursor: "pointer",
                                 backgroundColor: done ? "#16A34A" : "#FFFFFF",
@@ -787,7 +830,7 @@ export default function GoalDetailSheet({
                             >
                               {done && <Check size={11} color="#FFFFFF" strokeWidth={3} />}
                             </div>
-                            <div style={{ width: 1.5, height: 20, backgroundColor: `${qm.color}35`, marginTop: "3px" }} />
+                            {tIdx < tArr.length - 1 && <div style={{ width: 1.5, height: 20, backgroundColor: `${qm.color}35`, marginTop: "3px" }} />}
                           </div>
                           {/* Text */}
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -804,6 +847,7 @@ export default function GoalDetailSheet({
                             </div>
                           </div>
                         </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -819,30 +863,28 @@ export default function GoalDetailSheet({
                   </div>
                   <Sparkles size={13} color="#C4B5FD" />
                 </div>
-                <p style={{ fontSize: "12px", color: "#57534E", lineHeight: 1.5, margin: "0 0 12px" }}>
+                <p style={{ fontSize: "12px", color: "#1C1917", lineHeight: 1.5, margin: "0 0 12px" }}>
                   Personalized goal insights and suggestions coming soon.
                 </p>
-                <button style={{ width: "100%", padding: "8px", borderRadius: "8px", border: "1.5px solid #C4B5FD", backgroundColor: "transparent", fontSize: "12px", fontWeight: 600, color: "#7C3AED", cursor: "pointer" }}>
-                  View All Insights →
+                <button disabled style={{ width: "100%", padding: "8px", borderRadius: "8px", border: "1.5px solid #C4B5FD", backgroundColor: "transparent", fontSize: "12px", fontWeight: 600, color: "#7C3AED", cursor: "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", opacity: 0.75 }}>
+                  <Lock size={12} color="#7C3AED" /> Coming Soon
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Footer */}
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #EDE5D8", display: "flex", gap: "10px", justifyContent: mode === "edit" ? "stretch" : "flex-end", flexShrink: 0 }}>
-          {mode === "edit" ? (
-            <>
-              <button onClick={() => setMode("view")} style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>
-                Cancel
-              </button>
-              <button onClick={saveEdit} disabled={!canSaveEdit} style={{ flex: 2, padding: "10px", borderRadius: "10px", border: "none", background: canSaveEdit ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSaveEdit ? "#FFFFFF" : "#A8A29E", cursor: canSaveEdit ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
-                <Check size={14} /> Save changes
-              </button>
-            </>
-          ) : null}
-        </div>
+        {/* Footer — only shown in edit mode */}
+        {mode === "edit" && (
+          <div style={{ padding: "12px 20px", borderTop: "1px solid #EDE5D8", display: "flex", gap: "10px", flexShrink: 0 }}>
+            <button onClick={() => setMode("view")} style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>
+              Cancel
+            </button>
+            <button onClick={saveEdit} disabled={!canSaveEdit} style={{ flex: 2, padding: "10px", borderRadius: "10px", border: "none", background: canSaveEdit ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSaveEdit ? "#FFFFFF" : "#A8A29E", cursor: canSaveEdit ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+              <Check size={14} /> Save changes
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Milestone popup */}
@@ -868,6 +910,54 @@ export default function GoalDetailSheet({
           />
         );
       })()}
+      {/* ── Milestone Create Modal ── */}
+      {msCreateOpen && (() => {
+        const msColor    = AREA_META[goal.area].color;
+        const msDeadlineError = validateDate(msDeadline, { required: true });
+        const msCanSave  = msTitle.trim().length > 0 && !msDeadlineError;
+        function closeMsModal() { setMsCreateOpen(false); }
+        function saveMilestone() {
+          if (!msCanSave) return;
+          const newMs: Milestone = { id: crypto.randomUUID(), title: msTitle.trim(), deadline: msDeadline, completed: false, createdAt: Date.now() };
+          onUpdate({ ...goal!, milestones: [...(goal!.milestones ?? []), newMs] });
+          closeMsModal();
+        }
+        const inSt: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid #E8DDD0", fontSize: "13px", color: "#1C1917", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF" };
+        const lbSt: React.CSSProperties = { fontSize: "11px", fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px", display: "block" };
+        return (
+          <>
+            <div onClick={closeMsModal} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(28,25,23,0.45)", zIndex: 200, backdropFilter: "blur(3px)" }} />
+            <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 440, maxWidth: "calc(100vw - 32px)", backgroundColor: "#FFFFFF", borderRadius: "18px", zIndex: 201, boxShadow: "0 24px 64px rgba(28,25,23,0.18)", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ padding: "18px 24px", borderBottom: "1px solid #EDE5D8", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)" }}>
+                <div>
+                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: msColor, margin: "0 0 3px" }}>New Milestone</p>
+                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Create Milestone</h2>
+                </div>
+                <button onClick={closeMsModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={15} color="#78716C" />
+                </button>
+              </div>
+              {/* Body */}
+              <div style={{ padding: "20px 24px" }}>
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={lbSt}>Title *</label>
+                  <input autoFocus value={msTitle} onChange={e => setMsTitle(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && msCanSave) saveMilestone(); }} placeholder="e.g. Launch beta version" style={inSt} onFocus={e => { e.currentTarget.style.borderColor = msColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                </div>
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={lbSt}>Deadline *</label>
+                  <input type="date" value={msDeadline} onChange={e => setMsDeadline(e.target.value)} min={todayDateStr()} max={MAX_DATE_STR} style={{ ...inSt, colorScheme: "light" }} onFocus={e => { e.currentTarget.style.borderColor = msColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                  {msDeadlineError && <p style={{ fontSize: "11px", color: "#DC2626", margin: "4px 0 0" }}>{msDeadlineError}</p>}
+                </div>
+                <button onClick={saveMilestone} disabled={!msCanSave} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: msCanSave ? `linear-gradient(135deg, ${msColor}, ${msColor}CC)` : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: msCanSave ? "#FFFFFF" : "#A8A29E", cursor: msCanSave ? "pointer" : "default" }}>
+                  Create Milestone
+                </button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
       {/* ── Task Create Modal ── */}
       {taskCreateCtx && (() => {
         const tcToday          = toTaskDate();
@@ -890,6 +980,7 @@ export default function GoalDetailSheet({
         }
         function closeModal() {
           setTaskCreateCtx(null);
+          setTaskEditTarget(null);
           setTcDelegateTo(""); setTcDelegateNudge(false); setTcQ4Bang(false);
         }
         function handleTaskSave() {
@@ -903,14 +994,18 @@ export default function GoalDetailSheet({
           const description = tcForm.quadrant === "Q3" && tcDelegateTo.trim()
             ? `Delegated to: ${tcDelegateTo.trim()}${tcForm.description.trim() ? "\n" + tcForm.description.trim() : ""}`
             : tcForm.description.trim();
-          onSaveTask?.({
-            id: crypto.randomUUID(), kind: "one-time",
-            title: tcForm.title.trim(), description,
-            deadline: tcForm.deadline, quadrant: tcForm.quadrant,
-            status: "open", createdAt: Date.now(),
-            linkedGoalId: taskCreateCtx!.goalId,
-            linkedMilestoneId: taskCreateCtx!.milestoneId || undefined,
-          });
+          if (taskEditTarget) {
+            onUpdateTask?.({ ...taskEditTarget, title: tcForm.title.trim(), description, deadline: tcForm.deadline, quadrant: tcForm.quadrant });
+          } else {
+            onSaveTask?.({
+              id: crypto.randomUUID(), kind: "one-time",
+              title: tcForm.title.trim(), description,
+              deadline: tcForm.deadline, quadrant: tcForm.quadrant,
+              status: "open", createdAt: Date.now(),
+              linkedGoalId: taskCreateCtx!.goalId,
+              linkedMilestoneId: taskCreateCtx!.milestoneId || undefined,
+            });
+          }
           closeModal();
         }
         const inputSt: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid #E8DDD0", fontSize: "13px", color: "#1C1917", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF" };
@@ -933,8 +1028,8 @@ export default function GoalDetailSheet({
               {/* Header */}
               <div style={{ padding: "18px 24px", borderBottom: "1px solid #EDE5D8", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)", flexShrink: 0 }}>
                 <div>
-                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: tcColor, margin: "0 0 3px" }}>New Task</p>
-                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Add Task</h2>
+                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: tcColor, margin: "0 0 3px" }}>{taskEditTarget ? "Edit Task" : "New Task"}</p>
+                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{taskEditTarget ? "Edit Task" : "Add Task"}</h2>
                 </div>
                 <button onClick={closeModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <X size={15} color="#78716C" />
@@ -1018,21 +1113,32 @@ export default function GoalDetailSheet({
         const DAYS_LBL = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
         const FREQS    = Object.keys(FREQ_LABEL) as HabitFrequency[];
         const AREAS    = Object.keys(HABIT_AREA_META) as LifeArea[];
-        function closeHabitModal() { setHabitCreateCtx(null); }
+        function closeHabitModal() { setHabitCreateCtx(null); setHabitEditTarget(null); }
         function handleHabitSave() {
           if (!canSave) return;
-          onSaveHabit?.({
-            id: crypto.randomUUID(), name: hcName.trim(), description: hcDesc.trim(),
-            area: hcArea, frequency: hcFrequency,
-            customDays: hcFrequency === "custom" ? hcCustomDays : [],
-            cue: hcCue.trim(), reward: hcReward.trim(),
-            type: hcType, target: hcType === "binary" ? 1 : hcTarget,
-            unit: hcType === "binary" ? "" : hcUnit.trim(),
-            completions: [], measurements: {},
-            linkedGoalId: habitCreateCtx!.goalId,
-            linkedMilestoneId: habitCreateCtx!.milestoneId || "",
-            createdAt: Date.now(),
-          });
+          if (habitEditTarget) {
+            onUpdateHabit?.({
+              ...habitEditTarget, name: hcName.trim(), description: hcDesc.trim(),
+              area: hcArea, frequency: hcFrequency,
+              customDays: hcFrequency === "custom" ? hcCustomDays : [],
+              cue: hcCue.trim(), reward: hcReward.trim(),
+              type: hcType, target: hcType === "binary" ? 1 : hcTarget,
+              unit: hcType === "binary" ? "" : hcUnit.trim(),
+            });
+          } else {
+            onSaveHabit?.({
+              id: crypto.randomUUID(), name: hcName.trim(), description: hcDesc.trim(),
+              area: hcArea, frequency: hcFrequency,
+              customDays: hcFrequency === "custom" ? hcCustomDays : [],
+              cue: hcCue.trim(), reward: hcReward.trim(),
+              type: hcType, target: hcType === "binary" ? 1 : hcTarget,
+              unit: hcType === "binary" ? "" : hcUnit.trim(),
+              completions: [], measurements: {},
+              linkedGoalId: habitCreateCtx!.goalId,
+              linkedMilestoneId: habitCreateCtx!.milestoneId || "",
+              createdAt: Date.now(),
+            });
+          }
           closeHabitModal();
         }
         const inSt: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", color: "#1C1917", outline: "none", fontFamily: "inherit" };
@@ -1045,8 +1151,8 @@ export default function GoalDetailSheet({
               {/* Header */}
               <div style={{ padding: "18px 24px", borderBottom: "1px solid #EDE5D8", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)", flexShrink: 0 }}>
                 <div>
-                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: hcColor, margin: "0 0 3px" }}>New Habit</p>
-                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Build a new habit</h2>
+                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: hcColor, margin: "0 0 3px" }}>{habitEditTarget ? "Edit Habit" : "New Habit"}</p>
+                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{habitEditTarget ? "Edit habit" : "Build a new habit"}</h2>
                 </div>
                 <button onClick={closeHabitModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <X size={15} color="#78716C" />
