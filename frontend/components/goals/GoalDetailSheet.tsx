@@ -750,7 +750,7 @@ export default function GoalDetailSheet({
                       <div style={{ width: 26, height: 26, borderRadius: "7px", backgroundColor: "#F9F9F9", border: "1px solid #E5E9EE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         {row.icon}
                       </div>
-                      <span style={{ fontSize: "12px", color: "#57534E", flex: 1 }}>{row.label}</span>
+                      <span style={{ fontSize: "12px", color: "#1C1917", flex: 1 }}>{row.label}</span>
                       <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>{row.value}</span>
                     </div>
                   ))}
