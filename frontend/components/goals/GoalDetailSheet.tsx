@@ -192,7 +192,7 @@ export default function GoalDetailSheet({
   const completedT = tasks.filter(t => t.status === "complete").length;
   const consistency = calcHabitConsistency(linkedHabits);
   const upcomingTasks = [...tasks]
-    .filter(t => t.status === "open")
+    .filter(t => t.deadline)
     .sort((a, b) => a.deadline.localeCompare(b.deadline))
     .slice(0, 3);
 
@@ -769,31 +769,41 @@ export default function GoalDetailSheet({
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     {upcomingTasks.map((t) => {
+                      const done    = t.status === "complete";
                       const days    = daysUntil(t.deadline);
-                      const overdue = days < 0;
+                      const overdue = days < 0 && !done;
                       const qm      = Q_META[t.quadrant];
                       const mIdx    = milestones.findIndex(m => m.id === t.linkedMilestoneId);
                       return (
                         <div key={t.id} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                          {/* Icon + vertical line */}
+                          {/* Checkbox + vertical line */}
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                            <div style={{ width: 20, height: 20, borderRadius: "5px", backgroundColor: qm.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <Check size={11} color="#FFFFFF" strokeWidth={3} />
+                            <div
+                              onClick={() => onUpdateTask?.({ ...t, status: done ? "open" : "complete" })}
+                              style={{
+                                width: 20, height: 20, borderRadius: "5px", cursor: "pointer",
+                                backgroundColor: done ? "#16A34A" : "#FFFFFF",
+                                border: `2px solid ${done ? "#16A34A" : qm.color}`,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                transition: "background-color 0.15s, border-color 0.15s",
+                              }}
+                            >
+                              {done && <Check size={11} color="#FFFFFF" strokeWidth={3} />}
                             </div>
                             <div style={{ width: 1.5, height: 20, backgroundColor: `${qm.color}35`, marginTop: "3px" }} />
                           </div>
                           {/* Text */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "6px", marginBottom: "3px" }}>
-                              <p style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917", margin: 0, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</p>
-                              <span style={{ fontSize: "11px", fontWeight: 600, color: overdue ? "#DC2626" : "#57534E", flexShrink: 0 }}>
+                              <p style={{ fontSize: "13px", fontWeight: 700, color: done ? "#9CA3AF" : "#1C1917", margin: 0, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: done ? "line-through" : "none" }}>{t.title}</p>
+                              <span style={{ fontSize: "11px", fontWeight: 600, color: overdue ? "#DC2626" : done ? "#9CA3AF" : "#57534E", flexShrink: 0 }}>
                                 {overdue ? `${Math.abs(days)}d late` : fmtShort(t.deadline).split(",")[0]}
                               </span>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                               {mIdx >= 0 && <span style={{ fontSize: "11px", color: "#78716C" }}>Milestone {mIdx + 1}</span>}
                               {mIdx >= 0 && <span style={{ fontSize: "11px", color: "#C4B5A0" }}>·</span>}
-                              <span style={{ fontSize: "11px", fontWeight: 600, color: qm.color }}>{qm.label}</span>
+                              <span style={{ fontSize: "11px", fontWeight: 600, color: done ? "#9CA3AF" : qm.color }}>{qm.label}</span>
                             </div>
                           </div>
                         </div>
