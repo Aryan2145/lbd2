@@ -504,151 +504,148 @@ export default function GoalDetailSheet({
                     </div>
                   </div>
 
-                  {/* Expanded detail panel */}
-                  {activeExpandedId && (() => {
-                    const m = milestones.find(x => x.id === activeExpandedId);
-                    if (!m) return null;
-                    const mIdx        = milestones.findIndex(x => x.id === m.id);
-                    const isCompleted = m.completed;
-                    const isCurrent   = m.id === firstIncompleteId;
-                    const isLocked    = !isCompleted && !isCurrent;
-                    const statusLabel = isCompleted ? "Completed" : isCurrent ? "In Progress" : "Locked";
-                    const statusColor = isCompleted ? "#16A34A" : isCurrent ? color : "#374151";
-                    const statusBg    = isCompleted ? "#F0FDF4"  : isCurrent ? `${color}15` : "#F3F4F6";
-                    const mTasks      = tasks.filter(t => t.linkedMilestoneId === m.id && t.linkedGoalId === goal.id);
-                    const mHabits     = linkedHabits.filter(h => h.linkedMilestoneId === m.id);
-                    const completedMT = mTasks.filter(t => t.status === "complete").length;
-                    const progressPct = mTasks.length > 0 ? Math.round((completedMT / mTasks.length) * 100) : 0;
-                    return (
-                      <div style={{ marginTop: "14px", borderRadius: "14px", border: `1px solid ${color}30`, backgroundColor: areaBg, overflow: "hidden", boxShadow: `0 2px 16px ${color}12` }}>
+                  {/* Scrollable milestone accordion list */}
+                  <div style={{ maxHeight: 560, overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px", paddingRight: "2px" }}>
+                    {milestones.map((m, mIdx) => {
+                      const isCompleted = m.completed;
+                      const isCurrent   = m.id === firstIncompleteId;
+                      const isLocked    = !isCompleted && !isCurrent;
+                      const isExpanded  = activeExpandedId === m.id;
+                      const statusColor = isCompleted ? "#16A34A" : isCurrent ? color : "#6B7280";
+                      const statusBg    = isCompleted ? "#F0FDF4"  : isCurrent ? `${color}15` : "#F3F4F6";
+                      const mTasks      = tasks.filter(t => t.linkedMilestoneId === m.id && t.linkedGoalId === goal.id);
+                      const mHabits     = linkedHabits.filter(h => h.linkedMilestoneId === m.id);
+                      const completedMT = mTasks.filter(t => t.status === "complete").length;
+                      const progressPct = mTasks.length > 0 ? Math.round((completedMT / mTasks.length) * 100) : 0;
 
-                        {/* ── Panel header ── */}
-                        <div style={{ padding: "16px 20px 14px", borderBottom: `1px solid ${color}20` }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                      return (
+                        <div key={m.id} style={{ borderRadius: "12px", border: `1px solid ${isExpanded ? `${color}35` : "#E5E9EE"}`, overflow: "hidden", backgroundColor: isExpanded ? areaBg : "#FFFFFF", boxShadow: isExpanded ? `0 2px 12px ${color}10` : "none" }}>
 
-                            {/* Left: label + title + status */}
+                          {/* Collapsed row — always visible */}
+                          <div onClick={() => toggleExpand(m.id)} style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", borderBottom: isExpanded ? `1px solid ${color}20` : "none" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: "13px", color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>
-                                Milestone {mIdx + 1} of {milestones.length}
-                              </p>
-                              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "6px" }}>
-                                <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1C1917", margin: 0, lineHeight: 1.2 }}>{m.title}</h3>
-                                <span style={{ fontSize: "11px", fontWeight: 700, color: statusColor, backgroundColor: statusBg, padding: "3px 10px", borderRadius: "20px", flexShrink: 0 }}>{statusLabel}</span>
+                              <p style={{ fontSize: "11px", fontWeight: 600, color: "#6B7280", margin: "0 0 3px" }}>Milestone {mIdx + 1} of {milestones.length}</p>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                                <p style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</p>
+                                {isLocked && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 600, color: "#6B7280", backgroundColor: "#F3F4F6", padding: "2px 8px", borderRadius: "20px", flexShrink: 0 }}>
+                                    <Lock size={10} color="#6B7280" /> Locked
+                                  </span>
+                                )}
+                                {isCompleted && <span style={{ fontSize: "11px", fontWeight: 700, color: "#16A34A", backgroundColor: "#F0FDF4", padding: "2px 8px", borderRadius: "20px", flexShrink: 0 }}>✓ Completed</span>}
+                                {isCurrent   && <span style={{ fontSize: "11px", fontWeight: 700, color, backgroundColor: `${color}15`, padding: "2px 8px", borderRadius: "20px", flexShrink: 0 }}>In Progress</span>}
                               </div>
                             </div>
+                            {isExpanded ? <ChevronUp size={16} color="#6B7280" style={{ flexShrink: 0 }} /> : <ChevronDown size={16} color="#6B7280" style={{ flexShrink: 0 }} />}
+                          </div>
 
-                            {/* Right: Progress + Due date + menu */}
-                            <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
-                              <div>
-                                <p style={{ fontSize: "10px", fontWeight: 600, color: "#374151", margin: "0 0 4px" }}>Progress</p>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                  <div style={{ width: 80, height: 5, borderRadius: 3, backgroundColor: `${color}18` }}>
-                                    <div style={{ height: "100%", borderRadius: 3, backgroundColor: color, width: `${progressPct}%` }} />
+                          {/* Expanded detail */}
+                          {isExpanded && (
+                            <div>
+                              {/* Sub-header: progress + due + menu */}
+                              <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "20px", borderBottom: `1px solid ${color}20` }}>
+                                <div style={{ flex: 1 }}>
+                                  <p style={{ fontSize: "10px", fontWeight: 600, color: "#374151", margin: "0 0 4px" }}>Progress</p>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <div style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: `${color}18` }}>
+                                      <div style={{ height: "100%", borderRadius: 3, backgroundColor: color, width: `${progressPct}%` }} />
+                                    </div>
+                                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917", flexShrink: 0 }}>{progressPct}%</span>
                                   </div>
-                                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>{progressPct}%</span>
                                 </div>
-                              </div>
-                              <div>
-                                <p style={{ fontSize: "10px", fontWeight: 600, color: "#374151", margin: "0 0 4px" }}>Due date</p>
-                                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                  <CalendarDays size={12} color="#374151" />
-                                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917" }}>{fmtShort(m.deadline)}</span>
+                                <div style={{ flexShrink: 0 }}>
+                                  <p style={{ fontSize: "10px", fontWeight: 600, color: "#374151", margin: "0 0 4px" }}>Due date</p>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                    <CalendarDays size={12} color="#374151" />
+                                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917" }}>{fmtShort(m.deadline)}</span>
+                                  </div>
                                 </div>
+                                <button onClick={e => { e.stopPropagation(); setPopupMilestoneId(m.id); }} style={{ width: 28, height: 28, borderRadius: "8px", border: "1px solid #E5E9EE", backgroundColor: "#F9F9F9", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <MoreHorizontal size={14} color="#6B7280" />
+                                </button>
                               </div>
-                              {/* ⋮ menu */}
-                              <button onClick={() => setPopupMilestoneId(m.id)} style={{ width: 28, height: 28, borderRadius: "8px", border: "1px solid #E5E9EE", backgroundColor: "#F9F9F9", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                <MoreHorizontal size={14} color="#6B7280" />
-                              </button>
+
+                              {/* Tasks + Habits */}
+                              <div style={{ padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+
+                                {/* Tasks */}
+                                <div style={{ padding: "14px 16px", borderRadius: "10px", border: `1px solid ${color}20`, backgroundColor: "#FFFFFF" }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "10px", marginBottom: "12px", borderBottom: `1px solid ${color}20` }}>
+                                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Tasks ({mTasks.length})</span>
+                                    <button onClick={e => { e.stopPropagation(); setTaskCreateCtx({ goalId: goal.id, milestoneId: m.id }); setTcForm({ title: "", description: "", quadrant: "Q2", deadline: "" }); setTcDelegateTo(""); setTcDelegateNudge(false); setTcQ4Bang(false); }} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                                      <Plus size={12} /> Add Task
+                                    </button>
+                                  </div>
+                                  <div style={{ display: "flex", flexDirection: "column", minHeight: 108, maxHeight: 180, overflowY: "auto" }}>
+                                    {mTasks.length === 0 ? (
+                                      <p style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>No tasks yet</p>
+                                    ) : mTasks.map(t => {
+                                      const isDone  = t.status === "complete";
+                                      const isOpen  = t.status === "open";
+                                      const days    = daysUntil(t.deadline);
+                                      const overdue = days < 0 && isOpen;
+                                      const qm      = Q_META[t.quadrant];
+                                      return (
+                                        <div key={t.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5" }}>
+                                          <button onClick={e => { e.stopPropagation(); if (isOpen) onUpdateTask?.({ ...t, status: "complete", closedAt: Date.now(), variance: Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86400000) }); }} style={{ width: 18, height: 18, borderRadius: "50%", border: isDone ? "none" : "1.5px solid #D1D5DB", backgroundColor: isDone ? "#16A34A" : "#FFFFFF", flexShrink: 0, cursor: isOpen ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            {isDone && <Check size={10} color="#fff" strokeWidth={3} />}
+                                          </button>
+                                          <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: isDone ? "#6B7280" : "#1C1917", textDecoration: isDone ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+                                          <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
+                                            <CalendarDays size={11} color="#9CA3AF" />
+                                            <span style={{ fontSize: "11px", color: overdue ? "#DC2626" : "#374151" }}>{overdue ? `${Math.abs(days)}d late` : days === 0 ? "Today" : fmtShort(t.deadline).replace(/,\s*\d{4}$/, "")}</span>
+                                          </div>
+                                          <span style={{ fontSize: "10px", fontWeight: 700, flexShrink: 0, color: isDone ? "#16A34A" : qm.color, backgroundColor: isDone ? "#F0FDF4" : `${qm.color}15`, padding: "2px 7px", borderRadius: "10px" }}>{isDone ? "Done" : qm.label.split(" ")[0]}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                {/* Habits */}
+                                <div style={{ padding: "14px 16px", borderRadius: "10px", border: `1px solid ${color}20`, backgroundColor: "#FFFFFF" }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "10px", marginBottom: "12px", borderBottom: `1px solid ${color}20` }}>
+                                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Habits ({mHabits.length})</span>
+                                    <button onClick={e => { e.stopPropagation(); setHabitCreateCtx({ goalId: goal.id, milestoneId: m.id }); setHcName(""); setHcDesc(""); setHcArea("health"); setHcFrequency("daily"); setHcCustomDays([1,2,3,4,5]); setHcType("binary"); setHcTarget(1); setHcUnit(""); setHcCue(""); setHcReward(""); }} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                                      <Plus size={12} /> Add Habit
+                                    </button>
+                                  </div>
+                                  <div style={{ display: "flex", flexDirection: "column", minHeight: 108, maxHeight: 180, overflowY: "auto" }}>
+                                    {mHabits.length === 0 ? (
+                                      <p style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>No habits yet</p>
+                                    ) : mHabits.map(h => {
+                                      const hDone  = isHabitDoneOnDate(h, today);
+                                      const streak = calcStreak(h);
+                                      let donePct  = 0;
+                                      { let done = 0, sched = 0; const now2 = new Date();
+                                        for (let i = 0; i < 30; i++) { const d = new Date(now2); d.setDate(now2.getDate() - i); if (d.getTime() < h.createdAt) break; if (!isScheduledDay(h.frequency, h.customDays, d.getDay())) continue; sched++; if (isHabitDoneOnDate(h, toLocalDate(d))) done++; }
+                                        donePct = sched > 0 ? Math.round(done / sched * 100) : 0; }
+                                      const pctColor = donePct >= 80 ? "#16A34A" : donePct >= 50 ? "#F97316" : "#DC2626";
+                                      return (
+                                        <div key={h.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5" }}>
+                                          <div onClick={() => { if (h.type === "binary") { const c = hDone ? h.completions.filter(d => d !== today) : [...h.completions, today]; onUpdateHabit?.({ ...h, completions: c }); } }} style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, backgroundColor: hDone ? "#16A34A" : "#FFFFFF", border: hDone ? "none" : "1.5px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", cursor: h.type === "binary" ? "pointer" : "default" }}>
+                                            {hDone && <Check size={10} color="#fff" strokeWidth={3} />}
+                                          </div>
+                                          <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: "#1C1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
+                                          {streak > 0 && (
+                                            <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 700, color: "#F97316", flexShrink: 0 }}>
+                                              <Flame size={11} color="#F97316" />{streak} day streak
+                                            </span>
+                                          )}
+                                          <span style={{ fontSize: "12px", fontWeight: 700, color: pctColor, flexShrink: 0 }}>{donePct}%</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
-
-                        {/* ── Tasks + Habits columns ── */}
-                        <div style={{ padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-
-                          {/* Tasks */}
-                          <div style={{ padding: "14px 16px", borderRadius: "10px", border: `1px solid ${color}20`, backgroundColor: "#FFFFFF" }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "10px", marginBottom: "12px", borderBottom: `1px solid ${color}20` }}>
-                              <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Tasks ({mTasks.length})</span>
-                              <button onClick={e => { e.stopPropagation(); setTaskCreateCtx({ goalId: goal.id, milestoneId: m.id }); setTcForm({ title: "", description: "", quadrant: "Q2", deadline: "" }); setTcDelegateTo(""); setTcDelegateNudge(false); setTcQ4Bang(false); }} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                                <Plus size={12} /> Add Task
-                              </button>
-                            </div>
-                            <div style={{ display: "flex", flexDirection: "column", minHeight: 108, maxHeight: 180, overflowY: "auto" }}>
-                            {mTasks.length === 0 ? (
-                              <p style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>No tasks yet</p>
-                            ) : mTasks.map(t => {
-                                  const isDone  = t.status === "complete";
-                                  const isOpen  = t.status === "open";
-                                  const days    = daysUntil(t.deadline);
-                                  const overdue = days < 0 && isOpen;
-                                  const qm      = Q_META[t.quadrant];
-                                  return (
-                                    <div key={t.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5" }}>
-                                      <button
-                                        onClick={e => { e.stopPropagation(); if (isOpen) onUpdateTask?.({ ...t, status: "complete", closedAt: Date.now(), variance: Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86400000) }); }}
-                                        style={{ width: 18, height: 18, borderRadius: "50%", border: isDone ? "none" : "1.5px solid #D1D5DB", backgroundColor: isDone ? "#16A34A" : "#FFFFFF", flexShrink: 0, cursor: isOpen ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                        {isDone && <Check size={10} color="#fff" strokeWidth={3} />}
-                                      </button>
-                                      <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: isDone ? "#6B7280" : "#1C1917", textDecoration: isDone ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
-                                      <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
-                                        <CalendarDays size={11} color="#9CA3AF" />
-                                        <span style={{ fontSize: "11px", color: overdue ? "#DC2626" : "#374151" }}>
-                                          {overdue ? `${Math.abs(days)}d late` : days === 0 ? "Today" : fmtShort(t.deadline).replace(/,\s*\d{4}$/, "")}
-                                        </span>
-                                      </div>
-                                      <span style={{ fontSize: "10px", fontWeight: 700, flexShrink: 0, color: isDone ? "#16A34A" : qm.color, backgroundColor: isDone ? "#F0FDF4" : `${qm.color}15`, padding: "2px 7px", borderRadius: "10px" }}>
-                                        {isDone ? "Done" : qm.label.split(" ")[0]}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                          </div>
-
-                          {/* Habits */}
-                          <div style={{ padding: "14px 16px", borderRadius: "10px", border: `1px solid ${color}20`, backgroundColor: "#FFFFFF" }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "10px", marginBottom: "12px", borderBottom: `1px solid ${color}20` }}>
-                              <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Habits ({mHabits.length})</span>
-                              <button onClick={e => { e.stopPropagation(); setHabitCreateCtx({ goalId: goal.id, milestoneId: m.id }); setHcName(""); setHcDesc(""); setHcArea("health"); setHcFrequency("daily"); setHcCustomDays([1,2,3,4,5]); setHcType("binary"); setHcTarget(1); setHcUnit(""); setHcCue(""); setHcReward(""); }} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                                <Plus size={12} /> Add Habit
-                              </button>
-                            </div>
-                            <div style={{ display: "flex", flexDirection: "column", minHeight: 108, maxHeight: 180, overflowY: "auto" }}>
-                            {mHabits.length === 0 ? (
-                              <p style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>No habits yet</p>
-                            ) : mHabits.map(h => {
-                                  const hDone  = isHabitDoneOnDate(h, today);
-                                  const streak = calcStreak(h);
-                                  let donePct  = 0;
-                                  { let done = 0, sched = 0; const now2 = new Date();
-                                    for (let i = 0; i < 30; i++) { const d = new Date(now2); d.setDate(now2.getDate() - i); if (d.getTime() < h.createdAt) break; if (!isScheduledDay(h.frequency, h.customDays, d.getDay())) continue; sched++; if (isHabitDoneOnDate(h, toLocalDate(d))) done++; }
-                                    donePct = sched > 0 ? Math.round(done / sched * 100) : 0; }
-                                  const pctColor = donePct >= 80 ? "#16A34A" : donePct >= 50 ? "#F97316" : "#DC2626";
-                                  return (
-                                    <div key={h.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", borderBottom: "1px solid #F5F5F5" }}>
-                                      <div
-                                        onClick={() => { if (h.type === "binary") { const c = hDone ? h.completions.filter(d => d !== today) : [...h.completions, today]; onUpdateHabit?.({ ...h, completions: c }); } }}
-                                        style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, backgroundColor: hDone ? "#16A34A" : "#FFFFFF", border: hDone ? "none" : "1.5px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", cursor: h.type === "binary" ? "pointer" : "default" }}>
-                                        {hDone && <Check size={10} color="#fff" strokeWidth={3} />}
-                                      </div>
-                                      <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: "#1C1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
-                                      {streak > 0 && (
-                                        <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 700, color: "#F97316", flexShrink: 0 }}>
-                                          <Flame size={11} color="#F97316" />{streak} day streak
-                                        </span>
-                                      )}
-                                      <span style={{ fontSize: "12px", fontWeight: 700, color: pctColor, flexShrink: 0 }}>{donePct}%</span>
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                          </div>
-
-                        </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
