@@ -33,11 +33,11 @@ function getEnergyAccent(n: number): { color: string; label: string } {
 }
 
 const MOOD_CONFIG: { emoji: MoodEmoji; label: string; color: string; tint: string; Icon: LucideIcon }[] = [
-  { emoji: "😤", label: "Rough",   color: "#F87171", tint: "#3B1818", Icon: Flame     },
-  { emoji: "😔", label: "Low",     color: "#FBBF24", tint: "#3B2C0E", Icon: CloudRain },
-  { emoji: "😐", label: "Okay",    color: "#FB923C", tint: "#3B2010", Icon: Minus     },
-  { emoji: "😊", label: "Good",    color: "#34D399", tint: "#0D3325", Icon: Smile     },
-  { emoji: "🤩", label: "Amazing", color: "#A3E635", tint: "#1E3010", Icon: Zap       },
+  { emoji: "😤", label: "Rough",   color: "#F87171", tint: "#FEE2E2", Icon: Flame     },
+  { emoji: "😔", label: "Low",     color: "#FBBF24", tint: "#FEF3C7", Icon: CloudRain },
+  { emoji: "😐", label: "Okay",    color: "#FB923C", tint: "#FFF3EA", Icon: Minus     },
+  { emoji: "😊", label: "Good",    color: "#34D399", tint: "#DCFCE7", Icon: Smile     },
+  { emoji: "🤩", label: "Amazing", color: "#A3E635", tint: "#ECFCCB", Icon: Zap       },
 ];
 
 const A = {
@@ -52,14 +52,14 @@ const A = {
 } as const;
 
 const B = {
-  pageBg:    "#13111F",
-  cardBg:    "#1E1B2E",
-  fieldBg:   "#272440",
-  border:    "#353060",
-  text:      "#EDE8FA",
-  secondary: "#9B93BC",
-  muted:     "#5C5778",
-  label:     "#7D76A0",
+  pageBg:    "#FFFFFF",
+  cardBg:    "#FFFFFF",
+  fieldBg:   "#FFFFFF",
+  border:    "#EADFD3",
+  text:      "#1F2933",
+  secondary: "#374151",
+  muted:     "#6B7280",
+  label:     "#374151",
 } as const;
 
 const CARD_H = "260px";
@@ -195,11 +195,11 @@ export default function EveningReflectionComponent({
   return (
     <>
       <style>{`
-        .ev-ta::placeholder { color: #5C5778; font-size: 14px; line-height: 1.6; }
+        .ev-ta::placeholder { color: #6B7280; font-size: 14px; line-height: 1.6; }
         .ev-ta:focus        { outline: none; }
-        .ev-in::placeholder { color: #5C5778; }
+        .ev-in::placeholder { color: #6B7280; }
         .ev-in:focus        { outline: none; }
-        .ev-dec::placeholder { color: #5C5778; }
+        .ev-dec::placeholder { color: #6B7280; }
         .ev-dec:focus        { outline: none; }
       `}</style>
 
@@ -216,7 +216,7 @@ export default function EveningReflectionComponent({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.wins }} />
-                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.wins }}>Three Wins Today</span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1F2933" }}>Three Wins Today</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   {!winsLocked && <button onClick={addWin} style={plusBtn(A.wins)}>+</button>}
@@ -256,7 +256,7 @@ export default function EveningReflectionComponent({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.grateful }} />
-                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.grateful }}>I Am Grateful For…</span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1F2933" }}>I Am Grateful For…</span>
                 </div>
                 <button onClick={gratitudeLocked ? () => setGratitudeLocked(false) : saveGratitude} style={lockSaveBtn(A.grateful, gratitudeLocked)}>
                   {gratitudeLocked ? <Lock size={10} /> : <Save size={10} />}
@@ -277,7 +277,7 @@ export default function EveningReflectionComponent({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.highlights }} />
-                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.highlights }}>Highlights of the Day</span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1F2933" }}>Highlights of the Day</span>
                 </div>
                 <button onClick={highlightsLocked ? () => setHighlightsLocked(false) : saveHighlights} style={lockSaveBtn(A.highlights, highlightsLocked)}>
                   {highlightsLocked ? <Lock size={10} /> : <Save size={10} />}
@@ -325,7 +325,7 @@ export default function EveningReflectionComponent({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.tasks }} />
-                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.tasks }}>Today&apos;s Tasks</span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1F2933" }}>Today&apos;s Tasks</span>
                 </div>
                 {tasks.length > 0 && (
                   <span style={{ fontSize: "11px", fontWeight: 500, color: A.tasks, backgroundColor: A.tasks + "18", borderRadius: "10px", padding: "3px 8px" }}>
@@ -354,7 +354,7 @@ export default function EveningReflectionComponent({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.habits }} />
-                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.habits }}>Today&apos;s Habits</span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1F2933" }}>Today&apos;s Habits</span>
                 </div>
                 <span style={{ fontSize: "11px", fontWeight: 500, color: A.habits, backgroundColor: A.habits + "20", borderRadius: "10px", padding: "3px 8px" }}>{doneCount}/{habits.length}</span>
               </div>
@@ -455,13 +455,13 @@ export default function EveningReflectionComponent({
                     onPointerUp={() => { arcDragging.current = false; }}
                     onPointerLeave={() => { arcDragging.current = false; }}
                   >
-                    <path d={trackPath} fill="none" stroke="#353060" strokeWidth="13" strokeLinecap="round" />
+                    <path d={trackPath} fill="none" stroke="#EADFD3" strokeWidth="13" strokeLinecap="round" />
                     {filledPath && <path d={filledPath} fill="none" stroke={energyCol} strokeWidth="13" strokeLinecap="round" />}
-                    <circle cx={thumbX.toFixed(1)} cy={thumbY.toFixed(1)} r="9" fill={energyCol} stroke="#1E1B2E" strokeWidth="2.5" />
+                    <circle cx={thumbX.toFixed(1)} cy={thumbY.toFixed(1)} r="9" fill={energyCol} stroke="#FFFFFF" strokeWidth="2.5" />
                     <text x={CX} y="92" textAnchor="middle" fontSize="32" fontWeight="700" fill={energyCol} fontFamily="inherit">{reflection.energyLevel}</text>
-                    <text x={CX} y="116" textAnchor="middle" fontSize="12" fill="#7D76A0" fontFamily="inherit">{energyLbl}</text>
-                    <text x={lx.toFixed(0)} y={(ly + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#5C5778" fontFamily="inherit">1</text>
-                    <text x={rx.toFixed(0)} y={(ry + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#5C5778" fontFamily="inherit">10</text>
+                    <text x={CX} y="116" textAnchor="middle" fontSize="12" fill="#6B7280" fontFamily="inherit">{energyLbl}</text>
+                    <text x={lx.toFixed(0)} y={(ly + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#9CA3AF" fontFamily="inherit">1</text>
+                    <text x={rx.toFixed(0)} y={(ry + 4).toFixed(0)} textAnchor="middle" fontSize="9" fill="#9CA3AF" fontFamily="inherit">10</text>
                   </svg>
                 </div>
               </div>
@@ -490,7 +490,7 @@ export default function EveningReflectionComponent({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: A.stuck }} />
-                  <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: A.stuck }}>Where I Was Stuck</span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1F2933" }}>Where I Was Stuck</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   {!stuckLocked && <button onClick={addStuck} style={plusBtn(A.stuck)}>+</button>}
@@ -542,8 +542,8 @@ export default function EveningReflectionComponent({
 function CardHeader({ color, label }: { color: string; label: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", flexShrink: 0 }}>
-      <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
-      <span style={{ fontSize: "11px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color }}>
+      <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
+      <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1F2933" }}>
         {label}
       </span>
     </div>
@@ -552,11 +552,11 @@ function CardHeader({ color, label }: { color: string; label: string }) {
 
 function card(accentColor: string): React.CSSProperties {
   return {
-    backgroundColor: "#1E1B2E",
+    backgroundColor: accentColor + "28",
     borderRadius: "14px",
     padding: "18px",
-    border: "1px solid #353060",
-    borderTop: `2px solid ${accentColor}`,
+    border: `1px solid ${accentColor}60`,
+    borderTop: `3px solid ${accentColor}`,
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -585,25 +585,25 @@ function lockSaveBtn(color: string, locked: boolean): React.CSSProperties {
 
 const taStyle: React.CSSProperties = {
   flex: 1, minHeight: 0, width: "100%",
-  backgroundColor: "#272440", borderRadius: "10px",
-  padding: "14px", border: "1px solid #353060",
-  fontSize: "14px", color: "#EDE8FA", lineHeight: 1.6,
+  backgroundColor: "#FFFFFF", borderRadius: "10px",
+  padding: "14px", border: "1px solid #EADFD3",
+  fontSize: "14px", color: "#1F2933", lineHeight: 1.6,
   resize: "none", fontFamily: "inherit", outline: "none",
   boxSizing: "border-box",
 };
 
 const stepBtn: React.CSSProperties = {
   width: 22, height: 22, borderRadius: "6px",
-  border: "1px solid #353060", backgroundColor: "#272440",
-  color: "#9B93BC", cursor: "pointer", fontSize: "13px",
+  border: "1px solid #EADFD3", backgroundColor: "#FFFFFF",
+  color: "#374151", cursor: "pointer", fontSize: "13px",
   display: "flex", alignItems: "center", justifyContent: "center",
   flexShrink: 0, fontWeight: 700, lineHeight: 1,
 };
 
 const evNavBtn: React.CSSProperties = {
   width: 22, height: 22, borderRadius: "6px",
-  border: "1px solid #353060", backgroundColor: "#272440",
-  color: "#9B93BC", cursor: "pointer", fontSize: "15px",
+  border: "1px solid #EADFD3", backgroundColor: "#FFFFFF",
+  color: "#374151", cursor: "pointer", fontSize: "15px",
   display: "flex", alignItems: "center", justifyContent: "center",
   flexShrink: 0, lineHeight: 1, padding: 0,
 };
