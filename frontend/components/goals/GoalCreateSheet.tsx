@@ -189,7 +189,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
     <div style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "#F9FAFB", display: "flex", flexDirection: "column" }}>
 
       {/* ── Top bar ── */}
-      <div style={{ height: 52, padding: "0 32px", borderBottom: "1px solid #E5E9EE", backgroundColor: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+      <div className="px-5 sm:px-8" style={{ height: 52, borderBottom: "1px solid #E5E9EE", backgroundColor: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <button
           onClick={onClose}
           style={{ display: "flex", alignItems: "center", gap: "5px", background: "none", border: "none", cursor: "pointer", padding: "6px 0", color: "#1C1917", fontSize: "13px", fontWeight: 600 }}
@@ -211,7 +211,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
         <div className="px-5 sm:px-12" style={{ flex: 1, overflowY: "auto", paddingTop: "28px", paddingBottom: "48px" }}>
 
           {/* Page heading */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
             <div style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: "#FFF7ED", border: "1.5px solid #FED7AA", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Target size={18} color="#F97316" />
             </div>
@@ -259,12 +259,12 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
 
           {/* ── Step 1: Goal Basics ── */}
           {step === 1 && (
-            <div style={{ backgroundColor: "#FFFFFF", borderRadius: "16px", border: "1px solid #E5E9EE", padding: "28px" }}>
+            <div className="p-4 sm:p-7" style={{ backgroundColor: "#FFFFFF", borderRadius: "16px", border: "1px solid #E5E9EE" }}>
               <p style={{ fontSize: "18px", fontWeight: 700, color: "#1C1917", margin: "0 0 4px" }}>1. Goal Basics</p>
               <p style={{ fontSize: "13px", color: "#44403C", margin: "0 0 24px" }}>Start with the foundations of your goal.</p>
 
               {/* Life Area + Goal Title */}
-              <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: "16px", marginBottom: "20px" }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "16px", marginBottom: "20px" }}>
                 <div>
                   <label style={labelStyle}>Life Area</label>
                   <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "8px", padding: "9px 12px", borderRadius: "8px", border: `1.5px solid ${areaColor}50`, backgroundColor: areaBg }}>
@@ -315,23 +315,25 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
                 </div>
               </div>
 
-              {/* Metric + Unit + Target Date */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 190px", gap: "16px", marginBottom: "32px" }}>
-                <div>
-                  <label style={labelStyle}>
-                    How will you measure success?{" "}
-                    <span style={{ fontSize: "11px", fontWeight: 500, color: "#6B7280" }}>(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={metric}
-                    onChange={e => setMetric(e.target.value)}
-                    placeholder="e.g. ₹2,00,000 per month"
-                    style={inputStyle}
-                    onFocus={e => { e.currentTarget.style.borderColor = areaColor; e.currentTarget.style.boxShadow = `0 0 0 3px ${areaColor}20`; }}
-                    onBlur={e  => { e.currentTarget.style.borderColor = `${areaColor}55`; e.currentTarget.style.boxShadow = "none"; }}
-                  />
-                </div>
+              {/* Measure of success */}
+              <div style={{ marginBottom: "16px" }}>
+                <label style={labelStyle}>
+                  How will you measure success?{" "}
+                  <span style={{ fontSize: "11px", fontWeight: 500, color: "#6B7280" }}>(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={metric}
+                  onChange={e => setMetric(e.target.value)}
+                  placeholder="e.g. ₹2,00,000 per month"
+                  style={inputStyle}
+                  onFocus={e => { e.currentTarget.style.borderColor = areaColor; e.currentTarget.style.boxShadow = `0 0 0 3px ${areaColor}20`; }}
+                  onBlur={e  => { e.currentTarget.style.borderColor = `${areaColor}55`; e.currentTarget.style.boxShadow = "none"; }}
+                />
+              </div>
+
+              {/* Unit + Target Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "16px", marginBottom: "32px" }}>
                 <div>
                   <label style={labelStyle}>
                     Unit{" "}
@@ -474,7 +476,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
 
                             {/* Body */}
                             <div>
-                              <div style={{ padding: "14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ padding: "14px", gap: "12px" }}>
 
                                 {/* Tasks column */}
                                 <div style={{ backgroundColor: "#FFFFFF", borderRadius: "10px", border: `1px solid ${areaColor}35`, overflow: "hidden" }}>
@@ -562,19 +564,19 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
                           >
                             <X size={13} color="#DC2626" />
                           </button>
-                          <div style={{ display: "flex", gap: "10px", marginBottom: mDeadlineError ? "4px" : "12px", paddingRight: 36 }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: mDeadlineError ? "4px" : "12px", paddingRight: 36 }}>
                             <input
                               type="text"
                               value={mTitle}
                               onChange={e => setMTitle(e.target.value)}
                               placeholder="Milestone title"
-                              style={{ ...inputStyle, flex: 1 }}
+                              style={{ ...inputStyle, flex: "1 1 160px" }}
                               onFocus={e => { e.currentTarget.style.borderColor = areaColor; e.currentTarget.style.boxShadow = `0 0 0 3px ${areaColor}18`; }}
                               onBlur={e  => { e.currentTarget.style.borderColor = `${areaColor}55`; e.currentTarget.style.boxShadow = "none"; }}
                               onKeyDown={e => { if (e.key === "Enter") addMilestone(); }}
                               autoFocus
                             />
-                            <div style={{ width: 190, flexShrink: 0 }}>
+                            <div style={{ flex: "1 1 160px" }}>
                               <CalendarPicker value={mDeadline} onChange={setMDeadline} onClear={() => setMDeadline("")} accentColor={areaColor} max={deadline || undefined} />
                             </div>
                           </div>
@@ -1095,7 +1097,7 @@ function CalendarPicker({ value, onChange, onClear, accentColor = "#F97316", min
           backgroundColor: "#FFFFFF", borderRadius: "14px",
           border: "1px solid #E5E9EE",
           boxShadow: "0 8px 32px rgba(28,25,23,0.14)",
-          width: 288, overflow: "hidden",
+          width: "min(288px, 80vw)", overflow: "hidden",
         }}>
           {mode === "cal" ? (
             <>
