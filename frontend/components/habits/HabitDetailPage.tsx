@@ -65,10 +65,10 @@ function fmtShort(ds: string) {
 }
 
 function getFreqParams(habit: HabitData): { num: number; den: number } {
-  if (habit.frequency === "daily") return { num: 1, den: 1 };
+  if (habit.frequency === "daily")    return { num: 1, den: 1 };
   let num: number, den: number;
-  if      (habit.frequency === "weekly")  { num = 1; den = 7; }
-  else if (habit.frequency === "monthly") { num = 1; den = 30; }
+  if      (habit.frequency === "weekdays") { num = 5; den = 7; }
+  else if (habit.frequency === "weekends") { num = 2; den = 7; }
   else { num = Math.max(1, habit.customDays.length); den = 7; }
   // Non-daily binary habits: double num/den to smooth irregular schedules
   if (habit.type === "binary") { num *= 2; den *= 2; }
@@ -1048,7 +1048,7 @@ export default function HabitDetailPage({ habit, onClose, onToggleDate }: Props)
             <div className="hidden sm:block" style={{ width: 320, borderLeft: "1px solid #EDE5D8", overflowY: "auto", padding: "20px", flexShrink: 0, backgroundColor: "#FAFAF9" }}>
 
               {/* Habit Health */}
-              <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #F9731640", marginBottom: "14px" }}>
+              <div style={{ backgroundColor: hBg, borderRadius: "14px", padding: "16px", border: `1px solid ${hColor}40`, marginBottom: "14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
                   <Heart size={14} color={hColor} fill={hColor} />
                   <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Habit Health</span>
