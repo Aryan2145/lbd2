@@ -475,7 +475,6 @@ export default function BucketListPage() {
                         if (entry.status === "dreaming") updateBucketEntry({ ...entry, status: "planning" });
                         else setAchievingEntry(entry);
                       }}
-                      onMoveBack={() => updateBucketEntry({ ...entry, status: "dreaming" })}
                     />
                     {isDropTarget && dropTarget!.position === "below" && (
                       <div style={{ position: "absolute", bottom: -7, left: 0, right: 0,
