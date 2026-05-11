@@ -2,7 +2,7 @@
 
 import React, { useRef, useCallback } from "react";
 import {
-  MoreHorizontal, Check, Lock, Calendar, BookOpen, Clock,
+  Check, Lock, Calendar, BookOpen, Clock,
   Briefcase, Globe, DollarSign, Sparkles, Heart, Activity,
   type LucideIcon,
 } from "lucide-react";
@@ -81,8 +81,23 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
 
   const daysLeft = Math.max(0, Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
+  const cardRef       = useRef<HTMLDivElement>(null);
   const barRef        = useRef<HTMLDivElement>(null);
   const suppressClick = useRef(false);
+
+  function onHover(enter: boolean) {
+    const el = cardRef.current;
+    if (!el) return;
+    if (enter) {
+      el.style.transform   = "translateY(-4px)";
+      el.style.boxShadow   = `0 16px 40px ${area.color}40, 0 4px 12px rgba(28,25,23,0.08)`;
+      el.style.borderColor = area.color;
+    } else {
+      el.style.transform   = "translateY(0)";
+      el.style.boxShadow   = `0 2px 10px ${area.color}18`;
+      el.style.borderColor = `${area.color}45`;
+    }
+  }
 
   const handleBarMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -113,127 +128,143 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
 
   return (
     <div
+      ref={cardRef}
       onClick={() => { if (suppressClick.current) return; onClick(); }}
+      onMouseEnter={() => onHover(true)}
+      onMouseLeave={() => onHover(false)}
       style={{
         backgroundColor: area.bg,
         borderRadius: "16px",
-        border: `1px solid ${area.color}30`,
-        padding: "16px",
+        border: `1.5px solid ${area.color}45`,
         cursor: "pointer",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-        transition: "box-shadow 0.2s, transform 0.2s",
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 28px ${area.color}22`;
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 2px 10px ${area.color}18`;
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        boxShadow: `0 2px 10px ${area.color}18`,
+        transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       }}
     >
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      {/* Colored top accent bar */}
+      <div style={{ height: 4, backgroundColor: area.color, flexShrink: 0 }} />
+
+      <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
           <div style={{
-            width: 38, height: 38, borderRadius: "50%",
-            backgroundColor: area.color,
+            width: 38, height: 38, borderRadius: "11px", flexShrink: 0,
+            background: `linear-gradient(135deg, ${area.color}, ${area.color}cc)`,
+            boxShadow: `0 3px 10px ${area.color}55`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0,
           }}>
             <Icon size={18} color="#FFFFFF" />
           </div>
-          <span style={{ fontSize: "13px", fontWeight: 600, color: area.color }}>
+          <span style={{ fontSize: "13px", fontWeight: 700, color: area.color, flex: 1 }}>
             {area.label}
           </span>
+          {daysLeft <= 7 && daysLeft > 0 && (
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "#DC2626", backgroundColor: "#FEF2F2", padding: "2px 7px", borderRadius: "20px", border: "1px solid #FECACA" }}>
+              {daysLeft}d left
+            </span>
+          )}
+          {daysLeft === 0 && (
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "#DC2626", backgroundColor: "#FEF2F2", padding: "2px 7px", borderRadius: "20px", border: "1px solid #FECACA" }}>
+              Due today
+            </span>
+          )}
         </div>
-        <button
-          onClick={e => e.stopPropagation()}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: "#A8A29E" }}
-        >
-          <MoreHorizontal size={16} />
-        </button>
-      </div>
 
-      {/* Goal statement */}
-      <p style={{
-        fontSize: "16px", fontWeight: 700, color: "#1C1917",
-        lineHeight: 1.4, marginBottom: "14px",
-        display: "-webkit-box", WebkitLineClamp: 2,
-        WebkitBoxOrient: "vertical", overflow: "hidden",
-      }}>
-        {goal.statement}
-      </p>
+        {/* Goal statement */}
+        <p style={{
+          fontSize: "15px", fontWeight: 700, color: "#1C1917",
+          lineHeight: 1.4, marginBottom: "14px",
+          display: "-webkit-box", WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical", overflow: "hidden",
+        }}>
+          {goal.statement}
+        </p>
 
-      {/* Progress */}
-      <div style={{ marginBottom: "12px" }}>
-        <span style={{ fontSize: "22px", fontWeight: 800, color: area.color, lineHeight: 1 }}>
-          {goal.progress}%
-        </span>
-        <div onMouseDown={handleBarMouseDown} style={{ padding: "8px 0 4px", cursor: "default", userSelect: "none" }}>
-          <div ref={barRef} style={{ height: "6px", borderRadius: "3px", backgroundColor: `${area.color}20`, position: "relative" }}>
-            <div style={{ height: "100%", borderRadius: "3px", width: `${goal.progress}%`, backgroundColor: area.color, position: "relative" }}>
-              <div style={{
-                position: "absolute", right: -7, top: "50%", transform: "translateY(-50%)",
-                width: 14, height: 14, borderRadius: "50%",
-                backgroundColor: area.color,
-                border: "2.5px solid #FFFFFF",
-                boxShadow: `0 1px 6px ${area.color}80`,
-                cursor: "grab",
-              }} />
+        {/* Progress */}
+        <div style={{ marginBottom: "12px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "6px" }}>
+            <span style={{ fontSize: "22px", fontWeight: 800, color: area.color, lineHeight: 1 }}>
+              {goal.progress}%
+            </span>
+            {milestones.length > 0 && (
+              <span style={{ fontSize: "11px", fontWeight: 600, color: area.color }}>
+                {completedCount}/{milestones.length} milestones
+              </span>
+            )}
+          </div>
+          <div onMouseDown={handleBarMouseDown} style={{ cursor: "default", userSelect: "none" }}>
+            <div ref={barRef} style={{ height: "7px", borderRadius: "4px", backgroundColor: `${area.color}20`, position: "relative" }}>
+              <div style={{ height: "100%", borderRadius: "4px", width: `${goal.progress}%`, background: `linear-gradient(90deg, ${area.color}cc, ${area.color})`, position: "relative" }}>
+                {goal.progress > 0 && (
+                  <div style={{
+                    position: "absolute", right: -6, top: "50%", transform: "translateY(-50%)",
+                    width: 13, height: 13, borderRadius: "50%",
+                    backgroundColor: area.color,
+                    border: "2.5px solid #FFFFFF",
+                    boxShadow: `0 1px 6px ${area.color}80`,
+                    cursor: "grab",
+                  }} />
+                )}
+              </div>
             </div>
           </div>
         </div>
-        <p style={{ fontSize: "11px", fontWeight: 600, color: area.color, margin: 0, minHeight: "16px" }}>
-          {milestones.length > 0 ? `${completedCount} of ${milestones.length} milestones` : ""}
-        </p>
-      </div>
 
-      {/* Milestone stepper — fixed height so footer stays aligned across all cards */}
-      <div style={{ height: 42, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "14px" }}>
-      {visibleMilestones.length > 0 ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
-          {visibleMilestones.map((m, idx) => {
-            const isCompleted = m.completed;
-            const isCurrent   = idx === firstIncompleteIdx;
-            const isLocked    = !isCompleted && !isCurrent;
-            const size        = isLocked ? 22 : 28;
-            return (
-              <React.Fragment key={m.id}>
-                <div style={{
-                  width: size, height: size, borderRadius: "50%", flexShrink: 0,
-                  backgroundColor: isCompleted || isCurrent ? area.color : `${area.color}22`,
-                  border: isLocked ? `1.5px solid ${area.color}55` : "none",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {isCompleted && <Check size={13} color="#fff" strokeWidth={3} />}
-                  {isCurrent   && <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#fff" }} />}
-                  {isLocked    && <Lock size={11} color={area.color} />}
-                </div>
-                {idx < visibleMilestones.length - 1 && (
-                  <div style={{
-                    width: 40, height: "1.5px", flexShrink: 0,
-                    backgroundColor: m.completed ? area.color : `${area.color}30`,
-                  }} />
-                )}
-              </React.Fragment>
-            );
-          })}
+        {/* Milestone stepper */}
+        <div style={{ height: 42, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "14px" }}>
+          {visibleMilestones.length > 0 ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
+              {visibleMilestones.map((m, idx) => {
+                const isCompleted = m.completed;
+                const isCurrent   = idx === firstIncompleteIdx;
+                const isLocked    = !isCompleted && !isCurrent;
+                const size        = isLocked ? 22 : 28;
+                return (
+                  <React.Fragment key={m.id}>
+                    <div style={{
+                      width: size, height: size, borderRadius: "50%", flexShrink: 0,
+                      backgroundColor: isCompleted ? area.color : isCurrent ? area.color : `${area.color}18`,
+                      border: isLocked ? `1.5px solid ${area.color}45` : "none",
+                      boxShadow: isCurrent ? `0 2px 8px ${area.color}55` : "none",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "background-color 0.2s",
+                    }}>
+                      {isCompleted && <Check size={13} color="#fff" strokeWidth={3} />}
+                      {isCurrent   && <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#fff" }} />}
+                      {isLocked    && <Lock size={10} color={`${area.color}80`} />}
+                    </div>
+                    {idx < visibleMilestones.length - 1 && (
+                      <div style={{
+                        flex: 1, height: "2px", flexShrink: 0,
+                        background: m.completed
+                          ? `linear-gradient(90deg, ${area.color}, ${area.color}cc)`
+                          : `${area.color}25`,
+                        borderRadius: "1px",
+                      }} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          ) : (
+            <p style={{ fontSize: "11px", fontWeight: 600, color: `${area.color}80`, fontStyle: "italic", margin: 0 }}>
+              No milestones yet
+            </p>
+          )}
         </div>
-      ) : (
-        <p style={{ fontSize: "11px", fontWeight: 600, color: area.color, fontStyle: "italic", margin: 0 }}>
-          No milestones
-        </p>
-      )}
-      </div>
 
-      {/* Stats footer */}
-      <div style={{ display: "flex", alignItems: "center", borderTop: `1px solid ${area.color}25`, paddingTop: "12px" }}>
-        <FooterStat icon={<Calendar size={13} color={area.color} />} value={linkedTasks.length}  label="Tasks"       color={area.color} />
-        <div style={{ width: 1, height: 24, backgroundColor: `${area.color}25`, margin: "0 8px" }} />
-        <FooterStat icon={<BookOpen size={13} color={area.color} />} value={linkedHabits.length} label="Habits"      color={area.color} />
-        <div style={{ width: 1, height: 24, backgroundColor: `${area.color}25`, margin: "0 8px" }} />
-        <FooterStat icon={<Clock    size={13} color={area.color} />} value={daysLeft}             label="Days Left"   color={area.color} />
+        {/* Stats footer */}
+        <div style={{ display: "flex", alignItems: "center", borderTop: `1px solid ${area.color}25`, paddingTop: "12px", marginTop: "auto" }}>
+          <FooterStat icon={<Calendar size={13} color={area.color} />} value={linkedTasks.length}  label="Tasks"     color={area.color} />
+          <div style={{ width: 1, height: 24, backgroundColor: `${area.color}20`, margin: "0 8px" }} />
+          <FooterStat icon={<BookOpen size={13} color={area.color} />} value={linkedHabits.length} label="Habits"    color={area.color} />
+          <div style={{ width: 1, height: 24, backgroundColor: `${area.color}20`, margin: "0 8px" }} />
+          <FooterStat icon={<Clock    size={13} color={area.color} />} value={daysLeft}             label="Days Left" color={area.color} />
+        </div>
       </div>
     </div>
   );
@@ -246,7 +277,7 @@ function FooterStat({ icon, value, label, color }: {
     <div style={{ display: "flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}>
       {icon}
       <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>{value}</span>
-      <span style={{ fontSize: "11px", fontWeight: 600, color: "#1C1917" }}>{label}</span>
+      <span style={{ fontSize: "11px", fontWeight: 500, color: "#78716C" }}>{label}</span>
     </div>
   );
 }

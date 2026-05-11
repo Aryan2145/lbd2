@@ -36,6 +36,7 @@ export default function GoalsPage() {
   const [selectedAreas, setSelectedAreas] = useState<Set<LifeArea>>(new Set(ALL_AREAS));
   const [statusFilter,  setStatusFilter]  = useState<StatusFilter>("all");
   const [createOpen,    setCreateOpen]    = useState(false);
+  const [editGoal,      setEditGoal]      = useState<GoalData | null>(null);
   const [searchQuery,   setSearchQuery]   = useState("");
   const [searchOpen,    setSearchOpen]    = useState(false);
   const searchRef      = useRef<HTMLInputElement>(null);
@@ -102,7 +103,7 @@ export default function GoalsPage() {
 
       {/* Header */}
       <div className="px-page" style={{ paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
-        display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
             textTransform: "uppercase", color: "#F97316", marginBottom: "3px" }}>
@@ -115,12 +116,24 @@ export default function GoalsPage() {
             Track meaningful goals tied to your life vision.
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-          <Stat label="Goals defined"   value={`${goals.length}`} unit=""  color="#1C1917" />
-          <Stat label="Avg. progress"   value={`${avgProgress}`}  unit="%" color="#F97316" />
-          {staleCount > 0 && (
-            <Stat label="Need attention" value={`${staleCount}`}  unit=""  color="#EA580C" />
-          )}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "20px",
+            padding: "10px 18px", borderRadius: "12px",
+            backgroundColor: "#FFFFFF",
+            border: "1.5px solid #E8DDD0",
+            boxShadow: "0 2px 8px rgba(28,25,23,0.06)",
+          }}>
+            <Stat label="Goals defined"   value={`${goals.length}`} unit=""  color="#1C1917" />
+            <div style={{ width: 1, height: 32, backgroundColor: "#E8DDD0" }} />
+            <Stat label="Avg. progress"   value={`${avgProgress}`}  unit="%" color="#EA580C" />
+            {staleCount > 0 && (
+              <>
+                <div style={{ width: 1, height: 32, backgroundColor: "#E8DDD0" }} />
+                <Stat label="Need attention" value={`${staleCount}`}  unit=""  color="#DC2626" />
+              </>
+            )}
+          </div>
           <button
             onClick={() => setCreateOpen(true)}
             style={{
@@ -136,8 +149,8 @@ export default function GoalsPage() {
       </div>
 
       {/* Unified filter bar */}
-      <div className="px-page" style={{ paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
-        display: "flex", alignItems: "center", gap: "8px" }}>
+      <div className="px-page no-scrollbar" style={{ paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
+        display: "flex", alignItems: "center", gap: "8px", overflowX: "auto" }}>
 
         {/* Life Areas dropdown */}
         <div style={{ position: "relative", flexShrink: 0 }} ref={areaDropRef}>
@@ -252,10 +265,10 @@ export default function GoalsPage() {
           )}
         </div>
 
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minWidth: "8px" }} />
 
         {/* Search bar */}
-        <div style={{ width: "240px", flexShrink: 0, display: "flex" }}>
+        <div style={{ width: "200px", flexShrink: 0, display: "flex" }}>
           {searchOpen ? (
             <div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%" }}>
               <div style={{ flex: 1, position: "relative" }}>
@@ -372,6 +385,16 @@ export default function GoalsPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSave={addGoal}
+        onSaveTask={addTask}
+        onSaveHabit={addHabit}
+      />
+      <GoalCreateSheet
+        open={!!editGoal}
+        onClose={() => setEditGoal(null)}
+        initialData={editGoal ?? undefined}
+        onSave={(g) => { updateGoal(g); setEditGoal(null); }}
+        onSaveTask={addTask}
+        onSaveHabit={addHabit}
       />
       <GoalDetailSheet
         goal={detailGoal}
@@ -380,6 +403,7 @@ export default function GoalsPage() {
         onClose={() => setDetailGoal(null)}
         onUpdate={handleUpdate}
         onDelete={(id) => { deleteGoal(id); setDetailGoal(null); }}
+        onEdit={(g) => { setDetailGoal(null); setEditGoal(g); }}
         onUpdateTask={updateTask}
         onUpdateHabit={updateHabit}
         onSaveTask={addTask}
@@ -393,10 +417,10 @@ function Stat({ label, value, unit, color }: {
   label: string; value: string; unit: string; color: string;
 }) {
   return (
-    <div style={{ textAlign: "right" }}>
-      <p style={{ fontSize: "12px", fontWeight: 500, color: "#78716C", marginBottom: "2px" }}>{label}</p>
-      <p style={{ fontSize: "22px", fontWeight: 700, color, lineHeight: 1 }}>
-        {value}<span style={{ fontSize: "13px", fontWeight: 500, color: "#78716C" }}>{unit}</span>
+    <div style={{ textAlign: "center" }}>
+      <p style={{ fontSize: "12px", fontWeight: 500, color: "#1C1917", marginBottom: "2px" }}>{label}</p>
+      <p style={{ fontSize: "24px", fontWeight: 700, color, lineHeight: 1 }}>
+        {value}<span style={{ fontSize: "14px", fontWeight: 500, color: "#1C1917" }}>{unit}</span>
       </p>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   X, Plus, Trash2, AlertTriangle, Pencil, Check, Flame, CheckCircle2, Circle,
   ChevronDown, ChevronUp, ArrowLeft, XCircle, CalendarDays, Clock, Sparkles, Lock,
@@ -29,10 +30,6 @@ const AREA_ICONS: Record<LifeArea, LucideIcon> = {
   health:        Activity,
 };
 
-const CONNECTORS = [
-  "by achieving", "measured by", "reaching", "growing to",
-  "reducing to", "completing", "earning", "building",
-];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtTs(ts: number) {
@@ -54,11 +51,6 @@ function fmtDate(iso: string) {
 function fmtShort(iso: string) {
   if (!iso) return "";
   return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function buildStatement(outcome: string, metric: string, unit: string, date: string, connector: string) {
-  return [outcome.trim(), connector, metric.trim(), unit.trim(), "by", fmtDate(date)]
-    .filter(Boolean).join(" ");
 }
 
 type HealthStatus = "Good" | "On Track" | "At Risk" | "Behind";
@@ -124,6 +116,7 @@ interface Props {
   onClose:        () => void;
   onUpdate:       (updated: GoalData) => void;
   onDelete:       (id: string) => void;
+  onEdit?:        (goal: GoalData) => void;
   onUpdateTask?:  (t: TaskData)  => void;
   onUpdateHabit?: (h: HabitData) => void;
   onSaveTask?:    (t: TaskData)  => void;
@@ -132,10 +125,9 @@ interface Props {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function GoalDetailSheet({
-  goal, linkedHabits, tasks, onClose, onUpdate, onDelete,
+  goal, linkedHabits, tasks, onClose, onUpdate, onDelete, onEdit,
   onUpdateTask, onUpdateHabit, onSaveTask, onSaveHabit,
 }: Props) {
-  const [mode,             setMode]             = useState<"view" | "edit">("view");
   const [noteText,         setNoteText]         = useState("");
   const [popupMilestoneId, setPopupMilestoneId] = useState<string | null>(null);
   const [expandedId,       setExpandedId]       = useState<string | null>(null);
@@ -186,14 +178,6 @@ export default function GoalDetailSheet({
   const [hcCue,            setHcCue]            = useState("");
   const [hcReward,         setHcReward]         = useState("");
 
-  // Edit form
-  const [eOutcome,   setEOutcome]   = useState("");
-  const [eMetric,    setEMetric]    = useState("");
-  const [eUnit,      setEUnit]      = useState("");
-  const [eConnector, setEConnector] = useState(CONNECTORS[0]);
-  const [eDeadline,  setEDeadline]  = useState("");
-  const [eArea,      setEArea]      = useState<LifeArea>("professional");
-
   const noteRef = useRef<HTMLTextAreaElement>(null);
 
   if (!goal) return null;
@@ -209,9 +193,6 @@ export default function GoalDetailSheet({
   ));
   const stale      = daysSinceMoved(goal.lastMoved) >= 14;
   const milestones = [...(goal.milestones ?? [])].sort((a, b) => a.deadline.localeCompare(b.deadline));
-  const editDeadlineConflicts = milestones.filter(m => eDeadline && m.deadline > eDeadline);
-  const eDeadlineError = validateDate(eDeadline, { required: true });
-  const editStatement  = buildStatement(eOutcome, eMetric, eUnit, eDeadline, eConnector);
 
   const firstIncompleteId = milestones.find(m => !m.completed)?.id ?? null;
   const activeExpandedId  = userInteracted ? expandedId : firstIncompleteId;
@@ -225,26 +206,6 @@ export default function GoalDetailSheet({
     .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const enterEdit = () => {
-    setEOutcome(goal.outcome);
-    setEMetric(goal.metric);
-    setEUnit(goal.metricUnit);
-    setEConnector(CONNECTORS.find(c => goal.statement.includes(c)) ?? CONNECTORS[0]);
-    setEDeadline(goal.deadline);
-    setEArea(goal.area);
-    setMode("edit");
-  };
-
-  const saveEdit = () => {
-    onUpdate({
-      ...goal,
-      outcome: eOutcome.trim(), metric: eMetric.trim(), metricUnit: eUnit.trim(),
-      deadline: eDeadline, area: eArea,
-      statement: buildStatement(eOutcome, eMetric, eUnit, eDeadline, eConnector),
-    });
-    setMode("view");
-  };
-
   const handleProgress = (v: number) =>
     onUpdate({ ...goal, progress: v, lastMoved: Date.now(), velocity: v - goal.progress });
 
@@ -266,10 +227,8 @@ export default function GoalDetailSheet({
     setExpandedId(prev => prev === id ? null : id);
   };
 
-  const canSaveEdit = eOutcome.trim() && eMetric.trim() && !eDeadlineError && editDeadlineConflicts.length === 0;
-
   // ── Render ────────────────────────────────────────────────────────────────
-  return (
+  return createPortal(
     <>
       {/* Full-page overlay */}
       <div style={{
@@ -278,73 +237,8 @@ export default function GoalDetailSheet({
         zIndex: 50, display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
 
-        {/* Body */}
-        {mode === "edit" ? (
-          <div style={{ flex: 1, overflowY: "auto", padding: "0 28px 24px" }}>
-            {/* Back button — scrolls with content */}
-            <button
-              onClick={() => setMode("view")}
-              style={{ display: "flex", alignItems: "center", gap: "5px", color: "#1C1917", fontSize: "13px", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: "16px 0 12px", marginBottom: "4px" }}
-            >
-              <ArrowLeft size={15} /> Back
-            </button>
-            <EditField label="Life Area">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {(Object.keys(AREA_META) as LifeArea[]).map(a => (
-                  <button key={a} onClick={() => setEArea(a)} style={{ padding: "5px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 600, border: `1.5px solid ${eArea === a ? "#F97316" : "#E8DDD0"}`, backgroundColor: eArea === a ? "#FFF7ED" : "#FFFFFF", color: eArea === a ? "#F97316" : "#78716C", cursor: "pointer" }}>
-                    {AREA_META[a].label}
-                  </button>
-                ))}
-              </div>
-            </EditField>
-
-            <EditField label="What do you want to achieve?">
-              <textarea value={eOutcome} onChange={e => setEOutcome(e.target.value)} rows={2} style={taStyle}
-                onFocus={e => { e.currentTarget.style.borderColor = "#F97316"; }}
-                onBlur={e  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
-            </EditField>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <EditField label="Measurable target">
-                <input type="text" value={eMetric} onChange={e => setEMetric(e.target.value)} style={inStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = "#F97316"; }}
-                  onBlur={e  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
-              </EditField>
-              <EditField label="Unit (optional)">
-                <input type="text" value={eUnit} onChange={e => setEUnit(e.target.value)} style={inStyle}
-                  onFocus={e => { e.currentTarget.style.borderColor = "#F97316"; }}
-                  onBlur={e  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
-              </EditField>
-            </div>
-
-            <EditField label="Statement connector">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {CONNECTORS.map(c => (
-                  <button key={c} onClick={() => setEConnector(c)} style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", border: `1.5px solid ${eConnector === c ? "#F97316" : "#E8DDD0"}`, backgroundColor: eConnector === c ? "#FFF7ED" : "#FFFFFF", color: eConnector === c ? "#F97316" : "#78716C", cursor: "pointer", fontWeight: eConnector === c ? 600 : 400 }}>{c}</button>
-                ))}
-              </div>
-            </EditField>
-
-            <EditField label="Target date">
-              <StyledDateInput value={eDeadline} onChange={setEDeadline} error={!!eDeadlineError || editDeadlineConflicts.length > 0} />
-              {eDeadlineError && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px" }}>{eDeadlineError}</p>}
-              {!eDeadlineError && editDeadlineConflicts.length > 0 && (
-                <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
-                  ⚠ {editDeadlineConflicts.length} milestone{editDeadlineConflicts.length > 1 ? "s are" : " is"} after this date. Adjust milestones first.
-                </p>
-              )}
-            </EditField>
-
-            {editStatement.length > 10 && (
-              <div style={{ padding: "12px 14px", borderRadius: "10px", background: "linear-gradient(135deg, #FFF7ED, #FEFCE8)", border: "1px solid #FED7AA", marginBottom: "8px" }}>
-                <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#F97316", marginBottom: "5px" }}>New statement</p>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "#1C1917", lineHeight: 1.5, margin: 0 }}>{editStatement}</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* ── VIEW MODE — two-panel ── */
-          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* Body — two-panel view */}
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
             {/* Left main panel */}
             <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 20px", minWidth: 0 }}>
@@ -360,7 +254,7 @@ export default function GoalDetailSheet({
               {/* ── Header card ── */}
               <div style={{ position: "relative", backgroundColor: areaBg, borderRadius: "16px", border: `1px solid ${color}30`, padding: "20px", marginBottom: "20px" }}>
                 {/* Edit button */}
-                <button onClick={enterEdit} style={{ position: "absolute", top: -12, right: -10, width: 28, height: 28, borderRadius: "8px", backgroundColor: areaBg, border: `1px solid ${color}30`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                <button onClick={() => onEdit?.(goal)} style={{ position: "absolute", top: -12, right: -10, width: 28, height: 28, borderRadius: "8px", backgroundColor: areaBg, border: `1px solid ${color}30`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
                   <Pencil size={12} color={color} />
                 </button>
 
@@ -399,7 +293,7 @@ export default function GoalDetailSheet({
                     </div>
 
                     {/* Stats chips */}
-                    <div style={{ display: "flex", gap: "8px" }}>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                       {[
                         { value: milestones.length, label: "Milestones" },
                         { value: tasks.length,       label: "Tasks" },
@@ -418,10 +312,21 @@ export default function GoalDetailSheet({
                       </div>
                     </div>
 
+                    {/* Mobile-only progress bar (ring is hidden on small screens) */}
+                    <div className="block sm:hidden" style={{ marginTop: "4px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "5px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#374151" }}>Overall Progress</span>
+                        <span style={{ fontSize: "20px", fontWeight: 800, color, lineHeight: 1 }}>{goal.progress}%</span>
+                      </div>
+                      <div style={{ height: 6, borderRadius: 3, backgroundColor: `${color}20` }}>
+                        <div style={{ height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${color}cc, ${color})`, width: `${goal.progress}%`, transition: "width 0.3s" }} />
+                      </div>
+                    </div>
+
                   </div>{/* end left column */}
 
                   {/* Right column — ring vertically centered */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0, borderLeft: `1px solid ${color}20`, paddingLeft: "20px" }}>
+                  <div className="hidden sm:flex" style={{ flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0, borderLeft: `1px solid ${color}20`, paddingLeft: "20px" }}>
                     <CircularProgress value={goal.progress} color={color} onChange={handleProgress} />
                     <p style={{ fontSize: "11px", fontWeight: 700, color: "#374151", margin: "4px 0 0", textAlign: "center" }}>Overall Progress</p>
                   </div>
@@ -614,7 +519,7 @@ export default function GoalDetailSheet({
                               </div>
 
                               {/* Tasks + Habits */}
-                              <div style={{ padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ padding: "12px", gap: "12px" }}>
 
                                 {/* Tasks */}
                                 <div style={{ padding: "14px 16px", borderRadius: "10px", border: `1px solid ${color}20`, backgroundColor: "#FFFFFF" }}>
@@ -871,20 +776,7 @@ export default function GoalDetailSheet({
                 </button>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Footer — only shown in edit mode */}
-        {mode === "edit" && (
-          <div style={{ padding: "12px 20px", borderTop: "1px solid #EDE5D8", display: "flex", gap: "10px", flexShrink: 0 }}>
-            <button onClick={() => setMode("view")} style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>
-              Cancel
-            </button>
-            <button onClick={saveEdit} disabled={!canSaveEdit} style={{ flex: 2, padding: "10px", borderRadius: "10px", border: "none", background: canSaveEdit ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSaveEdit ? "#FFFFFF" : "#A8A29E", cursor: canSaveEdit ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
-              <Check size={14} /> Save changes
-            </button>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Milestone popup */}
@@ -1272,7 +1164,8 @@ export default function GoalDetailSheet({
           </>
         );
       })()}
-    </>
+    </>,
+    document.body
   );
 }
 
@@ -1337,26 +1230,12 @@ function CircularProgress({ value, color, onChange }: { value: number; color: st
   );
 }
 
-// ── Edit sub-components ───────────────────────────────────────────────────────
-function EditField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: "14px" }}>
-      <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#78716C", marginBottom: "6px", letterSpacing: "0.03em" }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 const inStyle: React.CSSProperties = {
   width: "100%", padding: "9px 12px", borderRadius: "8px",
   border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
   fontSize: "13px", color: "#1C1917", outline: "none",
   fontFamily: "inherit", boxSizing: "border-box", transition: "border-color 0.15s",
 };
-
-const taStyle: React.CSSProperties = { ...inStyle, resize: "none", lineHeight: 1.5 };
 
 function StyledDateInput({ value, onChange, error, accentColor = "#F97316", min, max }: {
   value: string; onChange: (v: string) => void;
