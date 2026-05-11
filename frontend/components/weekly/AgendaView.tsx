@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
+
+
 import type { WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import { Q_META, toTaskDate } from "@/components/tasks/TaskCard";
@@ -20,7 +21,7 @@ const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct",
 
 export default function AgendaView({
   weekStart, weekEvents, tasks, eventGroups,
-  onCreateEvent, onEditEvent, onTaskClick,
+  onEditEvent, onTaskClick,
 }: Props) {
   const today    = toTaskDate();
   const groupMap = Object.fromEntries(eventGroups.map((g) => [g.id, g]));
@@ -127,20 +128,6 @@ export default function AgendaView({
                   </div>
                 );
               })}
-
-              {/* Add event */}
-              <button
-                onClick={() => onCreateEvent(date, "09:00")}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "4px",
-                  padding: "5px 8px", borderRadius: "7px",
-                  border: "1.5px dashed #E8DDD0", backgroundColor: "transparent",
-                  fontSize: "10px", fontWeight: 600, color: "#57534e",
-                  cursor: "pointer", width: "100%",
-                }}
-              >
-                <Plus size={10} /> Add event
-              </button>
 
               {/* Tasks divider + task cards */}
               {dayTasks.length > 0 && (
