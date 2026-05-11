@@ -321,19 +321,8 @@ export default function EventCreateSheet({
             </span>
           </label>
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            {/* Unselect / clear */}
-            {groupId && (
-              <button onClick={() => setGroupId("")} style={{
-                display: "flex", alignItems: "center", gap: "5px",
-                padding: "5px 10px", borderRadius: "8px",
-                border: "1.5px solid #E8DDD0", backgroundColor: "#FAFAFA",
-                fontSize: "11px", fontWeight: 600, color: "#78716C", cursor: "pointer",
-              }}>
-                × Clear
-              </button>
-            )}
             {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && !g.archived).map((g) => (
-              <button key={g.id} onClick={() => setGroupId(g.id)} style={{
+              <button key={g.id} onClick={() => setGroupId(groupId === g.id ? "" : g.id)} style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 padding: "5px 12px", borderRadius: "8px",
                 border: `1.5px solid ${groupId === g.id ? g.color : "#E8DDD0"}`,
