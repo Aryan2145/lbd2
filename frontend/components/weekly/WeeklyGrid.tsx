@@ -100,7 +100,7 @@ export default function WeeklyGrid({
           position: "sticky", top: 0, zIndex: 20,
         }}>
           {/* Spacer for time col */}
-          <div style={{ width: 56, flexShrink: 0, borderRight: "1px solid #FED7AA", backgroundColor: "#FFFFFF" }} />
+          <div style={{ width: 56, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.3)", backgroundColor: "#C2410C" }} />
 
           {days.map((date, i) => {
             const isToday = date === today;
