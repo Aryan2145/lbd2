@@ -602,59 +602,139 @@ export default function GoalDetailSheet({
               </>)}
               </div>
 
-              {/* ── Mobile-only summary (sidebar hidden on small screens) ── */}
-              <div className="block sm:hidden" style={{ marginTop: "8px" }}>
+              {/* ── Mobile-only sidebar content (exact match of desktop sidebar) ── */}
+              <div className="block sm:hidden" style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
 
-                {/* Health + Progress row */}
-                <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-                  <div style={{ flex: 1, backgroundColor: HEALTH_BG[health], border: `1px solid ${HEALTH_COLOR[health]}40`, borderRadius: "12px", padding: "12px 14px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6B7280", margin: "0 0 4px" }}>Goal Health</p>
-                    <p style={{ fontSize: "18px", fontWeight: 800, color: HEALTH_COLOR[health], margin: "0 0 3px", lineHeight: 1 }}>{health}</p>
-                    <p style={{ fontSize: "11px", color: "#374151", margin: 0, lineHeight: 1.4 }}>{HEALTH_DESC[health]}</p>
+                {/* Goal Health */}
+                <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #E5E9EE" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                    <Heart size={14} color={HEALTH_COLOR[health]} fill={HEALTH_COLOR[health]} />
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Goal Health</span>
                   </div>
-                  <div style={{ flex: 1, backgroundColor: "#FFFFFF", border: "1px solid #E5E9EE", borderRadius: "12px", padding: "12px 14px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6B7280", margin: "0 0 8px" }}>Summary</p>
-                    {[
-                      { label: "Milestones", value: `${milestones.filter(m => m.completed).length}/${milestones.length}` },
-                      { label: "Tasks done", value: `${completedT}/${goalTasks.length}` },
-                      { label: "Habit consistency", value: `${consistency}%` },
-                    ].map(r => (
-                      <div key={r.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                        <span style={{ fontSize: "11px", color: "#78716C" }}>{r.label}</span>
-                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#1C1917" }}>{r.value}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "30px", fontWeight: 800, color: HEALTH_COLOR[health], lineHeight: 1 }}>{health}</span>
+                    <Activity size={20} color={HEALTH_COLOR[health]} />
+                  </div>
+                  <svg width="100%" height="44" viewBox="0 0 260 44" preserveAspectRatio="none" style={{ display: "block", marginBottom: "10px" }}>
+                    <defs>
+                      <linearGradient id={`sg-mob-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={HEALTH_COLOR[health]} stopOpacity="0.22" />
+                        <stop offset="100%" stopColor={HEALTH_COLOR[health]} stopOpacity="0.02" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0,34 C30,30 50,26 80,22 C110,18 130,20 160,15 C190,10 220,12 260,6" fill="none" stroke={HEALTH_COLOR[health]} strokeWidth="2" strokeLinecap="round" />
+                    <path d="M0,34 C30,30 50,26 80,22 C110,18 130,20 160,15 C190,10 220,12 260,6 L260,44 L0,44 Z" fill={`url(#sg-mob-${goal.id})`} />
+                  </svg>
+                  <p style={{ fontSize: "12px", color: "#1C1917", lineHeight: 1.5, margin: 0 }}>{HEALTH_DESC[health]}</p>
+                </div>
+
+                {/* Goal Summary */}
+                <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #E5E9EE" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "14px" }}>
+                    <LayoutGrid size={14} color="#2563EB" />
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Goal Summary</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {([
+                      { icon: <Target size={12} color="#EA580C" />,      label: "Total Milestones",  value: milestones.length },
+                      { icon: <CheckSquare size={12} color="#F97316" />, label: "Active Milestones", value: milestones.filter(m => !m.completed).length },
+                      { icon: <Circle size={12} color="#2563EB" />,      label: "Total Tasks",       value: goalTasks.length },
+                      { icon: <CheckCircle2 size={12} color="#16A34A" />,label: `Tasks Completed (${goalTasks.length > 0 ? Math.round(completedT / goalTasks.length * 100) : 0}%)`, value: completedT },
+                      { icon: <Flame size={12} color="#EA580C" />,       label: "Active Habits",     value: linkedHabits.length },
+                      { icon: <Zap size={12} color="#7C3AED" />,         label: "Habit Consistency", value: `${consistency}%` },
+                    ] as { icon: React.ReactNode; label: string; value: string | number }[]).map(row => (
+                      <div key={row.label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div style={{ width: 26, height: 26, borderRadius: "7px", backgroundColor: "#F9F9F9", border: "1px solid #E5E9EE", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          {row.icon}
+                        </div>
+                        <span style={{ fontSize: "12px", color: "#1C1917", flex: 1 }}>{row.label}</span>
+                        <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>{row.value}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Upcoming deadlines — mobile */}
+                {/* Upcoming Deadlines */}
                 {upcomingTasks.filter(t => t.status !== "complete").length > 0 && (
-                  <div style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", border: "1px solid #E5E9EE", padding: "14px", marginBottom: "10px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
-                      <CalendarDays size={13} color="#EA580C" />
-                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Upcoming Deadlines</span>
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: "#FFFFFF", backgroundColor: "#EA580C", borderRadius: "20px", padding: "1px 7px" }}>
-                        {upcomingTasks.filter(t => t.status !== "complete").length}
-                      </span>
+                  <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #E5E9EE" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <CalendarDays size={14} color="#EA580C" />
+                        <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Upcoming Deadlines</span>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#FFFFFF", backgroundColor: "#EA580C", borderRadius: "20px", padding: "1px 7px", lineHeight: "18px" }}>
+                          {upcomingTasks.filter(t => t.status !== "complete").length}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {upcomingTasks.filter(t => t.status !== "complete").slice(0, 4).map(t => {
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {upcomingTasks.filter(t => t.status !== "complete" || removingIds.has(t.id)).map((t, tIdx, tArr) => {
+                        const done    = t.status === "complete";
                         const days    = daysUntil(t.deadline);
-                        const overdue = days < 0;
+                        const overdue = days < 0 && !done;
                         const qm      = Q_META[t.quadrant];
+                        const mIdx    = milestones.findIndex(m => m.id === t.linkedMilestoneId);
+                        const isRemoving = removingIds.has(t.id);
                         return (
-                          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: qm.color, flexShrink: 0 }} />
-                            <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: "#1C1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
-                            <span style={{ fontSize: "11px", fontWeight: 600, color: overdue ? "#DC2626" : "#57534E", flexShrink: 0 }}>
-                              {overdue ? `${Math.abs(days)}d late` : days === 0 ? "Today" : `${days}d`}
-                            </span>
+                          <div key={t.id} style={{ overflow: "hidden", maxHeight: isRemoving ? 0 : 120, opacity: isRemoving ? 0 : 1, marginBottom: isRemoving ? 0 : "12px", transition: "max-height 0.35s ease, opacity 0.35s ease, margin-bottom 0.35s ease" }}>
+                            <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                                <div
+                                  onClick={() => {
+                                    const nowDone = !done;
+                                    onUpdateTask?.({ ...t, status: nowDone ? "complete" : "open", ...(nowDone ? { closedAt: Date.now(), variance: Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86400000) } : {}) });
+                                    if (nowDone) {
+                                      const tid = setTimeout(() => setRemovingIds(prev => new Set([...prev, t.id])), 1000);
+                                      removeTimeouts.current.set(t.id, tid);
+                                    } else {
+                                      clearTimeout(removeTimeouts.current.get(t.id));
+                                      removeTimeouts.current.delete(t.id);
+                                      setRemovingIds(prev => { const n = new Set(prev); n.delete(t.id); return n; });
+                                    }
+                                  }}
+                                  style={{ width: 20, height: 20, borderRadius: "5px", cursor: "pointer", backgroundColor: done ? "#16A34A" : "#FFFFFF", border: `2px solid ${done ? "#16A34A" : qm.color}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "background-color 0.15s, border-color 0.15s" }}
+                                >
+                                  {done && <Check size={11} color="#FFFFFF" strokeWidth={3} />}
+                                </div>
+                                {tIdx < tArr.length - 1 && <div style={{ width: 1.5, height: 20, backgroundColor: `${qm.color}35`, marginTop: "3px" }} />}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "6px", marginBottom: "3px" }}>
+                                  <p style={{ fontSize: "13px", fontWeight: 700, color: done ? "#9CA3AF" : "#1C1917", margin: 0, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: done ? "line-through" : "none" }}>{t.title}</p>
+                                  <span style={{ fontSize: "11px", fontWeight: 600, color: overdue ? "#DC2626" : done ? "#9CA3AF" : "#57534E", flexShrink: 0 }}>
+                                    {overdue ? `${Math.abs(days)}d late` : fmtShort(t.deadline).split(",")[0]}
+                                  </span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                  {mIdx >= 0 && <span style={{ fontSize: "11px", color: "#78716C" }}>Milestone {mIdx + 1}</span>}
+                                  {mIdx >= 0 && <span style={{ fontSize: "11px", color: "#C4B5A0" }}>·</span>}
+                                  <span style={{ fontSize: "11px", fontWeight: 600, color: done ? "#9CA3AF" : qm.color }}>{qm.label}</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
                 )}
+
+                {/* AI Insights */}
+                <div style={{ backgroundColor: "#F5F0FF", borderRadius: "14px", padding: "16px", border: "1px solid #DDD6FE", marginBottom: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Sparkles size={14} color="#7C3AED" />
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#7C3AED" }}>AI Insights</span>
+                    </div>
+                    <Sparkles size={13} color="#C4B5FD" />
+                  </div>
+                  <p style={{ fontSize: "12px", color: "#1C1917", lineHeight: 1.5, margin: "0 0 12px" }}>
+                    Personalized goal insights and suggestions coming soon.
+                  </p>
+                  <button disabled style={{ width: "100%", padding: "8px", borderRadius: "8px", border: "1.5px solid #C4B5FD", backgroundColor: "transparent", fontSize: "12px", fontWeight: 600, color: "#7C3AED", cursor: "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", opacity: 0.75 }}>
+                    <Lock size={12} color="#7C3AED" /> Coming Soon
+                  </button>
+                </div>
+
               </div>
 
               {/* PROGRESS NOTES — commented out
