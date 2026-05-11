@@ -7,7 +7,8 @@ import {
   Q_META, toTaskDate,
   type EisenhowerQ, type TaskData, type RecurringTemplate,
 } from "@/components/tasks/TaskCard";
-import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
+import { validateDate } from "@/lib/dateValidation";
+import CalendarPicker from "@/components/ui/CalendarPicker";
 
 interface Props {
   open:                boolean;
@@ -140,14 +141,20 @@ export default function TaskCreateSheet({
     <>
       <div onClick={onClose} style={{
         position: "fixed", inset: 0, backgroundColor: "rgba(28,25,23,0.45)",
-        zIndex: 400, backdropFilter: "blur(2px)",
+        zIndex: 400, backdropFilter: "blur(3px)",
       }} />
 
       <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0, width: "440px",
-        backgroundColor: "#FFFFFF", zIndex: 401,
-        display: "flex", flexDirection: "column",
-        boxShadow: "-8px 0 40px rgba(28,25,23,0.12)",
+        position: "fixed", inset: 0, zIndex: 401,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        pointerEvents: "none",
+      }}>
+      <div style={{
+        pointerEvents: "all",
+        width: 500, maxWidth: "calc(100vw - 32px)",
+        backgroundColor: "#FFFFFF", borderRadius: "18px",
+        boxShadow: "0 24px 64px rgba(28,25,23,0.18)",
+        overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "90vh",
       }}>
 
         {/* Q4 bang overlay */}
@@ -171,28 +178,28 @@ export default function TaskCreateSheet({
 
         {/* Header */}
         <div style={{
-          padding: "18px 20px", borderBottom: "1px solid #EDE5D8",
+          padding: "18px 24px", borderBottom: "1px solid #EDE5D8",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)", flexShrink: 0,
         }}>
           <div>
-            <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
-              textTransform: "uppercase", color: "#F97316", marginBottom: "3px" }}>
-              Task Command Center
+            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em",
+              textTransform: "uppercase", color: "#F97316", margin: "0 0 3px" }}>
+              New Task
             </p>
-            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Add Task</h2>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Add a task</h2>
           </div>
           <button onClick={onClose} style={{
             width: "32px", height: "32px", borderRadius: "8px", border: "none",
-            backgroundColor: "#F5F0EB", cursor: "pointer",
+            backgroundColor: "#FEE2E2", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <X size={15} color="#78716C" />
+            <X size={15} color="#DC2626" />
           </button>
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
 
           <div style={{ marginBottom: "14px" }}>
             <Label>Title *</Label>
@@ -218,17 +225,17 @@ export default function TaskCreateSheet({
                 return (
                   <button key={q} onClick={() => selectQuadrant(q)} style={{
                     padding: "9px 11px", borderRadius: "8px", cursor: "pointer", textAlign: "left",
-                    border: `2px solid ${active ? m.color : todayQ1Hint ? m.color + "88" : m.border}`,
-                    backgroundColor: m.bg,
-                    boxShadow: active ? `0 0 0 1px ${m.color}22` : todayQ1Hint ? `0 0 0 2px ${m.color}22` : "none",
+                    backgroundColor: m.color,
+                    border: active ? "3px solid #FFFFFF" : "3px solid transparent",
+                    outline: active ? `2px solid ${m.color}` : "none",
+                    outlineOffset: "1px",
+                    boxShadow: active ? `0 4px 12px ${m.color}55` : "none",
                     transition: "border-color 0.15s, box-shadow 0.15s",
                   }}>
-                    <p style={{ fontSize: "11px", fontWeight: 700, margin: 0,
-                      color: active ? m.color : m.color + "AA" }}>
+                    <p style={{ fontSize: "11px", fontWeight: 700, margin: 0, color: "#FFFFFF" }}>
                       {ql.main}
                     </p>
-                    <p style={{ fontSize: "10px", margin: "2px 0 0",
-                      color: active ? m.color : m.color + "88" }}>
+                    <p style={{ fontSize: "10px", margin: "2px 0 0", color: "rgba(255,255,255,0.8)" }}>
                       {ql.hint}
                     </p>
                   </button>
@@ -244,7 +251,7 @@ export default function TaskCreateSheet({
               <input value={delegateTo}
                 onChange={(e) => { setDelegateTo(e.target.value); if (delegateNudge) setDelegateNudge(false); }}
                 placeholder="Who will handle this?"
-                style={{ ...inputStyle, borderColor: delegateNudge ? "#DC2626" : "#E8DDD0",
+                style={{ ...inputStyle, borderColor: delegateNudge ? "#DC2626" : "#F97316",
                   backgroundColor: delegateNudge ? "#FEF2F2" : "#FFFFFF" }} />
               {delegateNudge && (
                 <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, marginTop: "5px" }}>
@@ -293,15 +300,7 @@ export default function TaskCreateSheet({
           {/* Deadline */}
           <div style={{ marginBottom: "14px" }}>
             <Label>{f.quadrant === "Q1" ? "Deadline — locked to today 🔒" : "Deadline"}</Label>
-            <input type="date" value={f.deadline} disabled={f.quadrant === "Q1"}
-              min={todayDateStr()} max={MAX_DATE_STR}
-              onChange={(e) => { if (f.quadrant === "Q1") return; set("deadline", e.target.value); }}
-              style={{
-                ...inputStyle, opacity: f.quadrant === "Q1" ? 0.6 : 1,
-                cursor: f.quadrant === "Q1" ? "not-allowed" : "default",
-                backgroundColor: f.quadrant === "Q1" ? "#FEF2F2" : "#FFFFFF",
-                borderColor: dateError && f.quadrant !== "Q1" ? "#FCA5A5" : undefined,
-              }} />
+            <CalendarPicker value={f.deadline} onChange={v => { if (f.quadrant !== "Q1") set("deadline", v); }} accentColor="#F97316" disabled={f.quadrant === "Q1"} placement="up" bgColor="#FFF7ED" />
             {f.quadrant !== "Q1" && dateError && (
               <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px" }}>
                 {dateError}
@@ -342,18 +341,11 @@ export default function TaskCreateSheet({
 
         {/* Footer */}
         <div style={{
-          padding: "14px 20px", borderTop: "1px solid #EDE5D8",
+          padding: "14px 24px", borderTop: "1px solid #EDE5D8",
           display: "flex", gap: "8px", flexShrink: 0,
         }}>
-          <button onClick={onClose} style={{
-            flex: 1, padding: "10px", borderRadius: "10px",
-            border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
-            fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer",
-          }}>
-            Cancel
-          </button>
           <button onClick={handleSave} disabled={!canSave} style={{
-            flex: 2, padding: "10px", borderRadius: "10px", border: "none",
+            flex: 1, padding: "10px", borderRadius: "10px", border: "none",
             background: canSave ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0",
             fontSize: "13px", fontWeight: 700,
             color: canSave ? "#FFFFFF" : "#A8A29E",
@@ -364,6 +356,7 @@ export default function TaskCreateSheet({
           </button>
         </div>
       </div>
+      </div>
     </>
   );
 }
@@ -372,7 +365,7 @@ export default function TaskCreateSheet({
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontSize: "11px", fontWeight: 600, color: "#78716C",
+    <p style={{ fontSize: "11px", fontWeight: 700, color: "#1C1917",
       textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>
       {children}
     </p>
@@ -381,7 +374,7 @@ function Label({ children }: { children: React.ReactNode }) {
 
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "9px 12px", borderRadius: "8px",
-  border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
+  border: "1.5px solid #F97316", backgroundColor: "#FFF7ED",
   fontSize: "13px", color: "#1C1917", outline: "none", boxSizing: "border-box",
 };
 
@@ -426,8 +419,8 @@ function GoalSelect({ goals, value, onChange, zIndex }: {
     <div ref={containerRef}>
       <button ref={triggerRef} onClick={() => open ? setOpen(false) : openDrop()} style={{
         width: "100%", padding: "9px 12px", borderRadius: "8px", boxSizing: "border-box",
-        border: `1.5px solid ${open ? "#F97316" : "#E8DDD0"}`,
-        backgroundColor: "#FFFFFF", cursor: "pointer",
+        border: `1.5px solid #F97316`,
+        backgroundColor: "#FFF7ED", cursor: "pointer",
         display: "flex", alignItems: "center", gap: "8px",
       }}>
         {sel && meta ? (
@@ -536,8 +529,8 @@ function MilestoneSelect({ milestones, value, onChange, required: req, zIndex }:
     <div ref={containerRef}>
       <button ref={triggerRef} onClick={() => open ? setOpen(false) : openDrop()} style={{
         width: "100%", padding: "9px 12px", borderRadius: "8px", boxSizing: "border-box",
-        border: `1.5px solid ${needsPick ? "#D97706" : open ? "#D97706" : "#E8DDD0"}`,
-        backgroundColor: needsPick ? "#FFFBEB" : "#FFFFFF", cursor: "pointer",
+        border: `1.5px solid ${needsPick ? "#D97706" : "#F97316"}`,
+        backgroundColor: needsPick ? "#FFFBEB" : "#FFF7ED", cursor: "pointer",
         display: "flex", alignItems: "center", gap: "8px",
       }}>
         {sel ? (

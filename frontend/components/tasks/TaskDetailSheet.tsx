@@ -6,7 +6,8 @@ import { X, Calendar, Target, Pencil, Check } from "lucide-react";
 import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
 import { Q_META, fmtDeadline } from "@/components/tasks/TaskCard";
 import type { GoalData } from "@/components/goals/GoalCard";
-import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
+import { validateDate } from "@/lib/dateValidation";
+import CalendarPicker from "@/components/ui/CalendarPicker";
 
 interface Props {
   task:       TaskData | null;
@@ -94,15 +95,7 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
               <div style={{ display: "flex", gap: "10px" }}>
                 <div style={{ flex: 1 }}>
                   <label style={lbl}>Deadline</label>
-                  <input
-                    type="date" value={editDeadline}
-                    min={todayDateStr()} max={MAX_DATE_STR}
-                    onChange={(e) => setEditDeadline(e.target.value)}
-                    style={{
-                      ...inp,
-                      borderColor: validateDate(editDeadline, { required: true }) ? "#FCA5A5" : (inp.borderColor as string | undefined),
-                    }}
-                  />
+                  <CalendarPicker value={editDeadline} onChange={setEditDeadline} accentColor="#F97316" />
                   {validateDate(editDeadline, { required: true }) && (
                     <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px" }}>
                       {validateDate(editDeadline, { required: true })}
@@ -179,12 +172,12 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
               </div>
               <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                 {onUpdate && (
-                  <button onClick={openEdit} style={closeBtn} title="Edit">
-                    <Pencil size={13} color="#78716C" />
+                  <button onClick={openEdit} style={editBtn} title="Edit">
+                    <Pencil size={13} color="#FFFFFF" />
                   </button>
                 )}
-                <button onClick={onClose} style={closeBtn}>
-                  <X size={14} color="#78716C" />
+                <button onClick={onClose} style={dismissBtn}>
+                  <X size={14} color="#FFFFFF" />
                 </button>
               </div>
             </div>
@@ -256,9 +249,9 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
                     Mark Done ✓
                   </button>
                   <button onClick={() => { onMiss(task.id); onClose(); }} style={{
-                    flex: 1, padding: "11px", borderRadius: "10px",
-                    border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
-                    fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer",
+                    flex: 1, padding: "11px", borderRadius: "10px", border: "none",
+                    backgroundColor: "#6B7280",
+                    fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
                   }}>
                     Mark Missed
                   </button>
@@ -293,8 +286,14 @@ const inp: React.CSSProperties = {
   fontSize: "13px", color: "#1C1917", outline: "none", boxSizing: "border-box",
 };
 
-const closeBtn: React.CSSProperties = {
-  width: 30, height: 30, borderRadius: 8, border: "1px solid #EDE5D8",
-  backgroundColor: "#FAFAFA", display: "flex", alignItems: "center",
+const editBtn: React.CSSProperties = {
+  width: 30, height: 30, borderRadius: 8, border: "none",
+  backgroundColor: "#F97316", display: "flex", alignItems: "center",
+  justifyContent: "center", cursor: "pointer",
+};
+
+const dismissBtn: React.CSSProperties = {
+  width: 30, height: 30, borderRadius: 8, border: "none",
+  backgroundColor: "#6B7280", display: "flex", alignItems: "center",
   justifyContent: "center", cursor: "pointer",
 };

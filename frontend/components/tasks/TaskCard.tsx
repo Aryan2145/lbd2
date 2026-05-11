@@ -60,7 +60,7 @@ export const Q_META: Record<EisenhowerQ, { label: string; sub: string; color: st
   Q1: { label: "Do It Now",  sub: "Urgent + Important",         color: "#DC2626", bg: "#FEF2F2", border: "#FCA5A5" },
   Q2: { label: "Scheduled",  sub: "Not Urgent + Important",     color: "#16A34A", bg: "#F0FDF4", border: "#86EFAC" },
   Q3: { label: "Delegated",  sub: "Urgent + Not Important",     color: "#D97706", bg: "#FFFBEB", border: "#FCD34D" },
-  Q4: { label: "Dropped",    sub: "Not Urgent + Not Important", color: "#6B7280", bg: "#F9FAFB", border: "#D1D5DB" },
+  Q4: { label: "Dropped",    sub: "Not Urgent + Not Important", color: "#374151", bg: "#F1F5F9", border: "#94A3B8" },
 };
 
 export function toTaskDate(d: Date = new Date()): string {
@@ -178,25 +178,25 @@ export default function TaskCard({ task, onClick, onComplete, onMiss, displayQua
               onClick={() => onComplete(task.id)}
               title="Mark done"
               style={{
-                width: 22, height: 22, borderRadius: "5px", border: "none",
-                backgroundColor: "#F0FDF4", cursor: "pointer",
+                width: 28, height: 28, borderRadius: "7px", border: "none",
+                backgroundColor: "#16A34A", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
               }}
             >
-              <CheckCircle2 size={13} color="#16A34A" />
+              <CheckCircle2 size={16} color="#FFFFFF" />
             </button>
             <button
               onClick={() => onMiss(task.id)}
               title="Mark missed"
               style={{
-                width: 22, height: 22, borderRadius: "5px", border: "none",
-                backgroundColor: "#F3F4F6", cursor: "pointer",
+                width: 28, height: 28, borderRadius: "7px", border: "none",
+                backgroundColor: "#6B7280", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
               }}
             >
-              <XCircle size={13} color="#6B7280" />
+              <XCircle size={16} color="#FFFFFF" />
             </button>
           </div>
         )}

@@ -120,18 +120,14 @@ export default function CalendarView({ tasks, goals, onComplete, onMiss, onReope
                   {day}
                 </span>
                 {dayTasks.length > 0 && (
-                  <div style={{ display: "flex", gap: "2px", flexWrap: "wrap", justifyContent: "center" }}>
-                    {dayTasks.slice(0, 4).map((t, i) => (
-                      <div key={i} style={{
-                        width: "5px", height: "5px", borderRadius: "50%",
-                        backgroundColor: isSelected ? "rgba(255,255,255,0.7)" :
-                          t.status !== "open" ? "#D1D5DB" : Q_META[t.quadrant].color,
-                      }} />
-                    ))}
-                    {dayTasks.length > 4 && (
-                      <span style={{ fontSize: "7px", color: isSelected ? "#FFF" : "#A8A29E", lineHeight: "5px" }}>+</span>
-                    )}
-                  </div>
+                  <span style={{
+                    fontSize: "9px", fontWeight: 700, lineHeight: 1,
+                    color: isSelected ? "rgba(255,255,255,0.9)" : hasOverdue ? "#DC2626" : "#F97316",
+                    backgroundColor: isSelected ? "rgba(255,255,255,0.2)" : hasOverdue ? "#FEF2F2" : "#FFF7ED",
+                    padding: "1px 5px", borderRadius: "20px",
+                  }}>
+                    {dayTasks.length}
+                  </span>
                 )}
               </button>
             );

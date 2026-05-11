@@ -100,7 +100,7 @@ export default function ClosedView({ tasks, onReopen }: Props) {
                         {t.quadrant}
                       </span>
                     </div>
-                    <div style={{ display: "flex", gap: "10px", fontSize: "10px", color: "#9CA3AF" }}>
+                    <div style={{ display: "flex", gap: "10px", fontSize: "10px", color: "#57534E" }}>
                       <span>Due {fmtDeadline(t.deadline)}</span>
                       {closedDate && <span>Closed {closedDate}</span>}
                       {t.variance !== undefined && (
@@ -120,8 +120,8 @@ export default function ClosedView({ tasks, onReopen }: Props) {
                     style={{
                       flexShrink: 0, display: "flex", alignItems: "center", gap: "4px",
                       padding: "5px 10px", borderRadius: "6px",
-                      border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
-                      fontSize: "11px", fontWeight: 600, color: "#78716C", cursor: "pointer",
+                      border: "none", backgroundColor: "#F97316",
+                      fontSize: "11px", fontWeight: 600, color: "#FFFFFF", cursor: "pointer",
                     }}>
                     <RotateCcw size={11} /> Reopen
                   </button>

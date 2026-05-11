@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Plus, LayoutGrid, Calendar, BarChart2,
-  Archive, Search, X,
+  Archive, Search, X, ChevronDown,
   // RECURRING_DISABLED: RefreshCw, CheckSquare,
 } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
@@ -42,7 +42,9 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
   const [searchQuery,  setSearchQuery]  = useState("");
   const [searchOpen,   setSearchOpen]   = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const [viewDropOpen, setViewDropOpen] = useState(false);
+  const searchRef  = useRef<HTMLInputElement>(null);
+  const viewDropRef = useRef<HTMLDivElement>(null);
 
   // RECURRING_DISABLED: useEffect(() => { spawnInstances(30); }, []);
 
@@ -57,6 +59,16 @@ export default function TasksPage() {
     if (updated) setSelectedTask(updated);
     else setSelectedTask(null);
   }, [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!viewDropOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (viewDropRef.current && !viewDropRef.current.contains(e.target as Node))
+        setViewDropOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [viewDropOpen]);
 
   const today       = toTaskDate();
   const open        = tasks.filter((t) => t.status === "open");
@@ -90,7 +102,7 @@ export default function TasksPage() {
   const showSearch = q.length > 0;
 
   return (
-    <div style={{ height: "100%", backgroundColor: "#FAF5EE",
+    <div style={{ height: "100%", backgroundColor: "#FFFFFF",
       display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Header */}
@@ -127,22 +139,108 @@ export default function TasksPage() {
         </div>
       </div>
 
+      {/* Mobile stats row */}
+      <div className="flex sm:hidden px-page-md" style={{
+        paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
+        gap: "20px", flexShrink: 0,
+      }}>
+        <Stat label="Open"      value={open.length}       color="#1C1917" />
+        <Stat label="Due today" value={dueToday.length}   color="#F97316" />
+        {overdue.length > 0 && (
+          <Stat label="Overdue" value={overdue.length}    color="#DC2626" />
+        )}
+        <Stat label="Success"   value={`${successRate}%`} color="#16A34A" />
+      </div>
+
       {/* Toolbar */}
       <div className="px-page-md" style={{ paddingTop: "10px", paddingBottom: "10px", paddingRight: 0, borderBottom: "1px solid #EDE5D8",
-        display: "flex", alignItems: "center", gap: "6px", flexShrink: 0, overflowX: "auto" }}>
+        display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
 
-        {/* View tabs — hidden on mobile when search is open, always visible on desktop */}
-        <div className={searchOpen ? "hidden sm:flex" : "flex"} style={{ alignItems: "center", gap: "6px" }}>
+        {/* Mobile: view dropdown */}
+        <div className="flex sm:hidden" ref={viewDropRef} style={{ position: "relative" }}>
+          {(() => {
+            const active = VIEWS.find((v) => v.value === view)!;
+            const ActiveIcon = active.icon;
+            const badge = view === "closed" ? closed.length : null;
+            return (
+              <>
+                <button onClick={() => setViewDropOpen((o) => !o)} style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  padding: "6px 12px", borderRadius: "8px", whiteSpace: "nowrap",
+                  border: "1.5px solid #F97316", backgroundColor: "#F97316",
+                  color: "#FFFFFF", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                }}>
+                  <ActiveIcon size={13} />
+                  {active.label}
+                  {badge !== null && badge > 0 && (
+                    <span style={{
+                      fontSize: "9px", fontWeight: 700,
+                      backgroundColor: "rgba(255,255,255,0.3)",
+                      borderRadius: "10px", padding: "1px 5px",
+                    }}>{badge}</span>
+                  )}
+                  <ChevronDown size={12} style={{ marginLeft: "2px" }} />
+                </button>
+                {viewDropOpen && (
+                  <div style={{
+                    position: "fixed", top: "auto", zIndex: 500,
+                    backgroundColor: "#FFFFFF", borderRadius: "10px",
+                    border: "1.5px solid #EDE5D8",
+                    boxShadow: "0 8px 24px rgba(28,25,23,0.14)",
+                    minWidth: "160px", overflow: "hidden",
+                    marginTop: "4px",
+                  }}
+                  ref={(el) => {
+                    if (!el || !viewDropRef.current) return;
+                    const trigger = viewDropRef.current.firstElementChild as HTMLElement;
+                    const r = trigger.getBoundingClientRect();
+                    el.style.top = `${r.bottom + 4}px`;
+                    el.style.left = `${r.left}px`;
+                  }}>
+                    {VIEWS.map(({ value: v, icon: Icon, label }) => {
+                      const b = v === "closed" ? closed.length : null;
+                      const isActive = view === v;
+                      return (
+                        <button key={v} onClick={() => { setView(v); setViewDropOpen(false); }} style={{
+                          width: "100%", padding: "9px 14px", border: "none",
+                          borderBottom: "1px solid #F5F0EB",
+                          backgroundColor: isActive ? "#FFF7ED" : "#FFFFFF",
+                          display: "flex", alignItems: "center", gap: "8px", cursor: "pointer",
+                        }}>
+                          <Icon size={12} color={isActive ? "#F97316" : "#78716C"} />
+                          <span style={{ flex: 1, fontSize: "12px", fontWeight: 600,
+                            color: isActive ? "#F97316" : "#1C1917", textAlign: "left" }}>
+                            {label}
+                          </span>
+                          {b !== null && b > 0 && (
+                            <span style={{
+                              fontSize: "9px", fontWeight: 700,
+                              backgroundColor: isActive ? "#F97316" : "#E8DDD0",
+                              color: isActive ? "#FFFFFF" : "#78716C",
+                              borderRadius: "10px", padding: "1px 6px",
+                            }}>{b}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+
+        {/* Desktop: flat tab buttons */}
+        <div className="hidden sm:flex" style={{ alignItems: "center", gap: "6px" }}>
           {VIEWS.map(({ value, icon: Icon, label }) => {
-            // RECURRING_DISABLED: const badge = value === "closed" ? closed.length : value === "templates" ? templates.length : null;
             const badge = value === "closed" ? closed.length : null;
             return (
               <button key={value} onClick={() => setView(value)} style={{
                 display: "flex", alignItems: "center", gap: "5px",
                 padding: "5px 12px", borderRadius: "8px", whiteSpace: "nowrap",
-                border: `1.5px solid ${view === value ? "#F97316" : "#E8DDD0"}`,
-                backgroundColor: view === value ? "#FFF7ED" : "#FFFFFF",
-                color: view === value ? "#F97316" : "#78716C",
+                border: "1.5px solid #F97316",
+                backgroundColor: view === value ? "#F97316" : "#FFF7ED",
+                color: view === value ? "#FFFFFF" : "#EA580C",
                 fontSize: "11px", fontWeight: 600, cursor: "pointer",
               }}>
                 <Icon size={12} />
@@ -150,7 +248,7 @@ export default function TasksPage() {
                 {badge !== null && badge > 0 && (
                   <span style={{
                     fontSize: "9px", fontWeight: 700,
-                    backgroundColor: view === value ? "#F97316" : "#E8DDD0",
+                    backgroundColor: view === value ? "rgba(255,255,255,0.3)" : "#E8DDD0",
                     color: view === value ? "#FFFFFF" : "#78716C",
                     borderRadius: "10px", padding: "1px 5px", marginLeft: "1px",
                   }}>
@@ -191,8 +289,8 @@ export default function TasksPage() {
                   className="search-input"
                   style={{
                     width: "100%", padding: "7px 10px 7px 28px", borderRadius: "8px",
-                    backgroundColor: "#FFFFFF", fontSize: "12px", color: "#1C1917",
-                    boxSizing: "border-box",
+                    border: "1.5px solid #F97316", backgroundColor: "#FFFFFF",
+                    fontSize: "12px", color: "#1C1917", boxSizing: "border-box",
                   }}
                 />
               </div>
@@ -208,10 +306,10 @@ export default function TasksPage() {
             <button onClick={() => setSearchOpen(true)} style={{
               width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "6px",
               padding: "7px 10px 7px 10px", borderRadius: "8px",
-              border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+              border: "1.5px solid #F97316", backgroundColor: "#FFFFFF",
               fontSize: "12px", color: "#1C1917", cursor: "pointer",
             }}>
-              <Search size={12} color="#78716C" /> <span style={{ color: "#78716C" }}>Search tasks...</span>
+              <Search size={12} color="#F97316" /> <span style={{ color: "#78716C" }}>Search tasks...</span>
             </button>
           )}
         </div>
@@ -291,8 +389,8 @@ export default function TasksPage() {
 
 function Stat({ label, value, color }: { label: string; value: number | string; color: string }) {
   return (
-    <div style={{ textAlign: "right" }}>
-      <p style={{ fontSize: "11px", fontWeight: 500, color: "#78716C", marginBottom: "1px" }}>{label}</p>
+    <div style={{ textAlign: "center" }}>
+      <p style={{ fontSize: "11px", fontWeight: 500, color: "#1C1917", marginBottom: "1px" }}>{label}</p>
       <p style={{ fontSize: "20px", fontWeight: 700, color, lineHeight: 1 }}>{value}</p>
     </div>
   );

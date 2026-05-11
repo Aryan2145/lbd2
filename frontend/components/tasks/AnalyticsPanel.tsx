@@ -80,10 +80,10 @@ export default function AnalyticsPanel({ tasks }: Props) {
 
       {/* Summary stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
-        <StatCard label="Total tasks"     value={tasks.length}    color="#1C1917" />
-        <StatCard label="Completion rate" value={`${successRate}%`} color="#16A34A" />
-        <StatCard label="Overdue"         value={overdue.length}  color={overdue.length > 0 ? "#DC2626" : "#78716C"} />
-        <StatCard label="Open"            value={open.length}     color="#F97316" />
+        <StatCard label="Total tasks"     value={tasks.length}      valueColor="#1C1917" bg="#FFFFFF" border="#E8DDD0" />
+        <StatCard label="Completion rate" value={`${successRate}%`} valueColor="#16A34A" bg="#F0FDF4" border="#86EFAC" />
+        <StatCard label="Overdue"         value={overdue.length}    valueColor={overdue.length > 0 ? "#DC2626" : "#57534E"} bg={overdue.length > 0 ? "#FEF2F2" : "#F9FAFB"} border={overdue.length > 0 ? "#FCA5A5" : "#E5E7EB"} />
+        <StatCard label="Open"            value={open.length}       valueColor="#EA580C" bg="#FFF7ED" border="#FED7AA" />
       </div>
 
       {/* Two-column layout */}
@@ -105,7 +105,7 @@ export default function AnalyticsPanel({ tasks }: Props) {
                   <div style={{ display: "flex", justifyContent: "space-between",
                     fontSize: "11px", marginBottom: "4px" }}>
                     <span style={{ fontWeight: 600, color: m.color }}>{q} · {m.label}</span>
-                    <span style={{ color: "#78716C" }}>{count} ({pct}%)</span>
+                    <span style={{ color: "#1C1917", fontWeight: 600 }}>{count} ({pct}%)</span>
                   </div>
                   <div style={{ height: "6px", borderRadius: "3px", backgroundColor: "#F2EAE0" }}>
                     <div style={{
@@ -129,9 +129,9 @@ export default function AnalyticsPanel({ tasks }: Props) {
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             <OutcomeRow icon={<CheckCircle2 size={13} color="#16A34A" />}
               label="Completed" count={complete.length} total={tasks.length} color="#16A34A" />
-            <OutcomeRow icon={<XCircle size={13} color="#6B7280" />}
+            <OutcomeRow icon={<XCircle size={13} color="#374151" />}
               label="Closed / missed" count={closed.length - complete.length}
-              total={tasks.length} color="#6B7280" />
+              total={tasks.length} color="#374151" />
             <OutcomeRow icon={<AlertTriangle size={13} color="#DC2626" />}
               label="Overdue open" count={overdue.length} total={tasks.length} color="#DC2626" />
           </div>
@@ -153,15 +153,15 @@ export default function AnalyticsPanel({ tasks }: Props) {
   );
 }
 
-function StatCard({ label, value, color }: { label: string; value: number | string; color: string }) {
+function StatCard({ label, value, valueColor, bg, border }: { label: string; value: number | string; valueColor: string; bg: string; border: string }) {
   return (
     <div style={{ padding: "14px", borderRadius: "12px",
-      border: "1px solid #EDE5D8", backgroundColor: "#FFFFFF", textAlign: "center" }}>
-      <p style={{ fontSize: "10px", fontWeight: 600, color: "#78716C",
+      border: `1px solid ${border}`, backgroundColor: bg, textAlign: "center" }}>
+      <p style={{ fontSize: "10px", fontWeight: 600, color: "#1C1917",
         textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>
         {label}
       </p>
-      <p style={{ fontSize: "26px", fontWeight: 800, color, lineHeight: 1 }}>{value}</p>
+      <p style={{ fontSize: "26px", fontWeight: 800, color: valueColor, lineHeight: 1 }}>{value}</p>
     </div>
   );
 }
@@ -173,9 +173,9 @@ function OutcomeRow({ icon, label, count, total, color }: {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
       {icon}
-      <span style={{ fontSize: "11px", color: "#78716C", flex: 1 }}>{label}</span>
+      <span style={{ fontSize: "11px", color: "#1C1917", flex: 1 }}>{label}</span>
       <span style={{ fontSize: "11px", fontWeight: 700, color }}>{count}</span>
-      <span style={{ fontSize: "10px", color: "#A8A29E", width: "30px", textAlign: "right" }}>
+      <span style={{ fontSize: "10px", fontWeight: 600, color, width: "30px", textAlign: "right" }}>
         {pct}%
       </span>
     </div>

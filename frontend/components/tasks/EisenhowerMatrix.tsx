@@ -122,14 +122,18 @@ export default function EisenhowerMatrix({ tasks, onComplete, onMiss, onSelect }
                 {col.empty}
               </p>
             </div>
-          ) : colTasks.map((t) => (
-            <TaskCard key={t.id} task={t}
-              onClick={onSelect ? () => onSelect(t) : undefined}
-              onComplete={onComplete}
-              onMiss={onMiss}
-              displayQuadrant={col.key === "q1" && promotedIds.has(t.id) ? "Q1" : undefined}
-            />
-          ))}
+          ) : colTasks.map((t) => {
+            const effectiveTask = col.key === "q1" && promotedIds.has(t.id)
+              ? { ...t, quadrant: "Q1" as const }
+              : t;
+            return (
+              <TaskCard key={t.id} task={effectiveTask}
+                onClick={onSelect ? () => onSelect(effectiveTask) : undefined}
+                onComplete={onComplete}
+                onMiss={onMiss}
+              />
+            );
+          })}
         </div>
       </>
     );

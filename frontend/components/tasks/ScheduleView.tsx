@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
-import TaskCard, { daysUntil, fmtDeadline, type TaskData } from "@/components/tasks/TaskCard";
+import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Q_META, daysUntil, fmtDeadline, type TaskData } from "@/components/tasks/TaskCard";
 
 type Range = 7 | 14 | 30;
 
@@ -89,7 +89,7 @@ export default function ScheduleView({ tasks, onComplete, onMiss }: Props) {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {overdue.sort((a, b) => a.deadline.localeCompare(b.deadline)).map((t) => (
-                <TaskCard key={t.id} task={t} onComplete={onComplete} onMiss={onMiss} />
+                <ScheduleRow key={t.id} task={t} onComplete={onComplete} onMiss={onMiss} />
               ))}
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function ScheduleView({ tasks, onComplete, onMiss }: Props) {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   {dayTasks.map((t) => (
-                    <TaskCard key={t.id} task={t} onComplete={onComplete} onMiss={onMiss} />
+                    <ScheduleRow key={t.id} task={t} onComplete={onComplete} onMiss={onMiss} />
                   ))}
                 </div>
               </div>
@@ -134,6 +134,73 @@ export default function ScheduleView({ tasks, onComplete, onMiss }: Props) {
             </div>
           )
         )}
+      </div>
+    </div>
+  );
+}
+
+function ScheduleRow({ task, onComplete, onMiss }: { task: TaskData; onComplete: (id: string) => void; onMiss: (id: string) => void }) {
+  const m      = Q_META[task.quadrant];
+  const days   = daysUntil(task.deadline);
+  const overdue = days < 0;
+
+  const deadlineLabel = overdue
+    ? `${Math.abs(days)}d overdue`
+    : days === 0 ? "Due today"
+    : days === 1 ? "Tomorrow"
+    : fmtDeadline(task.deadline);
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: "10px",
+      padding: "10px 12px", borderRadius: "10px",
+      backgroundColor: overdue ? "#FEF2F2" : m.bg,
+      border: `1px solid ${overdue ? "#FCA5A5" : m.border}`,
+    }}>
+      {/* Quadrant dot */}
+      <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: m.color, flexShrink: 0 }} />
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+          <p style={{
+            fontSize: "13px", fontWeight: 600, color: "#1C1917",
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: 0,
+          }}>
+            {task.title}
+          </p>
+          <span style={{
+            flexShrink: 0, fontSize: "9px", fontWeight: 700,
+            padding: "2px 6px", borderRadius: "20px",
+            color: m.color, backgroundColor: "#FFFFFF", border: `1px solid ${m.border}`,
+          }}>
+            {task.quadrant}
+          </span>
+        </div>
+        <span style={{
+          fontSize: "10px", fontWeight: 600,
+          color: overdue ? "#DC2626" : "#57534E",
+        }}>
+          {deadlineLabel}
+        </span>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: "flex", gap: "4px", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+        <button onClick={() => onComplete(task.id)} title="Mark done" style={{
+          width: 28, height: 28, borderRadius: "7px", border: "1px solid #BBF7D0",
+          backgroundColor: "#F0FDF4", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <CheckCircle2 size={14} color="#16A34A" />
+        </button>
+        <button onClick={() => onMiss(task.id)} title="Mark missed" style={{
+          width: 28, height: 28, borderRadius: "7px", border: "1px solid #E5E7EB",
+          backgroundColor: "#F9FAFB", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <XCircle size={14} color="#6B7280" />
+        </button>
       </div>
     </div>
   );
