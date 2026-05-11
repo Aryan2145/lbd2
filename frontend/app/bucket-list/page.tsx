@@ -172,7 +172,7 @@ export default function BucketListPage() {
       <div className="px-page" style={{
         paddingTop: "18px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
-        backgroundColor: "#FAF5EE", gap: "12px",
+        backgroundColor: "#FFFFFF", gap: "12px",
       }}>
         <div style={{ minWidth: 0 }}>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
@@ -183,7 +183,7 @@ export default function BucketListPage() {
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             Life Experiences Board
           </h1>
-          <p className="hidden sm:block" style={{ fontSize: "12px", color: "#78716C", marginTop: "3px" }}>
+          <p className="hidden sm:block" style={{ fontSize: "12px", color: "#1C1917", marginTop: "3px" }}>
             Dreams, intentions, and legacy moments — drag to progress.
           </p>
         </div>
@@ -555,7 +555,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
       {/* Image banner */}
       {entry.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={toDriveImgUrl(entry.imageUrl)} alt=""
+        <img src={toDriveImgUrl(entry.imageUrl)} alt="" referrerPolicy="no-referrer"
           style={{ width: "100%", aspectRatio: "3 / 1", objectFit: "cover", display: "block" }} />
       )}
 
@@ -669,8 +669,8 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
 
 function Stat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div style={{ textAlign: "right" }}>
-      <p style={{ fontSize: "12px", fontWeight: 500, color: "#78716C", marginBottom: "2px" }}>{label}</p>
+    <div style={{ textAlign: "center" }}>
+      <p style={{ fontSize: "12px", fontWeight: 500, color: "#1C1917", marginBottom: "2px" }}>{label}</p>
       <p style={{ fontSize: "22px", fontWeight: 700, color, lineHeight: 1 }}>{value}</p>
     </div>
   );

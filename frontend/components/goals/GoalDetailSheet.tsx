@@ -17,7 +17,8 @@ import {
 } from "@/components/habits/HabitCard";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import { Q_META, daysUntil, toTaskDate, type EisenhowerQ } from "@/components/tasks/TaskCard";
-import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
+import { validateDate, validateGoalDate, maxGoalDateStr } from "@/lib/dateValidation";
+import CalendarPicker from "@/components/ui/CalendarPicker";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const AREA_ICONS: Record<LifeArea, LucideIcon> = {
@@ -277,7 +278,7 @@ export default function GoalDetailSheet({
                           {goal.statement}
                         </h2>
                         {goal.outcome && (
-                          <p style={{ fontSize: "13px", color: "#374151", fontStyle: "italic", margin: "0 0 10px", lineHeight: 1.5 }}>
+                          <p style={{ fontSize: "13px", color: "#1C1917", fontStyle: "italic", margin: "0 0 10px", lineHeight: 1.5 }}>
                             &ldquo;{goal.outcome}&rdquo;
                           </p>
                         )}
@@ -603,7 +604,7 @@ export default function GoalDetailSheet({
               </div>
 
               {/* ── Mobile-only sidebar content (exact match of desktop sidebar) ── */}
-              <div className="block sm:hidden" style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div className="flex sm:hidden" style={{ marginTop: "12px", flexDirection: "column", gap: "12px" }}>
 
                 {/* Goal Health */}
                 <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #E5E9EE" }}>
@@ -940,7 +941,7 @@ export default function GoalDetailSheet({
       {/* ── Milestone Create Modal ── */}
       {msCreateOpen && (() => {
         const msColor    = AREA_META[goal.area].color;
-        const msDeadlineError = validateDate(msDeadline, { required: true });
+        const msDeadlineError = validateGoalDate(msDeadline, { required: true });
         const msCanSave  = msTitle.trim().length > 0 && !msDeadlineError;
         function closeMsModal() { setMsCreateOpen(false); }
         function saveMilestone() {
@@ -973,7 +974,7 @@ export default function GoalDetailSheet({
                 </div>
                 <div style={{ marginBottom: "20px" }}>
                   <label style={lbSt}>Deadline *</label>
-                  <input type="date" value={msDeadline} onChange={e => setMsDeadline(e.target.value)} min={todayDateStr()} max={MAX_DATE_STR} style={{ ...inSt, colorScheme: "light" }} onFocus={e => { e.currentTarget.style.borderColor = msColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                  <CalendarPicker value={msDeadline} onChange={setMsDeadline} accentColor={msColor} max={maxGoalDateStr()} />
                   {msDeadlineError && <p style={{ fontSize: "11px", color: "#DC2626", margin: "4px 0 0" }}>{msDeadlineError}</p>}
                 </div>
                 <button onClick={saveMilestone} disabled={!msCanSave} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: msCanSave ? `linear-gradient(135deg, ${msColor}, ${msColor}CC)` : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: msCanSave ? "#FFFFFF" : "#A8A29E", cursor: msCanSave ? "pointer" : "default" }}>
@@ -1058,8 +1059,8 @@ export default function GoalDetailSheet({
                   <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: tcColor, margin: "0 0 3px" }}>{taskEditTarget ? "Edit Task" : "New Task"}</p>
                   <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{taskEditTarget ? "Edit Task" : "Add Task"}</h2>
                 </div>
-                <button onClick={closeModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <X size={15} color="#78716C" />
+                <button onClick={closeModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={15} color="#DC2626" />
                 </button>
               </div>
 
@@ -1108,7 +1109,7 @@ export default function GoalDetailSheet({
                 {/* Deadline */}
                 <div style={{ marginBottom: "8px" }}>
                   <label style={labelSt}>{tcForm.quadrant === "Q1" ? "Deadline — locked to today 🔒" : "Deadline *"}</label>
-                  <input type="date" value={tcForm.deadline} disabled={tcForm.quadrant === "Q1"} min={todayDateStr()} max={MAX_DATE_STR} onChange={e => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: e.target.value })); }} style={{ ...inputSt, opacity: tcForm.quadrant === "Q1" ? 0.7 : 1, cursor: tcForm.quadrant === "Q1" ? "not-allowed" : "default", backgroundColor: tcForm.quadrant === "Q1" ? "#FEF3F2" : "#FFFFFF", borderColor: dateError && tcForm.quadrant !== "Q1" ? "#FCA5A5" : "#E8DDD0" }} onFocus={e => { if (tcForm.quadrant !== "Q1") e.currentTarget.style.borderColor = tcColor; }} onBlur={e => { e.currentTarget.style.borderColor = dateError && tcForm.quadrant !== "Q1" ? "#FCA5A5" : "#E8DDD0"; }} />
+                  <CalendarPicker value={tcForm.deadline} onChange={v => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: v })); }} accentColor={tcColor} disabled={tcForm.quadrant === "Q1"} />
                   {tcForm.quadrant === "Q1" && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, margin: "5px 0 0" }}>🔥 It&apos;s urgent — this one&apos;s happening today, no rescheduling!</p>}
                   {tcForm.quadrant !== "Q1" && dateError && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, margin: "5px 0 0" }}>{dateError}</p>}
                   {deadlineTodayNudge && (
@@ -1181,8 +1182,8 @@ export default function GoalDetailSheet({
                   <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: hcColor, margin: "0 0 3px" }}>{habitEditTarget ? "Edit Habit" : "New Habit"}</p>
                   <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{habitEditTarget ? "Edit habit" : "Build a new habit"}</h2>
                 </div>
-                <button onClick={closeHabitModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <X size={15} color="#78716C" />
+                <button onClick={closeHabitModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={15} color="#DC2626" />
                 </button>
               </div>
 
@@ -1365,34 +1366,7 @@ function CircularProgress({ value, color, onChange }: { value: number; color: st
   );
 }
 
-const inStyle: React.CSSProperties = {
-  width: "100%", padding: "9px 12px", borderRadius: "8px",
-  border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
-  fontSize: "13px", color: "#1C1917", outline: "none",
-  fontFamily: "inherit", boxSizing: "border-box", transition: "border-color 0.15s",
-};
-
-function StyledDateInput({ value, onChange, error, accentColor = "#F97316", min, max }: {
-  value: string; onChange: (v: string) => void;
-  error?: boolean; accentColor?: string; min?: string; max?: string;
-}) {
-  const [focused, setFocused] = useState(false);
-  const borderColor = error ? "#DC2626" : focused ? accentColor : "#E8DDD0";
-  return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-      <div style={{ position: "absolute", left: "10px", pointerEvents: "none", display: "flex", alignItems: "center", zIndex: 1 }}>
-        <CalendarDays size={13} color={focused ? accentColor : "#A8A29E"} style={{ transition: "color 0.15s" }} />
-      </div>
-      <input type="date" value={value} onChange={e => onChange(e.target.value)}
-        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        min={min ?? todayDateStr()} max={max ?? MAX_DATE_STR}
-        style={{ ...inStyle, paddingLeft: "30px", borderColor, boxShadow: focused ? `0 0 0 3px ${accentColor}18` : "none", colorScheme: "light" as React.CSSProperties["colorScheme"], transition: "border-color 0.15s, box-shadow 0.15s" }}
-      />
-    </div>
-  );
-}
-
-// ── Milestone popup (unchanged) ───────────────────────────────────────────────
+// ── Milestone popup ───────────────────────────────────────────────────────────
 type PopupView = "milestone" | "task" | "habit";
 
 function MilestonePopup({
@@ -1420,7 +1394,7 @@ function MilestonePopup({
   const [confirmDelete,  setConfirmDelete]  = useState(false);
 
   const today       = toLocalDate();
-  const editMsDateError = validateDate(editDeadline, { required: true });
+  const editMsDateError = validateGoalDate(editDeadline, { required: true });
   const deadlineOk  = editDeadline && editDeadline <= goal.deadline && !editMsDateError;
   const linkedCount = mTasks.length + mHabits.length;
 
@@ -1494,7 +1468,7 @@ function MilestonePopup({
                   <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} autoFocus style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1.5px solid #D97706", backgroundColor: "#FFFBEB", fontSize: "13px", fontWeight: 600, color: "#1C1917", outline: "none", boxSizing: "border-box", fontFamily: "inherit", marginBottom: "8px" }} />
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <div style={{ flex: 1 }}>
-                      <StyledDateInput value={editDeadline} onChange={setEditDeadline} error={!deadlineOk && !!editDeadline} accentColor="#D97706" max={goal.deadline} />
+                      <CalendarPicker value={editDeadline} onChange={setEditDeadline} accentColor="#D97706" max={goal.deadline} />
                     </div>
                     <button onClick={() => setEditing(false)} style={{ padding: "7px 11px", borderRadius: "8px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "12px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>Cancel</button>
                     <button onClick={saveEdit} disabled={!editTitle.trim() || !deadlineOk} style={{ padding: "7px 13px", borderRadius: "8px", border: "none", background: editTitle.trim() && deadlineOk ? "linear-gradient(135deg, #D97706, #B45309)" : "#E8DDD0", fontSize: "12px", fontWeight: 700, color: editTitle.trim() && deadlineOk ? "#FFFFFF" : "#A8A29E", cursor: editTitle.trim() && deadlineOk ? "pointer" : "default" }}>Save</button>

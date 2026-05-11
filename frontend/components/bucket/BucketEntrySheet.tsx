@@ -6,7 +6,8 @@ import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import { COLUMN_META, formatTargetDate } from "@/lib/bucketTypes";
 import type { LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
-import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
+import { validateDate } from "@/lib/dateValidation";
+import CalendarPicker from "@/components/ui/CalendarPicker";
 
 interface Props {
   open:           boolean;
@@ -207,22 +208,10 @@ export default function BucketEntrySheet({
             <div style={{ flex: 1, height: 1, backgroundColor: "#F0EBE3" }} />
           </div>
 
-          {/* Target date — native date picker */}
+          {/* Target date */}
           <div style={{ marginBottom: "18px" }}>
             <label style={lbl}>Tentative Target Date <span style={{ fontSize: "10px", fontWeight: 400, color: "#A8A29E" }}>(optional)</span></label>
-            <input
-              type="date"
-              value={targetDate}
-              min={todayDateStr()} max={MAX_DATE_STR}
-              onChange={(e) => setTargetDate(e.target.value)}
-              className="weekly-input"
-              style={{
-                ...inp,
-                colorScheme: "light" as React.CSSProperties["colorScheme"],
-                cursor: "pointer",
-                borderColor: targetDateError ? "#FCA5A5" : (inp.borderColor as string | undefined),
-              }}
-            />
+            <CalendarPicker value={targetDate} onChange={setTargetDate} onClear={() => setTargetDate("")} accentColor="#F97316" />
             {targetDateError && (
               <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600,
                 marginTop: "5px", marginLeft: "2px" }}>
@@ -258,7 +247,7 @@ export default function BucketEntrySheet({
               <div style={{ marginTop: 8, borderRadius: 10, overflow: "hidden",
                 border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img key={imgRetryKey} src={processedSrc} alt="" onError={() => setImgError(true)}
+                <img key={imgRetryKey} src={processedSrc} alt="" referrerPolicy="no-referrer" onError={() => setImgError(true)}
                   style={{ width: "100%", height: "auto", maxHeight: "240px",
                     display: "block", objectFit: "contain" }} />
               </div>

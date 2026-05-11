@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import {
-  X, Target, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CalendarDays,
+  X, Target, ChevronDown, ChevronUp,
   Plus, Trash2, Check, ArrowRight, ArrowLeft, Star, Link2, CheckSquare,
   Eye, Circle, Flame, AlertTriangle,
   Briefcase, Globe, DollarSign, Sparkles, BookOpen, Heart, Activity,
@@ -15,7 +15,8 @@ import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
 import { Q_META, daysUntil, toTaskDate } from "@/components/tasks/TaskCard";
 import type { HabitData, HabitFrequency, HabitType } from "@/components/habits/HabitCard";
 import { FREQ_LABEL, AREA_META as HABIT_AREA_META } from "@/components/habits/HabitCard";
-import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
+import { todayDateStr, validateDate, validateGoalDate, maxGoalDateStr } from "@/lib/dateValidation";
+import CalendarPicker from "@/components/ui/CalendarPicker";
 
 const AREA_ICONS: Record<LifeArea, LucideIcon> = {
   professional:  Briefcase,
@@ -121,7 +122,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const deadlineError  = deadline ? validateDate(deadline, { required: false }) : null;
+  const deadlineError  = deadline ? validateGoalDate(deadline, { required: false }) : null;
   const mDeadlineError = deadline && mDeadline && mDeadline > deadline
     ? "Can't be after goal's target date" : null;
 
@@ -197,7 +198,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
           <ArrowLeft size={15} /> Goals
         </button>
         <button
-          onClick={onClose}
+          onClick={handleSave}
           style={{ padding: "9px 22px", borderRadius: "8px", border: "none", backgroundColor: "#F97316", fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer", boxShadow: "0 2px 8px rgba(249,115,22,0.3)" }}
         >
           Save goal
@@ -359,6 +360,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
                     onChange={setDeadline}
                     onClear={() => setDeadline("")}
                     accentColor={areaColor}
+                    max={maxGoalDateStr()}
                   />
                   {deadlineError && <p style={{ fontSize: "11px", color: "#DC2626", margin: "4px 0 0" }}>{deadlineError}</p>}
                 </div>
@@ -577,7 +579,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
                               autoFocus
                             />
                             <div style={{ flex: "1 1 160px" }}>
-                              <CalendarPicker value={mDeadline} onChange={setMDeadline} onClear={() => setMDeadline("")} accentColor={areaColor} max={deadline || undefined} />
+                              <CalendarPicker value={mDeadline} onChange={setMDeadline} onClear={() => setMDeadline("")} accentColor={areaColor} max={deadline || maxGoalDateStr()} />
                             </div>
                           </div>
                           {mDeadlineError && <p style={{ fontSize: "11px", color: "#DC2626", margin: "0 0 10px" }}>{mDeadlineError}</p>}
@@ -815,7 +817,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
               )}
               <div style={{ marginBottom: "8px" }}>
                 <label style={labelSt}>{tcForm.quadrant === "Q1" ? "Deadline — locked to today 🔒" : "Deadline *"}</label>
-                <input type="date" value={tcForm.deadline} disabled={tcForm.quadrant === "Q1"} min={todayDateStr()} max={MAX_DATE_STR} onChange={e => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: e.target.value })); }} style={{ ...inputSt, opacity: tcForm.quadrant === "Q1" ? 0.7 : 1, cursor: tcForm.quadrant === "Q1" ? "not-allowed" : "default", backgroundColor: tcForm.quadrant === "Q1" ? "#FEF3F2" : "#FFFFFF", colorScheme: "light" as const }} onFocus={e => { if (tcForm.quadrant !== "Q1") e.currentTarget.style.borderColor = areaColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                <CalendarPicker value={tcForm.deadline} onChange={v => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: v })); }} accentColor={areaColor} disabled={tcForm.quadrant === "Q1"} />
                 {tcForm.quadrant === "Q1" && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, margin: "5px 0 0" }}>🔥 It&apos;s urgent — this one&apos;s happening today, no rescheduling!</p>}
                 {tcForm.quadrant !== "Q1" && dateError && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, margin: "5px 0 0" }}>{dateError}</p>}
                 {deadlineTodayNudge && (
@@ -982,230 +984,3 @@ const labelStyle: React.CSSProperties = {
   color: "#374151", marginBottom: "6px",
 };
 
-// ── CalendarPicker ────────────────────────────────────────────────────────────
-
-const MONTH_NAMES = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
-];
-const DAY_HEADERS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
-
-function CalendarPicker({ value, onChange, onClear, accentColor = "#F97316", min, max }: {
-  value: string;
-  onChange: (v: string) => void;
-  onClear?: () => void;
-  accentColor?: string;
-  min?: string;
-  max?: string;
-}) {
-  const today = todayDateStr();
-  const minDate = min ?? today;
-  const maxDate = max ?? MAX_DATE_STR;
-
-  const initial = value ? new Date(value + "T00:00:00") : new Date();
-  const [open,      setOpen]      = useState(false);
-  const [viewYear,  setViewYear]  = useState(initial.getFullYear());
-  const [viewMonth, setViewMonth] = useState(initial.getMonth());
-  const [mode,      setMode]      = useState<"cal" | "year">("cal");
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false); setMode("cal");
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  // Sync view when value changes externally
-  useEffect(() => {
-    if (value) {
-      const d = new Date(value + "T00:00:00");
-      setViewYear(d.getFullYear()); setViewMonth(d.getMonth());
-    }
-  }, [value]);
-
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
-    else setViewMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
-    else setViewMonth(m => m + 1);
-  };
-
-  // Build day grid
-  const firstWeekday  = new Date(viewYear, viewMonth, 1).getDay();
-  const daysInMonth   = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const totalCells    = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
-  const cells = Array.from({ length: totalCells }, (_, i) => {
-    const d = new Date(viewYear, viewMonth, i - firstWeekday + 1);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    return {
-      iso,
-      day: d.getDate(),
-      inMonth: d.getMonth() === viewMonth && d.getFullYear() === viewYear,
-      disabled: iso < minDate || iso > maxDate,
-    };
-  });
-
-  // Year range: today's year to +15 years
-  const baseYear = new Date().getFullYear();
-  const years = Array.from({ length: 16 }, (_, i) => baseYear + i);
-
-  const displayText = value
-    ? new Date(value + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
-    : "";
-
-  return (
-    <div ref={wrapRef} style={{ position: "relative" }}>
-      {/* Trigger button */}
-      <div
-        onClick={() => { setOpen(o => !o); if (!open) setMode("cal"); }}
-        style={{
-          display: "flex", alignItems: "center", gap: "8px",
-          padding: "9px 12px", borderRadius: "8px",
-          border: `1.5px solid ${open ? accentColor : `${accentColor}55`}`,
-          backgroundColor: "#FFFFFF", cursor: "pointer",
-          boxShadow: open ? `0 0 0 3px ${accentColor}18` : "none",
-          transition: "border-color 0.15s, box-shadow 0.15s",
-          userSelect: "none",
-        }}
-      >
-        <CalendarDays size={14} color={open ? accentColor : `${accentColor}99`} style={{ flexShrink: 0, transition: "color 0.15s" }} />
-        <span style={{ flex: 1, fontSize: "13px", fontFamily: "inherit", color: value ? "#1C1917" : "#9CA3AF" }}>
-          {displayText || "Pick a date"}
-        </span>
-        {value && onClear && (
-          <button
-            onClick={e => { e.stopPropagation(); onClear(); }}
-            style={{ width: 18, height: 18, borderRadius: "50%", border: "none", backgroundColor: "#D1D5DB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}
-          >
-            <X size={10} color="#FFFFFF" />
-          </button>
-        )}
-      </div>
-
-      {/* Dropdown */}
-      {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 200,
-          backgroundColor: "#FFFFFF", borderRadius: "14px",
-          border: "1px solid #E5E9EE",
-          boxShadow: "0 8px 32px rgba(28,25,23,0.14)",
-          width: "min(288px, 80vw)", overflow: "hidden",
-        }}>
-          {mode === "cal" ? (
-            <>
-              {/* Month nav header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid #F5F0EB" }}>
-                <button
-                  onClick={prevMonth}
-                  style={{ width: 30, height: 30, borderRadius: "8px", border: "none", backgroundColor: "#F5F5F4", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#EDE5D8"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F5F5F4"; }}
-                >
-                  <ChevronLeft size={15} color="#6B7280" />
-                </button>
-                <button
-                  onClick={() => setMode("year")}
-                  style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", background: "none", border: "none", cursor: "pointer", padding: "4px 10px", borderRadius: "7px", transition: "background-color 0.12s" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#FFF7ED"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
-                >
-                  {MONTH_NAMES[viewMonth]} {viewYear}
-                </button>
-                <button
-                  onClick={nextMonth}
-                  style={{ width: 30, height: 30, borderRadius: "8px", border: "none", backgroundColor: "#F5F5F4", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#EDE5D8"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F5F5F4"; }}
-                >
-                  <ChevronRight size={15} color="#6B7280" />
-                </button>
-              </div>
-
-              {/* Grid */}
-              <div style={{ padding: "10px 12px 14px" }}>
-                {/* Day-of-week headers */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: "4px" }}>
-                  {DAY_HEADERS.map(d => (
-                    <div key={d} style={{ textAlign: "center", fontSize: "10px", fontWeight: 700, color: "#9CA3AF", padding: "3px 0" }}>{d}</div>
-                  ))}
-                </div>
-                {/* Day cells */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px" }}>
-                  {cells.map((cell, i) => {
-                    const isSelected = cell.iso === value;
-                    const isToday    = cell.iso === today;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => { if (!cell.disabled) { onChange(cell.iso); setOpen(false); } }}
-                        disabled={cell.disabled}
-                        style={{
-                          width: "100%", aspectRatio: "1", borderRadius: "8px", border: "none",
-                          backgroundColor: isSelected ? accentColor : "transparent",
-                          color: isSelected ? "#FFFFFF"
-                            : cell.disabled ? "#D1D5DB"
-                            : !cell.inMonth ? "#C4B5A0"
-                            : isToday ? accentColor
-                            : "#1C1917",
-                          fontSize: "12px", fontWeight: isSelected || isToday ? 700 : 400,
-                          cursor: cell.disabled ? "default" : "pointer",
-                          outline: isToday && !isSelected ? `2px solid ${accentColor}40` : "none",
-                          outlineOffset: "-2px",
-                          transition: "background-color 0.1s",
-                        }}
-                        onMouseEnter={e => { if (!cell.disabled && !isSelected) (e.currentTarget as HTMLButtonElement).style.backgroundColor = `${accentColor}18`; }}
-                        onMouseLeave={e => { if (!cell.disabled && !isSelected) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
-                      >
-                        {cell.day}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
-          ) : (
-            /* Year picker */
-            <div style={{ padding: "12px 14px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                <button
-                  onClick={() => setMode("cal")}
-                  style={{ width: 28, height: 28, borderRadius: "7px", border: "none", backgroundColor: "#F5F5F4", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                >
-                  <ChevronLeft size={14} color="#6B7280" />
-                </button>
-                <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Select Year</span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px", maxHeight: 200, overflowY: "auto" }}>
-                {years.map(y => (
-                  <button
-                    key={y}
-                    onClick={() => { setViewYear(y); setMode("cal"); }}
-                    style={{
-                      padding: "8px 4px", borderRadius: "8px", border: "none",
-                      backgroundColor: y === viewYear ? accentColor : "#F5F5F4",
-                      color: y === viewYear ? "#FFFFFF" : "#374151",
-                      fontSize: "12px", fontWeight: y === viewYear ? 700 : 500,
-                      cursor: "pointer",
-                    }}
-                    onMouseEnter={e => { if (y !== viewYear) (e.currentTarget as HTMLButtonElement).style.backgroundColor = `${accentColor}18`; }}
-                    onMouseLeave={e => { if (y !== viewYear) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F5F5F4"; }}
-                  >
-                    {y}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}

@@ -159,8 +159,8 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
           }}>
             <Icon size={18} color="#FFFFFF" />
           </div>
-          <span style={{ fontSize: "13px", fontWeight: 700, color: area.color, flex: 1 }}>
-            {area.label}
+          <span style={{ fontSize: "13px", fontWeight: 700, color: area.color, flex: 1, lineHeight: 1.35 }}>
+            {goal.statement}
           </span>
           {daysLeft <= 7 && daysLeft > 0 && (
             <span style={{ fontSize: "10px", fontWeight: 700, color: "#DC2626", backgroundColor: "#FEF2F2", padding: "2px 7px", borderRadius: "20px", border: "1px solid #FECACA" }}>
@@ -173,16 +173,6 @@ export default function GoalCard({ goal, linkedHabits, linkedTasks, onUpdate, on
             </span>
           )}
         </div>
-
-        {/* Goal statement */}
-        <p style={{
-          fontSize: "15px", fontWeight: 700, color: "#1C1917",
-          lineHeight: 1.4, marginBottom: "14px",
-          display: "-webkit-box", WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical", overflow: "hidden",
-        }}>
-          {goal.statement}
-        </p>
 
         {/* Progress */}
         <div style={{ marginBottom: "12px" }}>

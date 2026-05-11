@@ -113,7 +113,7 @@ export default function GoalsPage() {
             Goal Tracker
           </h1>
           <p style={{ fontSize: "12px", color: "#78716C", marginTop: "3px" }}>
-            Track meaningful goals tied to your life vision.
+            Track meaningful goals.
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -149,7 +149,7 @@ export default function GoalsPage() {
       </div>
 
       {/* Unified filter bar */}
-      <div className="px-page no-scrollbar" style={{ paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
+      <div className="px-page no-scrollbar" style={{ paddingTop: "10px", paddingBottom: "10px",
         display: "flex", alignItems: "center", gap: "8px", overflowX: "auto" }}>
 
         {/* Life Areas dropdown */}
@@ -157,14 +157,15 @@ export default function GoalsPage() {
           <button onClick={() => { setAreaDropOpen(!areaDropOpen); setStatusDropOpen(false); }} style={{
             display: "flex", alignItems: "center", gap: "6px",
             padding: "6px 12px", borderRadius: "8px", whiteSpace: "nowrap",
-            border: `1.5px solid ${selectedAreas.size < ALL_AREAS.length ? "#F97316" : "#E8DDD0"}`,
-            backgroundColor: selectedAreas.size < ALL_AREAS.length ? "#FFF7ED" : "#FFFFFF",
-            fontSize: "11px", fontWeight: 600,
-            color: selectedAreas.size < ALL_AREAS.length ? "#F97316" : "#78716C", cursor: "pointer",
+            border: "none",
+            backgroundColor: selectedAreas.size < ALL_AREAS.length ? "#EA580C" : "#F97316",
+            fontSize: "11px", fontWeight: 700,
+            color: "#FFFFFF", cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(249,115,22,0.30)",
           }}>
             Life Areas
             {selectedAreas.size < ALL_AREAS.length && (
-              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "#F97316",
+              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "rgba(255,255,255,0.25)",
                 color: "#FFFFFF", borderRadius: "10px", padding: "1px 5px" }}>
                 {selectedAreas.size}
               </span>
@@ -214,14 +215,15 @@ export default function GoalsPage() {
           <button onClick={() => { setStatusDropOpen(!statusDropOpen); setAreaDropOpen(false); }} style={{
             display: "flex", alignItems: "center", gap: "6px",
             padding: "6px 12px", borderRadius: "8px", whiteSpace: "nowrap",
-            border: `1.5px solid ${statusFilter !== "all" ? "#F97316" : "#E8DDD0"}`,
-            backgroundColor: statusFilter !== "all" ? "#FFF7ED" : "#FFFFFF",
-            fontSize: "11px", fontWeight: 600,
-            color: statusFilter !== "all" ? "#F97316" : "#78716C", cursor: "pointer",
+            border: "none",
+            backgroundColor: statusFilter !== "all" ? "#EA580C" : "#F97316",
+            fontSize: "11px", fontWeight: 700,
+            color: "#FFFFFF", cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(249,115,22,0.30)",
           }}>
             {STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label}
             {statusFilter === "at-risk" && staleCount > 0 && (
-              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "#F97316",
+              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "rgba(255,255,255,0.25)",
                 color: "#FFFFFF", borderRadius: "10px", padding: "1px 5px" }}>
                 {staleCount}
               </span>
