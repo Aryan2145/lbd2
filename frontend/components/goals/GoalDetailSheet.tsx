@@ -241,7 +241,7 @@ export default function GoalDetailSheet({
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
             {/* Left main panel */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 20px", minWidth: 0 }}>
+            <div className="px-4 sm:px-6" style={{ flex: 1, overflowY: "auto", paddingTop: 0, paddingBottom: "20px", minWidth: 0 }}>
 
               {/* Back button — scrolls with content */}
               <button
@@ -252,7 +252,7 @@ export default function GoalDetailSheet({
               </button>
 
               {/* ── Header card ── */}
-              <div style={{ position: "relative", backgroundColor: areaBg, borderRadius: "16px", border: `1px solid ${color}30`, padding: "20px", marginBottom: "20px" }}>
+              <div className="p-4 sm:p-5" style={{ position: "relative", backgroundColor: areaBg, borderRadius: "16px", border: `1px solid ${color}30`, marginBottom: "20px" }}>
                 {/* Edit button */}
                 <button onClick={() => onEdit?.(goal)} style={{ position: "absolute", top: -12, right: -10, width: 28, height: 28, borderRadius: "8px", backgroundColor: areaBg, border: `1px solid ${color}30`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
                   <Pencil size={12} color={color} />
@@ -265,15 +265,15 @@ export default function GoalDetailSheet({
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "16px" }}>
 
                     {/* Icon + text */}
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
-                      <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 4px 14px ${color}40` }}>
-                        <AreaIcon size={26} color="#FFFFFF" />
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                      <div className="w-10 h-10 sm:w-14 sm:h-14" style={{ borderRadius: "50%", backgroundColor: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 4px 14px ${color}40` }}>
+                        <AreaIcon size={20} color="#FFFFFF" />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: "12px", fontWeight: 700, color, display: "inline-block", marginBottom: "4px" }}>
                           {areaLabel}
                         </span>
-                        <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#1C1917", lineHeight: 1.3, margin: "0 0 5px" }}>
+                        <h2 className="text-lg sm:text-2xl" style={{ fontWeight: 800, color: "#1C1917", lineHeight: 1.3, margin: "0 0 5px" }}>
                           {goal.statement}
                         </h2>
                         {goal.outcome && (
@@ -293,20 +293,20 @@ export default function GoalDetailSheet({
                     </div>
 
                     {/* Stats chips */}
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(64px, 1fr))", gap: "8px" }}>
                       {[
                         { value: milestones.length, label: "Milestones" },
-                        { value: tasks.length,       label: "Tasks" },
+                        { value: goalTasks.length,   label: "Tasks" },
                         { value: linkedHabits.length, label: "Habits" },
                         { value: daysLeft,            label: "Days Left" },
                       ].map(s => (
-                        <div key={s.label} style={{ flex: 1, backgroundColor: "#FFFFFF", border: `1px solid ${color}25`, borderRadius: "10px", padding: "10px 6px", textAlign: "center" }}>
+                        <div key={s.label} style={{ backgroundColor: "#FFFFFF", border: `1px solid ${color}25`, borderRadius: "10px", padding: "10px 6px", textAlign: "center" }}>
                           <p style={{ fontSize: "20px", fontWeight: 800, color, margin: "0 0 1px", lineHeight: 1 }}>{s.value}</p>
                           <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", margin: 0 }}>{s.label}</p>
                         </div>
                       ))}
                       {/* Health chip */}
-                      <div style={{ flex: 1, backgroundColor: HEALTH_BG[health], border: `1px solid ${HEALTH_COLOR[health]}40`, borderRadius: "10px", padding: "10px 6px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ backgroundColor: HEALTH_BG[health], border: `1px solid ${HEALTH_COLOR[health]}40`, borderRadius: "10px", padding: "10px 6px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                         <p style={{ fontSize: "14px", fontWeight: 800, color: HEALTH_COLOR[health], margin: "0 0 2px", lineHeight: 1 }}>{health}</p>
                         <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", margin: 0 }}>Goal Health</p>
                       </div>
@@ -495,7 +495,7 @@ export default function GoalDetailSheet({
                           </div>
 
                           {/* Expanded detail */}
-                          <div style={{ maxHeight: isExpanded ? 700 : 0, overflow: "hidden", transition: "max-height 0.32s ease" }}>
+                          <div style={{ maxHeight: isExpanded ? 1200 : 0, overflow: "hidden", transition: "max-height 0.35s ease" }}>
                             <div>
                               {/* Sub-header: progress + due + menu */}
                               <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "20px", borderBottom: `1px solid ${color}20` }}>
@@ -529,7 +529,7 @@ export default function GoalDetailSheet({
                                       <Plus size={12} /> Add Task
                                     </button>
                                   </div>
-                                  <div style={{ display: "flex", flexDirection: "column", minHeight: 108, maxHeight: 180, overflowY: "auto" }}>
+                                  <div style={{ display: "flex", flexDirection: "column", minHeight: 60, maxHeight: 200, overflowY: "auto" }}>
                                     {mTasks.length === 0 ? (
                                       <p style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>No tasks yet</p>
                                     ) : mTasks.map(t => {
@@ -563,7 +563,7 @@ export default function GoalDetailSheet({
                                       <Plus size={12} /> Add Habit
                                     </button>
                                   </div>
-                                  <div style={{ display: "flex", flexDirection: "column", minHeight: 108, maxHeight: 180, overflowY: "auto" }}>
+                                  <div style={{ display: "flex", flexDirection: "column", minHeight: 60, maxHeight: 200, overflowY: "auto" }}>
                                     {mHabits.length === 0 ? (
                                       <p style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", margin: 0 }}>No habits yet</p>
                                     ) : mHabits.map(h => {
@@ -602,6 +602,61 @@ export default function GoalDetailSheet({
               </>)}
               </div>
 
+              {/* ── Mobile-only summary (sidebar hidden on small screens) ── */}
+              <div className="block sm:hidden" style={{ marginTop: "8px" }}>
+
+                {/* Health + Progress row */}
+                <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+                  <div style={{ flex: 1, backgroundColor: HEALTH_BG[health], border: `1px solid ${HEALTH_COLOR[health]}40`, borderRadius: "12px", padding: "12px 14px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6B7280", margin: "0 0 4px" }}>Goal Health</p>
+                    <p style={{ fontSize: "18px", fontWeight: 800, color: HEALTH_COLOR[health], margin: "0 0 3px", lineHeight: 1 }}>{health}</p>
+                    <p style={{ fontSize: "11px", color: "#374151", margin: 0, lineHeight: 1.4 }}>{HEALTH_DESC[health]}</p>
+                  </div>
+                  <div style={{ flex: 1, backgroundColor: "#FFFFFF", border: "1px solid #E5E9EE", borderRadius: "12px", padding: "12px 14px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6B7280", margin: "0 0 8px" }}>Summary</p>
+                    {[
+                      { label: "Milestones", value: `${milestones.filter(m => m.completed).length}/${milestones.length}` },
+                      { label: "Tasks done", value: `${completedT}/${goalTasks.length}` },
+                      { label: "Habit consistency", value: `${consistency}%` },
+                    ].map(r => (
+                      <div key={r.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "11px", color: "#78716C" }}>{r.label}</span>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#1C1917" }}>{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Upcoming deadlines — mobile */}
+                {upcomingTasks.filter(t => t.status !== "complete").length > 0 && (
+                  <div style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", border: "1px solid #E5E9EE", padding: "14px", marginBottom: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                      <CalendarDays size={13} color="#EA580C" />
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>Upcoming Deadlines</span>
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: "#FFFFFF", backgroundColor: "#EA580C", borderRadius: "20px", padding: "1px 7px" }}>
+                        {upcomingTasks.filter(t => t.status !== "complete").length}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {upcomingTasks.filter(t => t.status !== "complete").slice(0, 4).map(t => {
+                        const days    = daysUntil(t.deadline);
+                        const overdue = days < 0;
+                        const qm      = Q_META[t.quadrant];
+                        return (
+                          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: qm.color, flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontSize: "12px", fontWeight: 500, color: "#1C1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+                            <span style={{ fontSize: "11px", fontWeight: 600, color: overdue ? "#DC2626" : "#57534E", flexShrink: 0 }}>
+                              {overdue ? `${Math.abs(days)}d late` : days === 0 ? "Today" : `${days}d`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* PROGRESS NOTES — commented out
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "14px" }}>
@@ -634,8 +689,8 @@ export default function GoalDetailSheet({
               END PROGRESS NOTES */}
             </div>
 
-            {/* Right sidebar */}
-            <div style={{ width: 320, borderLeft: "1px solid #EDE5D8", overflowY: "auto", padding: "20px", flexShrink: 0, backgroundColor: "#FAFAF9" }}>
+            {/* Right sidebar — hidden on mobile */}
+            <div className="hidden sm:block" style={{ width: 320, borderLeft: "1px solid #EDE5D8", overflowY: "auto", padding: "20px", flexShrink: 0, backgroundColor: "#FAFAF9" }}>
 
               {/* Goal Health */}
               <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "16px", border: "1px solid #E5E9EE", marginBottom: "14px" }}>
