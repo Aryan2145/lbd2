@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Plus, X, Check, Clock, Lightbulb, Pencil, Trash2 } from "lucide-react";
+import CalendarPicker from "@/components/ui/CalendarPicker";
 import type { LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import type { WeekPlan, WeekEvent, EventGroup } from "@/lib/weeklyTypes";
@@ -490,8 +491,9 @@ export default function MorningPlan({
                     <span style={{ fontSize: "11px", color: "#78716C" }}>–</span>
                     <input type="time" value={editEvEnd} onChange={(e) => setEditEvEnd(e.target.value)}
                       style={{ ...timeInputStyle, borderColor: editTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
-                    <input type="date" value={editEvDate} onChange={(e) => setEditEvDate(e.target.value)}
-                      style={{ ...timeInputStyle, fontSize: "10px" }} />
+                    <div style={{ minWidth: 120 }}>
+                      <CalendarPicker value={editEvDate} onChange={setEditEvDate} accentColor="#6B7280" min="" />
+                    </div>
                     <select value={editEvGroupId} onChange={(e) => setEditEvGroupId(e.target.value)}
                       style={{ flex: 1, fontSize: "11px", border: "1px solid #E8DDD0", borderRadius: "6px",
                         padding: "3px 6px", outline: "none", backgroundColor: "#FFFFFF", color: "#78716C", cursor: "pointer" }}>

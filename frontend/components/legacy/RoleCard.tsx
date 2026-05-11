@@ -172,18 +172,17 @@ export default function RoleCard({
             backgroundColor: `${meta.bg}18`,
             borderRadius: "10px",
             marginBottom: "10px",
-            overflow: "hidden",
+            overflowY: "auto",
           }}>
             <span style={{
               position: "absolute", top: 4, left: 10,
               fontSize: "28px", lineHeight: 1, color: meta.bg,
               fontFamily: "Georgia, serif", opacity: 0.7,
+              pointerEvents: "none",
             }}>"</span>
             <p style={{
               fontSize: "13px", fontStyle: "italic", lineHeight: 1.7,
               color: "#1C1917", margin: 0,
-              display: "-webkit-box", WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical", overflow: "hidden",
             }}>
               {value}
             </p>

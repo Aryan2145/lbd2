@@ -5,7 +5,8 @@ import { X, Clock, Calendar, Layers, AlignLeft, Trash2, AlertTriangle, Lightbulb
 import type { WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import ClockTimePicker from "@/components/weekly/ClockTimePicker";
-import { MAX_DATE_STR, todayDateStr, validateDate } from "@/lib/dateValidation";
+import { validateDate } from "@/lib/dateValidation";
+import CalendarPicker from "@/components/ui/CalendarPicker";
 
 const NEW_GROUP_COLORS = [
   "#6366F1","#3B82F6","#06B6D4","#10B981",
@@ -201,15 +202,7 @@ export default function EventCreateSheet({
         <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
           <div style={{ flex: 1.2 }}>
             <label style={lbl}><Calendar size={9} style={{ display: "inline", marginRight: 3 }} />Date</label>
-            <input
-              type="date" value={date}
-              min={todayDateStr()} max={MAX_DATE_STR}
-              onChange={(e) => setDate(e.target.value)}
-              style={{
-                ...inp,
-                borderColor: dateError ? "#FCA5A5" : (inp.borderColor as string | undefined),
-              }}
-            />
+            <CalendarPicker value={date} onChange={setDate} accentColor="#6366F1" />
             {dateError && (
               <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>
                 {dateError}

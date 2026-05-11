@@ -590,11 +590,11 @@ export default function WeeklyPage() {
                     height: "100%", display: "flex", flexDirection: "column",
                     alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px",
                   }}>
-                    <CalendarDays size={40} color="#E8DDD0" />
+                    <CalendarDays size={40} color="#F97316" />
                     <p style={{ fontSize: "14px", fontWeight: 600, color: "#1C1917", textAlign: "center", margin: 0 }}>
                       No calendar linked yet
                     </p>
-                    <p style={{ fontSize: "12px", color: "#78716C", maxWidth: 300, textAlign: "center", margin: 0 }}>
+                    <p style={{ fontSize: "12px", color: "#1C1917", maxWidth: 300, textAlign: "center", margin: 0 }}>
                       Tap <strong>URL</strong> above and paste your Google Calendar embed link.
                     </p>
                     <button
@@ -703,7 +703,7 @@ export default function WeeklyPage() {
         <div className="px-page-md" style={{
           paddingTop: "16px", paddingBottom: "12px", borderBottom: "1px solid #EDE5D8",
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          flexShrink: 0, backgroundColor: "#FAF5EE", flexWrap: "wrap", gap: "8px",
+          flexShrink: 0, backgroundColor: "#FFFFFF", flexWrap: "wrap", gap: "8px",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div>
@@ -922,8 +922,8 @@ export default function WeeklyPage() {
                   style={{
                     display: "flex", alignItems: "center", gap: "5px",
                     padding: "4px 10px", borderRadius: "7px",
-                    border: "1px solid #E8DDD0", backgroundColor: "#F5F0EB",
-                    fontSize: "11px", color: "#78716C", cursor: "pointer",
+                    border: "none", backgroundColor: "#F97316",
+                    fontSize: "11px", color: "#FFFFFF", cursor: "pointer",
                   }}
                 >
                   <Settings2 size={11} /> Set URL
@@ -932,12 +932,12 @@ export default function WeeklyPage() {
                   onClick={() => { setGcalOpen(false); setEditingUrl(false); }}
                   style={{
                     width: "28px", height: "28px", borderRadius: "7px",
-                    backgroundColor: "#F5F0EB", border: "none",
+                    backgroundColor: "#EF4444", border: "none",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: "pointer",
                   }}
                 >
-                  <X size={14} color="#78716C" />
+                  <X size={14} color="#FFFFFF" />
                 </button>
               </div>
             </div>
@@ -978,7 +978,7 @@ export default function WeeklyPage() {
                 padding: "8px 20px", backgroundColor: "#FFF7ED",
                 borderBottom: "1px solid #FED7AA", flexShrink: 0,
               }}>
-                <p style={{ fontSize: "11px", color: "#78716C", margin: 0 }}>
+                <p style={{ fontSize: "11px", color: "#1C1917", margin: 0 }}>
                   In Google Calendar → Settings → <strong>your calendar</strong> → Integrate calendar → copy <strong>Embeddable link</strong>
                 </p>
               </div>
@@ -997,11 +997,11 @@ export default function WeeklyPage() {
                   height: "100%", display: "flex", flexDirection: "column",
                   alignItems: "center", justifyContent: "center", gap: "12px",
                 }}>
-                  <CalendarDays size={40} color="#E8DDD0" />
+                  <CalendarDays size={40} color="#F97316" />
                   <p style={{ fontSize: "14px", fontWeight: 600, color: "#1C1917" }}>
                     No calendar linked yet
                   </p>
-                  <p style={{ fontSize: "12px", color: "#78716C", maxWidth: 360, textAlign: "center" }}>
+                  <p style={{ fontSize: "12px", color: "#1C1917", maxWidth: 360, textAlign: "center" }}>
                     Click <strong>Set URL</strong> above and paste your Google Calendar embed link.
                     In Google Calendar → Settings → your calendar → Integrate calendar → Embeddable link.
                   </p>

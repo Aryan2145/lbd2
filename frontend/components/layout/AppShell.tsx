@@ -61,7 +61,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full" style={{ backgroundColor: "#FFFFFF", position: "relative" }}>
       {!loaded && <TopLoadingBar />}
       <TopNav />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 lbd-hide-scrollbar">
         {loaded ? (
           // `key={pathname}` re-runs the fade-in animation on every internal navigation
           <div key={pathname} className="lbd-page-fade h-full">{children}</div>

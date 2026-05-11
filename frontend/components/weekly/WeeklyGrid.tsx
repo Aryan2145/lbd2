@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import type { WeekEvent, EventGroup, WeekPlan } from "@/lib/weeklyTypes";
 import type { TaskData } from "@/components/tasks/TaskCard";
-import { Q_META, toTaskDate } from "@/components/tasks/TaskCard";
+import { toTaskDate } from "@/components/tasks/TaskCard";
 import type { HabitData } from "@/components/habits/HabitCard";
-import { isScheduledDay, isHabitDoneOnDate, toLocalDate } from "@/components/habits/HabitCard";
 
 const PX_PER_HOUR  = 64;
 const START_HOUR   = 0;
 const END_HOUR     = 24;
-const TOTAL_HOURS  = END_HOUR - START_HOUR;          // 24
-const TOTAL_HEIGHT = TOTAL_HOURS * PX_PER_HOUR;      // 1536px
-const DEFAULT_SCROLL_HOUR = 6;                        // scroll to 6am on mount
+const TOTAL_HOURS  = END_HOUR - START_HOUR;
+const TOTAL_HEIGHT = TOTAL_HOURS * PX_PER_HOUR;
+const DEFAULT_SCROLL_HOUR = 6;
 
 const DAY_NAMES  = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -52,20 +51,18 @@ export default function WeeklyGrid({
   weekStart, weekEvents, tasks, habits, eventGroups, plan,
   onCreateEvent, onEditEvent, onUpdatePlan, onTaskClick,
 }: Props) {
-  const today     = toTaskDate();
-  const now       = new Date();
-  const groupMap  = Object.fromEntries(eventGroups.map((g) => [g.id, g]));
+  const today    = toTaskDate();
+  const now      = new Date();
+  const groupMap = Object.fromEntries(eventGroups.map((g) => [g.id, g]));
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = DEFAULT_SCROLL_HOUR * PX_PER_HOUR;
     }
-  // Only on mount — intentionally empty deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Build 7 ISO date strings Mon→Sun
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart + "T00:00:00");
     d.setDate(d.getDate() + i);
@@ -74,7 +71,6 @@ export default function WeeklyGrid({
 
   const hours = Array.from({ length: TOTAL_HOURS }, (_, i) => START_HOUR + i);
 
-  // Current-time indicator position (only if today is in this week)
   const currentTimeY = days.includes(today)
     ? timeToY(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`)
     : null;
@@ -94,149 +90,59 @@ export default function WeeklyGrid({
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#FFFFFF" }}>
 
-      {/* ── Day header row ── */}
-      <div style={{ display: "flex", flexShrink: 0, borderBottom: "2px solid #EDE5D8" }}>
-        {/* Spacer for time col */}
-        <div style={{ width: 56, flexShrink: 0, borderRight: "1px solid #EDE5D8" }} />
+      {/* ── Single scroll container: sticky header + time grid + notes ── */}
+      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", scrollbarGutter: "stable" }}>
 
-        {days.map((date, i) => {
-          const isToday = date === today;
-          const d       = new Date(date + "T00:00:00");
-          const openTaskCount = tasks.filter((t) => t.deadline === date && t.status === "open").length;
-          const dayHabits     = habits.filter((h) => isScheduledDay(h.frequency, h.customDays, d.getDay()));
-          const openTasks     = tasks.filter((t) => t.deadline === date && t.status === "open").slice(0, 4);
-
-          return (
-            <div key={date} style={{
-              flex: 1, padding: "10px 8px 8px", textAlign: "center",
-              borderRight: i < 6 ? "1px solid #EDE5D8" : "none",
-              backgroundColor: isToday ? "#FFF7ED" : "#FFFFFF",
-            }}>
-              {/* Day name */}
-              <p style={{ fontSize: "9px", fontWeight: 800, textTransform: "uppercase",
-                letterSpacing: "0.07em", color: isToday ? "#F97316" : "#57534E",
-                marginBottom: "3px" }}>
-                {DAY_NAMES[i]}
-              </p>
-
-              {/* Date circle */}
-              <div style={{
-                width: 30, height: 30, borderRadius: "50%",
-                margin: "0 auto 2px",
-                backgroundColor: isToday ? "#F97316" : "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <span style={{ fontSize: "14px", fontWeight: 700,
-                  color: isToday ? "#FFFFFF" : "#1C1917" }}>
-                  {d.getDate()}
-                </span>
-              </div>
-
-              <p style={{ fontSize: "10px", color: "#57534E", marginBottom: "5px" }}>
-                {MONTH_ABBR[d.getMonth()]}
-              </p>
-
-              {/* Task quadrant dots */}
-              {openTasks.length > 0 && (
-                <div style={{ display: "flex", justifyContent: "center", gap: "2px", marginBottom: "3px" }}>
-                  {openTasks.map((t) => (
-                    <div key={t.id} style={{
-                      width: 6, height: 6, borderRadius: "50%",
-                      backgroundColor: Q_META[t.quadrant].color,
-                    }} />
-                  ))}
-                  {openTaskCount > 4 && (
-                    <span style={{ fontSize: "8px", color: "#A8A29E", lineHeight: "6px" }}>
-                      +{openTaskCount - 4}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Habit completion dots */}
-              {dayHabits.length > 0 && (
-                <div style={{ display: "flex", justifyContent: "center", gap: "2px" }}>
-                  {dayHabits.slice(0, 6).map((h) => {
-                    const done = isHabitDoneOnDate(h, toLocalDate(d));
-                    return (
-                      <div key={h.id} style={{
-                        width: 4, height: 4, borderRadius: "50%",
-                        backgroundColor: done ? "#16A34A" : "#E5E7EB",
-                      }} />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Task chips row ── */}
-      <div style={{ display: "flex", flexShrink: 0, borderBottom: "2px solid #EDE5D8", backgroundColor: "#FAF9F7" }}>
-        {/* Label */}
+        {/* ── Day header row (sticky) ── */}
         <div style={{
-          width: 56, flexShrink: 0, borderRight: "1px solid #EDE5D8",
-          display: "flex", alignItems: "center", justifyContent: "center", padding: "4px 0",
+          display: "flex", flexShrink: 0,
+          borderBottom: "2px solid #FED7AA",
+          position: "sticky", top: 0, zIndex: 20,
         }}>
-          <span style={{
-            fontSize: "8px", fontWeight: 700, color: "#78716C",
-            textTransform: "uppercase", letterSpacing: "0.07em",
-            writingMode: "vertical-rl", transform: "rotate(180deg)",
-          }}>
-            Tasks
-          </span>
-        </div>
-        {/* Per-day task chips */}
-        {days.map((date, i) => {
-          const dayTasks = tasks.filter((t) => t.deadline === date && t.status === "open");
-          return (
-            <div key={date} style={{
-              flex: 1, borderRight: i < 6 ? "1px solid #EDE5D8" : "none",
-              padding: "5px 5px", display: "flex", flexWrap: "wrap",
-              gap: "3px", minHeight: 34, alignContent: "flex-start",
-            }}>
-              {dayTasks.slice(0, 4).map((t) => {
-                const m = Q_META[t.quadrant];
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => onTaskClick?.(t)}
-                    title={t.title}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "3px",
-                      padding: "2px 6px", borderRadius: "4px",
-                      backgroundColor: m.bg, border: `1px solid ${m.border}`,
-                      cursor: onTaskClick ? "pointer" : "default",
-                    }}
-                  >
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: m.color, flexShrink: 0 }} />
-                    <span style={{
-                      fontSize: "9px", fontWeight: 600, color: m.color,
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                      maxWidth: 72,
-                    }}>
-                      {t.title}
-                    </span>
-                  </div>
-                );
-              })}
-              {dayTasks.length > 4 && (
-                <span style={{ fontSize: "9px", color: "#78716C", fontWeight: 600, alignSelf: "center" }}>
-                  +{dayTasks.length - 4}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+          {/* Spacer for time col */}
+          <div style={{ width: 56, flexShrink: 0, borderRight: "1px solid #FED7AA", backgroundColor: "#FFFFFF" }} />
 
-      {/* ── Scrollable time grid ── */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto" }}>
+          {days.map((date, i) => {
+            const isToday = date === today;
+            const d       = new Date(date + "T00:00:00");
+
+            return (
+              <div key={date} style={{
+                flex: 1, padding: "10px 8px 8px", textAlign: "center",
+                borderRight: i < 6 ? "1px solid rgba(255,255,255,0.3)" : "none",
+                backgroundColor: isToday ? "#9A3412" : "#C2410C",
+              }}>
+                <p style={{
+                  fontSize: "9px", fontWeight: 800, textTransform: "uppercase",
+                  letterSpacing: "0.07em", color: "#FFFFFF", marginBottom: "3px",
+                }}>
+                  {DAY_NAMES[i]}
+                </p>
+
+                <div style={{
+                  width: 30, height: 30, borderRadius: "50%",
+                  margin: "0 auto 2px",
+                  backgroundColor: isToday ? "#FFFFFF" : "rgba(0,0,0,0.18)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: isToday ? "#9A3412" : "#FFFFFF" }}>
+                    {d.getDate()}
+                  </span>
+                </div>
+
+                <p style={{ fontSize: "10px", color: "#FFFFFF", marginBottom: "5px" }}>
+                  {MONTH_ABBR[d.getMonth()]}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Time grid ── */}
         <div style={{ display: "flex", height: TOTAL_HEIGHT }}>
 
           {/* Time labels */}
-          <div style={{ width: 56, flexShrink: 0, position: "relative", borderRight: "1px solid #EDE5D8" }}>
+          <div style={{ width: 56, flexShrink: 0, position: "relative", borderRight: "1px solid #FED7AA" }}>
             {hours.map((h) => (
               <div key={h} style={{
                 position: "absolute",
@@ -244,7 +150,7 @@ export default function WeeklyGrid({
                 right: 8, left: 0,
                 textAlign: "right",
               }}>
-                <span style={{ fontSize: "10px", fontWeight: 600, color: "#57534E" }}>
+                <span style={{ fontSize: "10px", fontWeight: 600, color: "#C2410C" }}>
                   {fmtHour(h)}
                 </span>
               </div>
@@ -263,7 +169,7 @@ export default function WeeklyGrid({
                 onClick={(e) => handleColumnClick(e, date)}
                 style={{
                   flex: 1, position: "relative", height: "100%",
-                  borderRight: i < 6 ? "1px solid #EDE5D8" : "none",
+                  borderRight: i < 6 ? "1px solid #FED7AA" : "none",
                   backgroundColor: isToday ? "#FFFCF8" : "#FFFFFF",
                   cursor: "crosshair",
                 }}
@@ -274,17 +180,17 @@ export default function WeeklyGrid({
                     position: "absolute",
                     top: (h - START_HOUR) * PX_PER_HOUR,
                     left: 0, right: 0, height: 1,
-                    backgroundColor: "#F0EBE3", pointerEvents: "none",
+                    backgroundColor: "#FED7AA", pointerEvents: "none",
                   }} />
                 ))}
 
-                {/* Half-hour dashed lines */}
+                {/* Half-hour lines */}
                 {hours.map((h) => (
                   <div key={`${h}h`} style={{
                     position: "absolute",
                     top: (h - START_HOUR) * PX_PER_HOUR + PX_PER_HOUR / 2,
                     left: 0, right: 0, height: 1,
-                    backgroundColor: "#F7F3EE", pointerEvents: "none",
+                    backgroundColor: "#FEE6C4", pointerEvents: "none",
                   }} />
                 ))}
 
@@ -305,8 +211,8 @@ export default function WeeklyGrid({
 
                 {/* Events */}
                 {dayEvents.map((ev) => {
-                  const group = groupMap[ev.groupId];
-                  const color = group?.color ?? "#6366F1";
+                  const group  = groupMap[ev.groupId];
+                  const color  = group?.color ?? "#6366F1";
                   const top    = timeToY(ev.startTime);
                   const height = Math.max(durationPx(ev.startTime, ev.endTime), 20);
                   const short  = height < 38;
@@ -348,44 +254,48 @@ export default function WeeklyGrid({
             );
           })}
         </div>
-      </div>
 
-      {/* ── Day notes row ── */}
-      <div style={{ flexShrink: 0, borderTop: "1px solid #EDE5D8", display: "flex" }}>
-        {/* Spacer */}
-        <div style={{ width: 56, flexShrink: 0, borderRight: "1px solid #EDE5D8",
-          display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: "8px", color: "#78716C", fontWeight: 700,
-            textTransform: "uppercase", letterSpacing: "0.07em",
-            writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
-            Notes
-          </span>
+        {/* ── Day notes row ── */}
+        <div style={{ flexShrink: 0, borderTop: "1px solid #FED7AA", display: "flex", backgroundColor: "#FFFFFF" }}>
+          <div style={{
+            width: 56, flexShrink: 0, borderRight: "1px solid #FED7AA",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span style={{
+              fontSize: "8px", color: "#78716C", fontWeight: 700,
+              textTransform: "uppercase", letterSpacing: "0.07em",
+              writingMode: "vertical-rl", transform: "rotate(180deg)",
+            }}>
+              Notes
+            </span>
+          </div>
+          {days.map((date, i) => (
+            <textarea
+              key={date}
+              value={plan.dayNotes[date] ?? ""}
+              onChange={(e) => onUpdatePlan({
+                ...plan,
+                dayNotes: { ...plan.dayNotes, [date]: e.target.value },
+              })}
+              placeholder="Day notes…"
+              className="weekly-textarea"
+              style={{
+                flex: 1,
+                resize: "none",
+                border: "none",
+                outline: "none",
+                borderRight: i < 6 ? "1px solid #FED7AA" : "none",
+                padding: "6px 8px",
+                fontSize: "11px",
+                color: "#1C1917",
+                backgroundColor: "transparent",
+                fontFamily: "inherit",
+                height: 56,
+              }}
+            />
+          ))}
         </div>
-        {days.map((date, i) => (
-          <textarea
-            key={date}
-            value={plan.dayNotes[date] ?? ""}
-            onChange={(e) => onUpdatePlan({
-              ...plan,
-              dayNotes: { ...plan.dayNotes, [date]: e.target.value },
-            })}
-            placeholder="Day notes…"
-            className="weekly-textarea"
-            style={{
-              flex: 1, 
-              resize: "none", 
-              border: "none", 
-              outline: "none",
-              borderRight: i < 6 ? "1px solid #EDE5D8" : "none",
-              padding: "6px 8px", 
-              fontSize: "11px", 
-              color: "#1C1917",
-              backgroundColor: "transparent", 
-              fontFamily: "inherit",
-              height: 56,
-            }}
-          />
-        ))}
+
       </div>
     </div>
   );

@@ -29,15 +29,19 @@ interface Props {
   open:                boolean;
   onClose:             () => void;
   onSave:              (h: HabitData) => void;
+  onUpdate?:           (h: HabitData) => void;
+  onDelete?:           (id: string) => void;
   goals:               GoalData[];
   initialGoalId?:      string;
   initialMilestoneId?: string;
+  editHabit?:          HabitData;
 }
 
-export default function HabitCreateSheet({ open, onClose, onSave, goals, initialGoalId, initialMilestoneId }: Props) {
+export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDelete, goals, initialGoalId, initialMilestoneId, editHabit }: Props) {
+  const isEdit = !!editHabit;
   const [name,              setName]             = useState("");
   const [desc,              setDesc]             = useState("");
-  const [area,              setArea]             = useState<LifeArea>("health");
+  const [area,              setArea]             = useState<LifeArea | "">("");
   const [frequency,         setFrequency]        = useState<HabitFrequency>("daily");
   const [customDays,        setCustomDays]       = useState<number[]>([1, 2, 3, 4, 5]);
   const [type,              setType]             = useState<HabitType>("binary");
@@ -47,18 +51,53 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
   const [reward,            setReward]           = useState("");
   const [linkedGoalId,      setLinkedGoalId]     = useState("");
   const [linkedMilestoneId, setLinkedMilestoneId] = useState("");
-  const nameRef = useRef<HTMLInputElement>(null);
+  const nameRef  = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
-      setName(""); setDesc(""); setArea("health"); setFrequency("daily");
-      setCustomDays([1, 2, 3, 4, 5]); setType("binary"); setTarget(1); setUnit("");
-      setCue(""); setReward("");
-      setLinkedGoalId(initialGoalId ?? "");
-      setLinkedMilestoneId(initialMilestoneId ?? "");
+      if (editHabit) {
+        setName(editHabit.name); setDesc(editHabit.description); setArea(editHabit.area);
+        setFrequency(editHabit.frequency); setCustomDays(editHabit.customDays.length ? editHabit.customDays : [1,2,3,4,5]);
+        setType(editHabit.type); setTarget(editHabit.target); setUnit(editHabit.unit);
+        setCue(editHabit.cue); setReward(editHabit.reward);
+        setLinkedGoalId(editHabit.linkedGoalId); setLinkedMilestoneId(editHabit.linkedMilestoneId);
+      } else {
+        setName(""); setDesc(""); setArea(""); setFrequency("daily");
+        setCustomDays([1, 2, 3, 4, 5]); setType("binary"); setTarget(1); setUnit("");
+        setCue(""); setReward("");
+        setLinkedGoalId(initialGoalId ?? "");
+        setLinkedMilestoneId(initialMilestoneId ?? "");
+      }
       setTimeout(() => nameRef.current?.focus(), 80);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const scrollY = window.scrollY;
+    const prevent = (e: Event) => {
+      if (modalRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.addEventListener("wheel",     prevent, { passive: false });
+    document.addEventListener("touchmove", prevent, { passive: false });
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.removeEventListener("wheel",     prevent);
+      document.removeEventListener("touchmove", prevent);
+      window.scrollTo(0, scrollY);
+    };
   }, [open]);
 
   const toggleDay = (d: number) =>
@@ -71,6 +110,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
 
   const canSave = (
     name.trim().length > 0 &&
+    area !== "" &&
     (type === "binary" || target >= 1) &&
     !goalHasNoMilestones &&
     !milestoneRequired
@@ -83,14 +123,22 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
 
   const handleSave = () => {
     if (!canSave) return;
-    onSave({
-      id: crypto.randomUUID(), name: name.trim(), description: desc.trim(),
-      area, frequency, customDays: frequency === "custom" ? customDays : [],
-      cue: cue.trim(), reward: reward.trim(),
-      type, target: type === "binary" ? 1 : target, unit: type === "binary" ? "" : unit.trim(),
-      completions: [], measurements: {}, linkedGoalId, linkedMilestoneId,
-      createdAt: Date.now(),
-    });
+    if (isEdit && editHabit) {
+      onUpdate?.({ ...editHabit, name: name.trim(), description: desc.trim(),
+        area: area as LifeArea, frequency, customDays: frequency === "custom" ? customDays : [],
+        cue: cue.trim(), reward: reward.trim(),
+        type, target: type === "binary" ? 1 : target, unit: type === "binary" ? "" : unit.trim(),
+      });
+    } else {
+      onSave({
+        id: crypto.randomUUID(), name: name.trim(), description: desc.trim(),
+        area: area as LifeArea, frequency, customDays: frequency === "custom" ? customDays : [],
+        cue: cue.trim(), reward: reward.trim(),
+        type, target: type === "binary" ? 1 : target, unit: type === "binary" ? "" : unit.trim(),
+        completions: [], measurements: {}, linkedGoalId, linkedMilestoneId,
+        createdAt: Date.now(),
+      });
+    }
     onClose();
   };
 
@@ -98,17 +146,17 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
 
   return (
     <>
-      <div onClick={onClose} style={backdrop} />
-      <div style={sheet}>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(28,25,23,0.45)", backdropFilter: "blur(3px)", zIndex: 400 }} />
+      <div ref={modalRef} style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 500, maxWidth: "calc(100vw - 32px)", backgroundColor: "#FFFFFF", borderRadius: "18px", zIndex: 401, boxShadow: "0 24px 64px rgba(28,25,23,0.18)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
         {/* Header */}
-        <div style={header}>
+        <div style={{ padding: "18px 24px", borderBottom: "1px solid #EDE5D8", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)", flexShrink: 0 }}>
           <div>
-            <p style={labelStyle}>New Habit</p>
-            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
-              Build a new habit
-            </h2>
+            <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#F97316", margin: "0 0 3px" }}>{isEdit ? "Edit Habit" : "New Habit"}</p>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{isEdit ? "Edit habit" : "Build a new habit"}</h2>
           </div>
-          <button onClick={onClose} style={iconBtn}><X size={15} color="#78716C" /></button>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <X size={15} color="#DC2626" />
+          </button>
         </div>
 
         {/* Body */}
@@ -117,16 +165,12 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
           <Field label="Habit name">
             <input ref={nameRef} type="text" value={name} onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Morning meditation" style={inStyle}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-              onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }}
               onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave(); }} />
           </Field>
 
           <Field label="Description (optional)">
             <input type="text" value={desc} onChange={(e) => setDesc(e.target.value)}
-              placeholder="e.g. 10 mins of breath-focused meditation" style={inStyle}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-              onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+              placeholder="e.g. 10 mins of breath-focused meditation" style={inStyle} />
           </Field>
 
           {/* Habit type */}
@@ -142,7 +186,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
                     color: type === t ? "#F97316" : "#1C1917" }}>
                     {t === "binary" ? "Yes / No" : "Measurable"}
                   </p>
-                  <p style={{ fontSize: "10px", color: "#78716C", margin: "2px 0 0" }}>
+                  <p style={{ fontSize: "10px", color: "#6B7280", margin: "2px 0 0" }}>
                     {t === "binary" ? "Done or not done" : "Track a daily count"}
                   </p>
                 </button>
@@ -156,21 +200,17 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
               <Field label="Daily target">
                 <input type="number" min={1} value={target}
                   onChange={(e) => setTarget(Math.max(1, parseInt(e.target.value) || 1))}
-                  style={inStyle}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-                  onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                  style={inStyle} />
               </Field>
               <Field label="Unit (e.g. pages, mins)">
                 <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)}
-                  placeholder="pages" style={inStyle}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-                  onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                  placeholder="pages" style={inStyle} />
               </Field>
             </div>
           )}
 
           {/* Life area */}
-          <Field label="Life area">
+          <Field label="Life area *">
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {AREAS.map((a) => {
                 const m = AREA_META[a];
@@ -179,7 +219,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
                     padding: "5px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 600,
                     border: `1.5px solid ${area === a ? m.color : "#E8DDD0"}`,
                     backgroundColor: area === a ? m.bg : "#FFFFFF",
-                    color: area === a ? m.color : "#78716C", cursor: "pointer",
+                    color: area === a ? m.color : "#374151", cursor: "pointer",
                   }}>
                     {m.label}
                   </button>
@@ -196,7 +236,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
                   padding: "6px 14px", borderRadius: "20px", fontSize: "12px", fontWeight: 600,
                   border: `1.5px solid ${frequency === f ? "#F97316" : "#E8DDD0"}`,
                   backgroundColor: frequency === f ? "#FFF7ED" : "#FFFFFF",
-                  color: frequency === f ? "#F97316" : "#78716C", cursor: "pointer",
+                  color: frequency === f ? "#F97316" : "#374151", cursor: "pointer",
                 }}>
                   {FREQ_LABEL[f]}
                 </button>
@@ -213,7 +253,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
                     fontSize: "10px", fontWeight: 700,
                     border: `1.5px solid ${customDays.includes(i) ? "#F97316" : "#E8DDD0"}`,
                     backgroundColor: customDays.includes(i) ? "#F97316" : "#FFFFFF",
-                    color: customDays.includes(i) ? "#FFFFFF" : "#78716C", cursor: "pointer",
+                    color: customDays.includes(i) ? "#FFFFFF" : "#374151", cursor: "pointer",
                   }}>
                     {day[0]}
                   </button>
@@ -262,44 +302,55 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
             backgroundColor: "#FFFFFF", border: "1px solid #EDE5D8", marginBottom: "16px",
           }}>
             <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em",
-              textTransform: "uppercase", color: "#A8A29E", marginBottom: "10px" }}>
+              textTransform: "uppercase", color: "#6B7280", marginBottom: "10px" }}>
               Habit Loop (optional)
             </p>
             <div style={{ marginBottom: "10px" }}>
               <p style={labelSm}>Cue — what triggers this habit?</p>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ fontSize: "12px", color: "#A8A29E", whiteSpace: "nowrap" }}>After I</span>
+                <span style={{ fontSize: "12px", color: "#374151", whiteSpace: "nowrap" }}>After I</span>
                 <input type="text" value={cue} onChange={(e) => setCue(e.target.value)}
-                  placeholder="wake up / finish lunch…" style={{ ...inStyle, flex: 1 }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-                  onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                  placeholder="wake up / finish lunch…" style={{ ...inStyle, flex: 1 }} />
               </div>
             </div>
             <div>
               <p style={labelSm}>Reward — how will you celebrate?</p>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ fontSize: "12px", color: "#A8A29E", whiteSpace: "nowrap" }}>I will</span>
+                <span style={{ fontSize: "12px", color: "#374151", whiteSpace: "nowrap" }}>I will</span>
                 <input type="text" value={reward} onChange={(e) => setReward(e.target.value)}
-                  placeholder="enjoy a coffee / feel proud…" style={{ ...inStyle, flex: 1 }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#F97316"; }}
-                  onBlur={(e)  => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                  placeholder="enjoy a coffee / feel proud…" style={{ ...inStyle, flex: 1 }} />
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "16px 24px", borderTop: "1px solid #EDE5D8", display: "flex", gap: "10px" }}>
-          <button onClick={onClose} style={cancelBtn}>Cancel</button>
-          <button onClick={handleSave} disabled={!canSave} style={{
-            flex: 2, padding: "11px", borderRadius: "10px", border: "none",
-            fontSize: "13px", fontWeight: 700,
-            background: canSave ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0",
-            color: canSave ? "#FFFFFF" : "#A8A29E",
-            cursor: canSave ? "pointer" : "default",
-          }}>
-            Add Habit
-          </button>
+        <div style={{ padding: "14px 24px", borderTop: "1px solid #EDE5D8", flexShrink: 0 }}>
+          {isEdit && onDelete && (
+            <button
+              onClick={() => { onDelete(editHabit!.id); onClose(); }}
+              style={{
+                width: "100%", padding: "10px", borderRadius: "10px", border: "none",
+                backgroundColor: "#FEE2E2", color: "#DC2626",
+                fontSize: "13px", fontWeight: 600, cursor: "pointer", marginBottom: "8px",
+              }}
+            >
+              Delete Habit
+            </button>
+          )}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button onClick={onClose} style={cancelBtn}>Cancel</button>
+            <button onClick={handleSave} disabled={!canSave} style={{
+              flex: 2, padding: "11px", borderRadius: "10px", border: "none",
+              fontSize: "13px", fontWeight: 700,
+              background: canSave ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0",
+              color: canSave ? "#FFFFFF" : "#A8A29E",
+              cursor: canSave ? "pointer" : "default",
+              boxShadow: canSave ? "0 2px 8px rgba(249,115,22,0.3)" : "none",
+            }}>
+              {isEdit ? "Save Changes" : "Add Habit"}
+            </button>
+          </div>
         </div>
       </div>
     </>
@@ -311,7 +362,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, goals, initial
 function Field({ label: lbl, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: "16px" }}>
-      <p style={{ fontSize: "11px", fontWeight: 600, color: "#78716C", marginBottom: "6px" }}>{lbl}</p>
+      <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>{lbl}</p>
       {children}
     </div>
   );
@@ -358,7 +409,7 @@ function GoalSelect({ goals, value, onChange, zIndex }: {
     <div ref={containerRef}>
       <button ref={triggerRef} onClick={() => open ? setOpen(false) : openDrop()} style={{
         width: "100%", padding: "9px 12px", borderRadius: "8px", boxSizing: "border-box",
-        border: `1.5px solid ${open ? "#F97316" : "#E8DDD0"}`,
+        border: "1.5px solid #F97316",
         backgroundColor: "#FFFFFF", cursor: "pointer",
         display: "flex", alignItems: "center", gap: "8px",
       }}>
@@ -375,7 +426,7 @@ function GoalSelect({ goals, value, onChange, zIndex }: {
             </span>
           </>
         ) : (
-          <span style={{ flex: 1, textAlign: "left", fontSize: "13px", color: "#A8A29E" }}>
+          <span style={{ flex: 1, textAlign: "left", fontSize: "13px", color: "#6B7280" }}>
             No linked goal
           </span>
         )}
@@ -467,7 +518,7 @@ function MilestoneSelect({ milestones, value, onChange, required: req, zIndex }:
     <div ref={containerRef}>
       <button ref={triggerRef} onClick={() => open ? setOpen(false) : openDrop()} style={{
         width: "100%", padding: "9px 12px", borderRadius: "8px", boxSizing: "border-box",
-        border: `1.5px solid ${needsPick ? "#D97706" : open ? "#D97706" : "#E8DDD0"}`,
+        border: `1.5px solid ${needsPick ? "#DC2626" : "#F97316"}`,
         backgroundColor: needsPick ? "#FFFBEB" : "#FFFFFF", cursor: "pointer",
         display: "flex", alignItems: "center", gap: "8px",
       }}>
@@ -536,38 +587,15 @@ function MilestoneSelect({ milestones, value, onChange, required: req, zIndex }:
 // ── Shared styles ─────────────────────────────────────────────────────────────
 const inStyle: React.CSSProperties = {
   width: "100%", padding: "9px 12px", borderRadius: "8px",
-  border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
+  border: "1.5px solid #F97316", backgroundColor: "#FFFFFF",
   fontSize: "13px", color: "#1C1917", outline: "none",
-  fontFamily: "inherit", boxSizing: "border-box", transition: "border-color 0.15s",
-};
-const iconBtn: React.CSSProperties = {
-  width: "32px", height: "32px", borderRadius: "8px",
-  backgroundColor: "#F5F0EB", border: "none", cursor: "pointer",
-  display: "flex", alignItems: "center", justifyContent: "center",
+  fontFamily: "inherit", boxSizing: "border-box",
 };
 const cancelBtn: React.CSSProperties = {
   flex: 1, padding: "11px", borderRadius: "10px",
   border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
   fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer",
 };
-const backdrop: React.CSSProperties = {
-  position: "fixed", inset: 0, backgroundColor: "rgba(28,25,23,0.3)",
-  backdropFilter: "blur(2px)", zIndex: 400,
-};
-const sheet: React.CSSProperties = {
-  position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px,100vw)",
-  backgroundColor: "#FAF5EE", borderLeft: "1px solid #EDE5D8",
-  zIndex: 401, display: "flex", flexDirection: "column",
-  boxShadow: "-8px 0 32px rgba(28,25,23,0.12)",
-};
-const header: React.CSSProperties = {
-  padding: "20px 24px 16px", borderBottom: "1px solid #EDE5D8",
-  display: "flex", alignItems: "center", justifyContent: "space-between",
-};
-const labelStyle: React.CSSProperties = {
-  fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
-  textTransform: "uppercase", color: "#F97316", marginBottom: "2px",
-};
 const labelSm: React.CSSProperties = {
-  fontSize: "11px", fontWeight: 600, color: "#78716C", marginBottom: "5px",
+  fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "5px",
 };

@@ -105,14 +105,14 @@ export default function ScheduleView({ tasks, onComplete, onMiss }: Props) {
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917" }}>
                     {dayLabel(date)}
                   </span>
-                  <span style={{ fontSize: "10px", color: "#A8A29E" }}>
+                  <span style={{ fontSize: "10px", color: "#57534E" }}>
                     {date !== today && date !== (() => {
                       const d = new Date(); d.setDate(d.getDate() + 1);
                       return toLocalISO(d);
                     })() ? fmtDeadline(date) : ""}
                   </span>
                   <div style={{ flex: 1, height: "1px", backgroundColor: "#EDE5D8" }} />
-                  <span style={{ fontSize: "10px", fontWeight: 600, color: "#A8A29E" }}>
+                  <span style={{ fontSize: "10px", fontWeight: 600, color: "#57534E" }}>
                     {dayTasks.length}
                   </span>
                 </div>

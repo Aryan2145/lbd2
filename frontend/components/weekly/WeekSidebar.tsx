@@ -127,7 +127,7 @@ export default function WeekSidebar({
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
             <p style={sectionTitle}>Key Outcomes</p>
             <button onClick={addOutcome} style={addBtn}>
-              <Plus size={11} color="#F97316" /> Add
+              <Plus size={11} color="#FFFFFF" /> Add
             </button>
           </div>
 
@@ -208,7 +208,7 @@ export default function WeekSidebar({
                   <span style={countBadge}>{activeGroups.length}</span>
                 </div>
                 <button onClick={() => { setShowGroupForm(true); setEditGroupId(null); setNewGroupName(""); setNewGroupColor(GROUP_COLORS[0]); }} style={addBtn}>
-                  <Plus size={11} color="#F97316" /> New
+                  <Plus size={11} color="#FFFFFF" /> New
                 </button>
               </div>
 
@@ -258,21 +258,21 @@ export default function WeekSidebar({
                     <div key={g.id} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "5px 4px", borderRadius: 7, flexShrink: 0 }}>
                       <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: "13px", color: "#1C1917", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
-                      <button onClick={() => startEditGroup(g)} style={ghostBtn}><Pencil size={11} color="#A8A29E" /></button>
+                      <button onClick={() => startEditGroup(g)} style={iconBtn}><Pencil size={11} color="#FFFFFF" /></button>
                       {groupHasEvents ? (
                         <button
                           onClick={() => onUpdateGroup({ ...g, archived: true })}
                           title="Archive group"
-                          style={ghostBtn}
+                          style={{ ...iconBtn, backgroundColor: "#6B7280" }}
                         >
-                          <Archive size={11} color="#78716C" />
+                          <Archive size={11} color="#FFFFFF" />
                         </button>
                       ) : (
                         <button
                           onClick={() => onDeleteGroup(g.id)}
-                          style={ghostBtn}
+                          style={{ ...iconBtn, backgroundColor: "#EF4444" }}
                         >
-                          <Trash2 size={11} color="#EF4444" />
+                          <Trash2 size={11} color="#FFFFFF" />
                         </button>
                       )}
                     </div>
@@ -362,20 +362,26 @@ export default function WeekSidebar({
 
 const sectionTitle: React.CSSProperties = {
   fontSize: "10px", fontWeight: 700, textTransform: "uppercase",
-  letterSpacing: "0.07em", color: "#78716C", margin: 0,
+  letterSpacing: "0.07em", color: "#1C1917", margin: 0,
 };
 
 const addBtn: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: "3px",
   padding: "3px 8px", borderRadius: "6px",
-  border: "1px solid #FED7AA", backgroundColor: "#FFF7ED",
-  fontSize: "10px", fontWeight: 600, color: "#F97316", cursor: "pointer",
+  border: "none", backgroundColor: "#F97316",
+  fontSize: "10px", fontWeight: 600, color: "#FFFFFF", cursor: "pointer",
 };
 
 const ghostBtn: React.CSSProperties = {
   width: 22, height: 22, borderRadius: 5, border: "none",
   backgroundColor: "transparent", display: "flex", alignItems: "center",
   justifyContent: "center", cursor: "pointer", padding: 0,
+};
+
+const iconBtn: React.CSSProperties = {
+  width: 22, height: 22, borderRadius: 5, border: "none",
+  backgroundColor: "#F97316", display: "flex", alignItems: "center",
+  justifyContent: "center", cursor: "pointer", padding: 0, flexShrink: 0,
 };
 
 const inlineInput: React.CSSProperties = {
@@ -385,12 +391,12 @@ const inlineInput: React.CSSProperties = {
 };
 
 const emptyHint: React.CSSProperties = {
-  fontSize: "11px", color: "#78716C", fontStyle: "italic",
+  fontSize: "11px", color: "#57534E", fontStyle: "italic",
   marginBottom: "4px", lineHeight: 1.4,
 };
 
 const countBadge: React.CSSProperties = {
   fontSize: "9px", fontWeight: 700,
-  backgroundColor: "#EDE5D8", color: "#78716C",
+  backgroundColor: "#F97316", color: "#FFFFFF",
   borderRadius: "10px", padding: "1px 5px",
 };
