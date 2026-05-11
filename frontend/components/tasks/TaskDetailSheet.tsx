@@ -68,8 +68,8 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
               <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Edit Task</h2>
-              <button onClick={() => setIsEditing(false)} style={closeBtn}>
-                <X size={14} color="#78716C" />
+              <button onClick={() => setIsEditing(false)} style={dismissBtn}>
+                <X size={14} color="#FFFFFF" />
               </button>
             </div>
 
