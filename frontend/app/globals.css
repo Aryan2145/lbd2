@@ -39,8 +39,6 @@
 }
 .lbd-page-fade {
   animation: lbd-page-in 0.18s ease-out;
-  /* Avoid an opacity-flicker if the user prefers reduced motion */
-  will-change: opacity, transform;
 }
 @media (prefers-reduced-motion: reduce) {
   .lbd-page-fade { animation: none; }
@@ -57,9 +55,20 @@
   background: transparent;     /* Chromium / Safari */
 }
 
-html, body {
+html {
   height: 100%;
-  overflow-x: hidden;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background-color: #EA580C; /* match nav so any 1px gap is invisible */
+}
+
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: relative;
 }
 
 body {
@@ -69,11 +78,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D5C9BC; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #A8A29E; }
+/* Scrollbar — desktop only; hidden on touch/mobile */
+@media (pointer: fine) {
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D5C9BC; border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: #A8A29E; }
+}
+@media (pointer: coarse) {
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+  *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+}
 
 /* Keyframes */
 @keyframes shimmer {
@@ -212,4 +227,13 @@ body {
 @media (max-width: 640px) {
   .px-page    { padding-left: 1rem; padding-right: 1rem; }
   .px-page-md { padding-left: 1rem; padding-right: 1rem; }
+}
+
+/* ── HabitDetailPage — mobile overrides ── */
+@media (max-width: 640px) {
+  .hdp-left        { padding-left: 14px !important; padding-right: 14px !important; }
+  .hdp-chips       { grid-template-columns: repeat(3, 1fr) !important; }
+  .hdp-score-btns  { flex-wrap: wrap !important; }
+  .hdp-history-card { min-height: 280px !important; }
+  .hdp-streaks-card { height: 300px !important; }
 }

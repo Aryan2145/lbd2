@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Plus, Flame, Repeat2, CheckCheck, Check, Search, X, ChevronDown } from "lucide-react";
 import HabitCard, { toLocalDate, isScheduledDay, calcStreak, isHabitDoneOnDate, AREA_META, type HabitData, type LifeArea } from "@/components/habits/HabitCard";
 import HabitCreateSheet from "@/components/habits/HabitCreateSheet";
-import HabitDetailSheet from "@/components/habits/HabitDetailSheet";
+import HabitDetailPage from "@/components/habits/HabitDetailPage";
 import { useAppStore } from "@/lib/AppStore";
 
 const ALL_AREAS: LifeArea[] = [
@@ -21,7 +21,8 @@ export default function HabitsPage() {
   const [selectedAreas, setSelectedAreas] = useState<Set<LifeArea>>(new Set(ALL_AREAS));
   const [todayOnly,     setTodayOnly]     = useState(false);
   const [createOpen,   setCreateOpen]  = useState(false);
-  const [detailHabit,  setDetailHabit] = useState<HabitData | null>(null);
+  const [editHabit,    setEditHabit]   = useState<HabitData | null>(null);
+  const [statsHabitId, setStatsHabitId] = useState<string | null>(null);
   const [searchQuery,  setSearchQuery] = useState("");
   const [searchOpen,   setSearchOpen]  = useState(false);
   const searchRef    = useRef<HTMLInputElement>(null);
@@ -76,11 +77,6 @@ export default function HabitsPage() {
 
   const handleToggle = (id: string) => {
     toggleHabitDay(id, todayStr);
-    setDetailHabit((prev) => {
-      if (!prev || prev.id !== id) return prev;
-      const has = prev.completions.includes(todayStr);
-      return { ...prev, completions: has ? prev.completions.filter((d) => d !== todayStr) : [...prev.completions, todayStr] };
-    });
   };
 
   const handleToggleDate = (id: string, date: string) => {
@@ -97,25 +93,10 @@ export default function HabitsPage() {
 
   const handleStep = (id: string, delta: number) => {
     stepHabitToday(id, delta);
-    setDetailHabit((prev) => {
-      if (!prev || prev.id !== id) return prev;
-      const cur = prev.measurements[todayStr] ?? 0;
-      return { ...prev, measurements: { ...prev.measurements, [todayStr]: Math.max(0, cur + delta) } };
-    });
-  };
-
-  const handleUpdate = (updated: HabitData) => {
-    updateHabit(updated);
-    setDetailHabit(updated);
-  };
-
-  const handleDelete = (id: string) => {
-    deleteHabit(id);
-    setDetailHabit(null);
   };
 
   return (
-    <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
+    <div style={{ minHeight: "100%", backgroundColor: "#FFFFFF" }}>
 
       {/* Header */}
       <div
@@ -131,17 +112,16 @@ export default function HabitsPage() {
             <h1 style={{ fontSize: "19px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
               Habit Tracker
             </h1>
-            <p className="hidden lg:block" style={{ fontSize: "12px", color: "#78716C", marginTop: "3px" }}>
+            <p className="hidden lg:block" style={{ fontSize: "12px", color: "#1C1917", marginTop: "3px" }}>
               Small actions, done daily, compound into extraordinary results.
             </p>
           </div>
-          {/* Add button — visible on mobile next to title */}
+          {/* Add button — mobile only */}
           <button
             onClick={() => setCreateOpen(true)}
-            className="lg:hidden flex-shrink-0"
+            className="lg:hidden flex-shrink-0 flex items-center"
             style={{
-              display: "flex", alignItems: "center", gap: "6px",
-              padding: "8px 14px", borderRadius: "10px", border: "none",
+              gap: "6px", padding: "8px 14px", borderRadius: "10px", border: "none",
               background: "linear-gradient(135deg, #F97316, #EA580C)",
               fontSize: "12px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
               boxShadow: "0 2px 8px rgba(249,115,22,0.3)",
@@ -168,70 +148,74 @@ export default function HabitsPage() {
         </div>
       </div>
 
-      {/* Today's progress banner */}
+      {/* Combined progress + filter row */}
       <div
-        className="px-page flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5"
+        className="px-page"
         style={{
-          paddingTop: "14px", paddingBottom: "14px", borderBottom: "1px solid #EDE5D8",
+          paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
+          display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 12px",
           backgroundColor: todayPct === 100 ? "#F0FDF4" : "#FFFFFF",
           transition: "background-color 0.4s",
-        }}>
-        <div style={{ flexShrink: 0 }}>
-          <p style={{ fontSize: "11px", fontWeight: 600, color: "#78716C", marginBottom: "2px" }}>
-            Today&apos;s progress
-          </p>
-          <p style={{ fontSize: "22px", fontWeight: 800,
-            color: todayPct === 100 ? "#16A34A" : "#F97316", lineHeight: 1 }}>
-            {doneToday.length}
-            <span style={{ fontSize: "14px", fontWeight: 500, color: "#78716C" }}>
-              /{dueToday.length} habits
+        }}
+      >
+        {/* Progress group — full width on mobile, flex-1 on desktop */}
+        <div style={{ flex: "1 1 200px", display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+          {/* Today's progress count */}
+          <div style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: "4px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "#1C1917", whiteSpace: "nowrap" }}>
+              Today
             </span>
-          </p>
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between",
-            fontSize: "10px", color: "#A8A29E", fontWeight: 500, marginBottom: "5px" }}>
-            <span>{todayPct === 100 ? "All done! Great work." : `${todayPct}% complete`}</span>
-            <span>{dueToday.length - doneToday.length} remaining</span>
+            <span style={{ fontSize: "18px", fontWeight: 800, lineHeight: 1,
+              color: todayPct === 100 ? "#16A34A" : "#F97316" }}>
+              {doneToday.length}
+            </span>
+            <span style={{ fontSize: "12px", fontWeight: 500, color: "#1C1917" }}>
+              /{dueToday.length}
+            </span>
           </div>
-          <div style={{ height: "8px", borderRadius: "4px", backgroundColor: "#EDE5D8" }}>
-            <div style={{
-              height: "100%", borderRadius: "4px", width: `${todayPct}%`,
-              background: todayPct === 100
-                ? "linear-gradient(90deg, #16A34A, #22C55E)"
-                : "linear-gradient(90deg, #F97316, #EA580C)",
-              transition: "width 0.4s ease",
-            }} />
-          </div>
-        </div>
-        {todayPct === 100 && (
-          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "6px",
-            padding: "7px 14px", borderRadius: "20px",
-            backgroundColor: "#DCFCE7", border: "1px solid #86EFAC" }}>
-            <CheckCheck size={14} color="#16A34A" />
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "#16A34A" }}>Perfect day!</span>
-          </div>
-        )}
-      </div>
 
-      {/* Filter bar */}
-      <div className="px-page" style={{ paddingTop: "10px", paddingBottom: "10px", borderBottom: "1px solid #EDE5D8",
-        display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* Progress bar */}
+          <div style={{ flex: 1, minWidth: 40 }}>
+            <div style={{ height: "8px", borderRadius: "4px", backgroundColor: "#EDE5D8" }}>
+              <div style={{
+                height: "100%", borderRadius: "4px", width: `${todayPct}%`,
+                background: todayPct === 100
+                  ? "linear-gradient(90deg, #16A34A, #22C55E)"
+                  : "linear-gradient(90deg, #F97316, #EA580C)",
+                transition: "width 0.4s ease",
+              }} />
+            </div>
+          </div>
 
-        {/* Filter dropdown — same style as Goals Life Areas */}
-        <div style={{ position: "relative", flexShrink: 0 }} ref={filterDropRef}>
+          {/* % label */}
+          <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 600,
+            color: todayPct === 100 ? "#16A34A" : "#1C1917" }}>
+            {todayPct === 100 ? "All done! 🎉" : `${todayPct}%`}
+          </span>
+        </div>
+
+        {/* Filter group — expands to fill row when search is open */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: "8px",
+          flex: searchOpen ? "1 1 auto" : "0 0 auto",
+          minWidth: 0,
+          transition: "flex 0.2s",
+        }}>
+
+        {/* Life Areas dropdown — hidden when search is open */}
+        {!searchOpen && <div style={{ position: "relative" }} ref={filterDropRef}>
           <button onClick={() => setFilterDropOpen(!filterDropOpen)} style={{
             display: "flex", alignItems: "center", gap: "6px",
             padding: "6px 12px", borderRadius: "8px", whiteSpace: "nowrap",
-            border: `1.5px solid ${(todayOnly || selectedAreas.size < ALL_AREAS.length) ? "#F97316" : "#E8DDD0"}`,
-            backgroundColor: (todayOnly || selectedAreas.size < ALL_AREAS.length) ? "#FFF7ED" : "#FFFFFF",
-            fontSize: "11px", fontWeight: 600,
-            color: (todayOnly || selectedAreas.size < ALL_AREAS.length) ? "#F97316" : "#78716C",
-            cursor: "pointer",
+            border: "none",
+            backgroundColor: (todayOnly || selectedAreas.size < ALL_AREAS.length) ? "#EA580C" : "#F97316",
+            fontSize: "11px", fontWeight: 700,
+            color: "#FFFFFF", cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(249,115,22,0.30)",
           }}>
             Life Areas
             {selectedAreas.size < ALL_AREAS.length && (
-              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "#F97316",
+              <span style={{ fontSize: "9px", fontWeight: 700, backgroundColor: "rgba(255,255,255,0.25)",
                 color: "#FFFFFF", borderRadius: "10px", padding: "1px 5px" }}>
                 {selectedAreas.size}
               </span>
@@ -245,7 +229,6 @@ export default function HabitsPage() {
               backgroundColor: "#FFFFFF", border: "1px solid #E8DDD0", borderRadius: "12px",
               boxShadow: "0 8px 24px rgba(0,0,0,0.10)", padding: "6px", minWidth: "200px" }}>
 
-              {/* Today toggle */}
               <button onClick={() => setTodayOnly(!todayOnly)} style={{
                 width: "100%", display: "flex", alignItems: "center", gap: "8px",
                 padding: "6px 8px", borderRadius: "6px", border: "none",
@@ -301,62 +284,58 @@ export default function HabitsPage() {
               })}
             </div>
           )}
-        </div>
+        </div>}
 
-        <div className="hidden lg:block" style={{ flex: 1 }} />
-
-        <div className="flex flex-1 lg:flex-none lg:w-60">
-          {searchOpen ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%" }}>
-              <div style={{ flex: 1, position: "relative" }}>
-                <Search size={12} color="#78716C" style={{
-                  position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
-                <input
-                  ref={searchRef}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search habits..."
-                  className="search-input"
-                  style={{
-                    width: "100%", padding: "7px 10px 7px 28px", borderRadius: "8px",
-                    backgroundColor: "#FFFFFF", fontSize: "12px", color: "#1C1917",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
-              <button onClick={clearSearch} style={{
-                flexShrink: 0, width: "30px", height: "30px", borderRadius: "8px",
-                border: "1px solid #EDE5D8", backgroundColor: "#FFFFFF",
-                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-              }}>
-                <X size={13} color="#78716C" />
-              </button>
+        {/* Search — icon when closed, full-width input when open */}
+        {searchOpen ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+            <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
+              <Search size={12} color="#F97316" style={{
+                position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+              <input
+                ref={searchRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search habits..."
+                style={{
+                  width: "100%", padding: "7px 10px 7px 28px", borderRadius: "8px",
+                  border: "1.5px solid #F97316", backgroundColor: "#FFFFFF",
+                  fontSize: "12px", color: "#1C1917", boxSizing: "border-box", outline: "none",
+                }}
+              />
             </div>
-          ) : (
-            <button onClick={() => setSearchOpen(true)} style={{
-              width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "6px",
-              padding: "7px 10px", borderRadius: "8px",
-              border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
-              fontSize: "12px", color: "#1C1917", cursor: "pointer",
+            <button onClick={clearSearch} style={{
+              flexShrink: 0, width: "30px", height: "30px", borderRadius: "8px",
+              border: "1.5px solid #F97316", backgroundColor: "#FFFFFF",
+              display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
             }}>
-              <Search size={12} color="#78716C" />
-              <span style={{ color: "#78716C" }}>Search habits...</span>
+              <X size={13} color="#F97316" />
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <button onClick={() => setSearchOpen(true)} style={{
+            flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+            width: "32px", height: "32px", borderRadius: "8px",
+            border: "1.5px solid #F97316", backgroundColor: "#FFFFFF", cursor: "pointer",
+          }}>
+            <Search size={14} color="#F97316" />
+          </button>
+        )}
+
+        </div>{/* end filter group */}
       </div>
 
       {/* Habit grid */}
       <div className="px-page" style={{ paddingTop: "24px", paddingBottom: "24px" }}>
         {showSearch ? (
           <>
-            <p style={{ fontSize: "12px", color: "#78716C", marginBottom: "16px" }}>
-              <span style={{ fontWeight: 700, color: "#1C1917" }}>{searchResults.length}</span>{" "}
+            <p style={{ fontSize: "12px", color: "#1C1917", marginBottom: "16px" }}>
+              <span style={{ fontWeight: 700 }}>{searchResults.length}</span>{" "}
               result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchQuery}&rdquo;
             </p>
             {searchResults.length === 0 ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "200px" }}>
-                <p style={{ fontSize: "13px", color: "#A8A29E" }}>No habits match your search</p>
+                <p style={{ fontSize: "13px", color: "#1C1917" }}>No habits match your search</p>
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: "14px" }}>
@@ -364,7 +343,8 @@ export default function HabitsPage() {
                   <HabitCard
                     key={h.id}
                     habit={h}
-                    onClick={() => setDetailHabit(habits.find((x) => x.id === h.id) ?? h)}
+                    onClick={() => setStatsHabitId(h.id)}
+                    onEdit={() => setEditHabit(habits.find((x) => x.id === h.id) ?? h)}
                     onToggleToday={handleToggle}
                     onStep={handleStep}
                     onToggleDate={handleToggleDate}
@@ -382,7 +362,8 @@ export default function HabitsPage() {
               <HabitCard
                 key={h.id}
                 habit={h}
-                onClick={() => setDetailHabit(habits.find((x) => x.id === h.id) ?? h)}
+                onClick={() => setStatsHabitId(h.id)}
+                onEdit={() => setEditHabit(habits.find((x) => x.id === h.id) ?? h)}
                 onToggleToday={handleToggle}
                 onStep={handleStep}
                 onToggleDate={handleToggleDate}
@@ -418,17 +399,19 @@ export default function HabitsPage() {
       </div>
 
       <HabitCreateSheet
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        open={createOpen || !!editHabit}
+        onClose={() => { setCreateOpen(false); setEditHabit(null); }}
         onSave={addHabit}
+        onUpdate={updateHabit}
+        onDelete={deleteHabit}
         goals={goals}
+        editHabit={editHabit ?? undefined}
       />
-      <HabitDetailSheet
-        habit={detailHabit}
-        onClose={() => setDetailHabit(null)}
-        onUpdate={handleUpdate}
-        onDelete={handleDelete}
-        goals={goals}
+
+      <HabitDetailPage
+        habit={statsHabitId ? (habits.find(h => h.id === statsHabitId) ?? null) : null}
+        onClose={() => setStatsHabitId(null)}
+        onToggleDate={handleToggleDate}
       />
     </div>
   );
@@ -438,11 +421,11 @@ function HeaderStat({ icon, label, value, color }: {
   icon: React.ReactNode; label: string; value: string; color: string;
 }) {
   return (
-    <div style={{ textAlign: "right" }}>
+    <div style={{ textAlign: "center" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "4px",
-        justifyContent: "flex-end", marginBottom: "2px" }}>
+        justifyContent: "center", marginBottom: "2px" }}>
         {icon}
-        <p style={{ fontSize: "12px", fontWeight: 500, color: "#78716C", margin: 0 }}>{label}</p>
+        <p style={{ fontSize: "12px", fontWeight: 500, color: "#1C1917", margin: 0 }}>{label}</p>
       </div>
       <p style={{ fontSize: "20px", fontWeight: 700, color, lineHeight: 1, margin: 0 }}>{value}</p>
     </div>
@@ -461,7 +444,7 @@ function EmptyState({ area, onAdd }: { area: LifeArea | null; onAdd: () => void 
       <p style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
         {area ? `No ${area} habits yet` : "No habits here"}
       </p>
-      <p style={{ fontSize: "13px", color: "#78716C", maxWidth: "320px", lineHeight: 1.5 }}>
+      <p style={{ fontSize: "13px", color: "#1C1917", maxWidth: "320px", lineHeight: 1.5 }}>
         Habits are the bridge between your goals and daily actions. Start small and stay consistent.
       </p>
       <button onClick={onAdd} style={{
