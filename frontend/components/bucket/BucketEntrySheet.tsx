@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Image, Sparkles, Copy, Check, Trash2 } from "lucide-react";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import { COLUMN_META, formatTargetDate } from "@/lib/bucketTypes";
@@ -50,6 +50,7 @@ export default function BucketEntrySheet({
   const [lifeArea,    setLifeArea]    = useState<LifeArea>("personal");
   const [imageUrl,    setImageUrl]    = useState("");
   const [targetDate,  setTargetDate]  = useState("");
+  const [status,      setStatus]      = useState<BucketStatus>("dreaming");
   const [imgError,    setImgError]    = useState(false);
   const [imgRetryKey, setImgRetryKey] = useState(0);
   const [copied,      setCopied]      = useState(false);
@@ -63,9 +64,11 @@ export default function BucketEntrySheet({
       setLifeArea(editEntry.lifeArea);
       setImageUrl(editEntry.imageUrl);
       setTargetDate(editEntry.targetDate);
+      setStatus(editEntry.status);
     } else {
       setTitle(""); setDescription(""); setLifeArea("personal");
       setImageUrl(""); setTargetDate("");
+      setStatus(initialStatus);
     }
     setImgError(false); setCopied(false); setConfirmDel(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,8 +76,7 @@ export default function BucketEntrySheet({
 
   if (!open) return null;
 
-  const currentStatus = editEntry?.status ?? initialStatus;
-  const colMeta       = COLUMN_META[currentStatus];
+  const colMeta = COLUMN_META[status];
   const targetDateError = validateDate(targetDate, { required: false });
   const canSave         = title.trim().length > 0 && !targetDateError;
   const processedSrc  = imageUrl ? toDriveImgUrl(imageUrl) : "";
@@ -96,7 +98,7 @@ export default function BucketEntrySheet({
       lifeArea,
       imageUrl:         toDriveImgUrl(imageUrl.trim()),
       targetDate:       targetDate.trim(),
-      status:           currentStatus,
+      status,
       createdAt:        editEntry?.createdAt ?? Date.now(),
       achievedAt:       editEntry?.achievedAt,
       memoryPhotoUrl:   editEntry?.memoryPhotoUrl,
@@ -198,25 +200,24 @@ export default function BucketEntrySheet({
             />
           </div>
 
-          {/* Divider */}
-          <div style={{ borderTop: "1px solid #F0EBE3", marginBottom: "18px",
-            display: "flex", alignItems: "center", gap: "8px", paddingTop: "2px" }}>
-            <span style={{ fontSize: "9px", fontWeight: 700, color: "#C4B8AC",
-              textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
-              Planning Details
-            </span>
-            <div style={{ flex: 1, height: 1, backgroundColor: "#F0EBE3" }} />
-          </div>
-
-          {/* Target date */}
-          <div style={{ marginBottom: "18px" }}>
-            <label style={lbl}>Tentative Target Date <span style={{ fontSize: "10px", fontWeight: 400, color: "#A8A29E" }}>(optional)</span></label>
-            <CalendarPicker value={targetDate} onChange={setTargetDate} onClear={() => setTargetDate("")} accentColor="#F97316" />
-            {targetDateError && (
-              <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600,
-                marginTop: "5px", marginLeft: "2px" }}>
-                {targetDateError}
-              </p>
+          {/* Status + Target date row */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "18px", alignItems: "flex-start" }}>
+            {/* Status (edit only) */}
+            {editEntry && (
+              <div style={{ width: "140px", flexShrink: 0 }}>
+                <label style={lbl}>Status</label>
+                <StatusDropdown value={status} onChange={setStatus} />
+              </div>
+            )}
+            {/* Target date */}
+            <div style={{ flex: 1 }}>
+              <label style={lbl}>Tentative Target Date <span style={{ fontSize: "10px", fontWeight: 400, color: "#A8A29E" }}>(optional)</span></label>
+              <CalendarPicker value={targetDate} onChange={setTargetDate} onClear={() => setTargetDate("")} accentColor="#F97316" />
+              {targetDateError && (
+                <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600,
+                  marginTop: "5px", marginLeft: "2px" }}>
+                  {targetDateError}
+                </p>
             )}
             {!targetDateError && targetDate && (
               <p style={{ fontSize: "12px", color: "#F97316", fontWeight: 600,
@@ -224,6 +225,7 @@ export default function BucketEntrySheet({
                 {formatTargetDate(targetDate)}
               </p>
             )}
+            </div>
           </div>
 
           {/* Vision Image */}
@@ -282,10 +284,10 @@ export default function BucketEntrySheet({
             <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
               <Sparkles size={13} color="#EA580C" />
               <div>
-                <p style={{ fontSize: "12px", fontWeight: 600, color: "#78716C", margin: 0 }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", margin: 0 }}>
                   AI Vision Image Prompt
                 </p>
-                <p style={{ fontSize: "10px", color: "#A8A29E", margin: 0 }}>
+                <p style={{ fontSize: "10px", color: "#57534E", margin: 0 }}>
                   Copy prompt → use in Midjourney, DALL·E, Ideogram
                 </p>
               </div>
@@ -378,3 +380,69 @@ const iconBtn: React.CSSProperties = {
   backgroundColor: "#FAFAFA", display: "flex", alignItems: "center",
   justifyContent: "center", cursor: "pointer",
 };
+
+function StatusDropdown({ value, onChange }: { value: BucketStatus; onChange: (s: BucketStatus) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const meta = COLUMN_META[value];
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: "100%", padding: "9px 30px 9px 12px", borderRadius: "10px",
+          border: `1.5px solid ${meta.accent}`, backgroundColor: "#FFFFFF",
+          fontSize: "12px", fontWeight: 700, color: "#1C1917",
+          cursor: "pointer", outline: "none", textAlign: "left",
+          display: "flex", alignItems: "center", gap: "8px", fontFamily: "inherit",
+        }}
+      >
+        <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: meta.accent, flexShrink: 0 }} />
+        {meta.label}
+        <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)" }}>
+          <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="#78716C" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </span>
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          backgroundColor: "#FFFFFF", borderRadius: "10px",
+          border: "1.5px solid #E8DDD0", boxShadow: "0 8px 24px rgba(28,25,23,0.12)",
+          zIndex: 100, overflow: "hidden",
+        }}>
+          {(["dreaming", "planning", "achieved"] as BucketStatus[]).map(s => {
+            const m = COLUMN_META[s];
+            const selected = value === s;
+            return (
+              <button
+                key={s}
+                onClick={() => { onChange(s); setOpen(false); }}
+                style={{
+                  width: "100%", padding: "9px 12px", border: "none",
+                  backgroundColor: selected ? m.bg : "#FFFFFF",
+                  display: "flex", alignItems: "center", gap: "8px",
+                  fontSize: "12px", fontWeight: selected ? 700 : 500,
+                  color: "#1C1917", cursor: "pointer", textAlign: "left",
+                  fontFamily: "inherit",
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: m.accent, flexShrink: 0 }} />
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, Pencil, Calendar, GripVertical, ArrowLeft } from "lucide-react";
+import { Plus, Calendar, GripVertical } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import BucketEntrySheet, { toDriveImgUrl } from "@/components/bucket/BucketEntrySheet";
 import AchievedTransition from "@/components/bucket/AchievedTransition";
@@ -288,12 +288,12 @@ export default function BucketListPage() {
                     title={status === "achieved" ? "Add new dream" : `Add to ${meta.label}`}
                     style={{
                       width: 26, height: 26, borderRadius: 7,
-                      border: `1px solid ${meta.border}`,
-                      backgroundColor: "#FFFFFF",
+                      border: "none",
+                      backgroundColor: meta.accent,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      cursor: "pointer", color: meta.accent,
+                      cursor: "pointer",
                     }}>
-                    <Plus size={13} />
+                    <Plus size={13} color="#FFFFFF" />
                   </button>
                 </div>
                 <p style={{ fontSize: "10px", color: "#78716C", margin: "4px 0 0", paddingLeft: "16px" }}>
@@ -366,7 +366,6 @@ export default function BucketListPage() {
                           if (entry.status === "dreaming") updateBucketEntry({ ...entry, status: "planning" });
                           else setAchievingEntry(entry);
                         }}
-                        onMoveBack={() => updateBucketEntry({ ...entry, status: "dreaming" })}
                       />
                       {isDropTarget && dropTarget!.position === "below" && (
                         <div style={{ position: "absolute", bottom: -6, left: 0, right: 0,
@@ -408,11 +407,11 @@ export default function BucketListPage() {
                 style={{
                   display: "flex", alignItems: "center", gap: "4px",
                   padding: "5px 12px", borderRadius: "8px", flexShrink: 0,
-                  border: `1.5px solid ${meta.accent}40`, backgroundColor: "#FFFFFF",
-                  fontSize: "11px", fontWeight: 700, color: meta.accent, cursor: "pointer",
+                  border: "none", backgroundColor: meta.accent,
+                  fontSize: "11px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
                   whiteSpace: "nowrap",
                 }}>
-                <Plus size={11} />
+                <Plus size={11} color="#FFFFFF" />
                 {status === "achieved" ? "New Dream" : `Add to ${meta.label}`}
               </button>
             </div>
@@ -517,10 +516,9 @@ interface CardProps {
   onDragStart:   () => void;
   onDragEnd:     () => void;
   onMoveForward: () => void;
-  onMoveBack:    () => void;
 }
 
-function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveForward, onMoveBack }: CardProps) {
+function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveForward }: CardProps) {
   const meta     = COLUMN_META[entry.status];
   const areaMeta = AREA_META[entry.lifeArea] ?? AREA_META.personal;
 
@@ -567,7 +565,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
           <span style={{
             fontSize: "9px", fontWeight: 700, letterSpacing: "0.06em",
             textTransform: "uppercase", color: areaMeta.color,
-            backgroundColor: "#FFFFFF", border: `1px solid ${areaMeta.color}40`,
+            backgroundColor: areaMeta.bg, border: `1px solid ${areaMeta.color}`,
             padding: "2px 7px", borderRadius: "20px",
           }}>
             {LIFE_AREA_LABELS[entry.lifeArea]}
@@ -583,7 +581,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
 
         {/* Title */}
         <p style={{
-          fontSize: "13px", fontWeight: 700, color: areaMeta.color,
+          fontSize: "13px", fontWeight: 700, color: "#1C1917",
           lineHeight: 1.35, margin: "0 0 5px",
           display: "-webkit-box", WebkitLineClamp: 2,
           WebkitBoxOrient: "vertical" as const, overflow: "hidden",
@@ -619,29 +617,6 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
           display: "flex", alignItems: "center", justifyContent: "space-between",
           paddingTop: "8px", borderTop: `1px solid ${areaMeta.color}20`,
         }}>
-          <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{
-              ...actionBtn,
-              border: `1px solid ${areaMeta.color}40`,
-              backgroundColor: "#FFFFFF",
-            }}>
-              <Pencil size={11} color={areaMeta.color} />
-            </button>
-            {entry.status === "planning" && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onMoveBack(); }}
-                title="Move back to Dreaming"
-                style={{
-                  ...actionBtn,
-                  border: `1px solid ${areaMeta.color}40`,
-                  backgroundColor: "#FFFFFF",
-                }}
-              >
-                <ArrowLeft size={11} color={areaMeta.color} />
-              </button>
-            )}
-          </div>
-
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {entry.status !== "achieved" && (
               <button
