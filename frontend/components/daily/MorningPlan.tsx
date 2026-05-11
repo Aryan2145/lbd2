@@ -10,27 +10,6 @@ import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
 import { Q_META } from "@/components/tasks/TaskCard";
 
-const DAILY_QUOTES = [
-  { text: "Do the hard thing first. The rest of the day gets easier.", author: "Brian Tracy" },
-  { text: "Focus on being productive instead of busy.", author: "Tim Ferriss" },
-  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
-  { text: "Energy flows where attention goes.", author: "Tony Robbins" },
-  { text: "One day at a time. One task at a time. One moment at a time.", author: "" },
-  { text: "Clarity comes from action, not from thought.", author: "" },
-  { text: "Small steps forward are still steps forward.", author: "" },
-  { text: "Your habits today are building your identity of tomorrow.", author: "James Clear" },
-  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
-  { text: "What you do today can improve all your tomorrows.", author: "Ralph Marston" },
-  { text: "It's not about having time. It's about making time.", author: "" },
-  { text: "Don't count the days, make the days count.", author: "Muhammad Ali" },
-  { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
-  { text: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
-];
-
-function getDailyQuote(): { text: string; author: string } {
-  const doy = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-  return DAILY_QUOTES[doy % DAILY_QUOTES.length];
-}
 
 function toMins(t: string): number {
   const [h, m] = t.split(":").map(Number);
@@ -160,7 +139,6 @@ export default function MorningPlan({
   const [newTaskTitle,  setNewTaskTitle]  = useState("");
   const [newTaskQuad,   setNewTaskQuad]   = useState<EisenhowerQ>("Q2");
 
-  const quote    = getDailyQuote();
   const groupMap = Object.fromEntries(eventGroups.map((g) => [g.id, g]));
 
   // ── Event save/edit ────────────────────────────────────────────────────────
@@ -283,137 +261,44 @@ export default function MorningPlan({
   return (
     <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
-      {/* ── Left context panel (desktop only) ── */}
-      <div className="hidden lg:flex" style={{
-        width: 252, flexShrink: 0, overflowY: "auto",
-        borderRight: "1px solid #EDE5D8", backgroundColor: "#FFFFFF",
-        padding: "20px 16px", flexDirection: "column", gap: "20px",
-      }}>
-
-        {weekPlan && weekPlan.outcomes.length > 0 && (
-          <section>
-            <p style={sectionTitle}>This Week&apos;s Outcomes</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "8px" }}>
-              {weekPlan.outcomes.map((pri, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "7px" }}>
-                  <span style={{
-                    width: 16, height: 16, borderRadius: "50%", flexShrink: 0, marginTop: 1,
-                    backgroundColor: "#FFF7ED", border: "1.5px solid #FED7AA",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "8px", fontWeight: 700, color: "#F97316",
-                  }}>
-                    {i + 1}
-                  </span>
-                  <p style={{ fontSize: "11px", color: "#1C1917", lineHeight: 1.4, margin: 0 }}>{pri}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section>
-          <div style={{
-            padding: "14px", borderRadius: "12px",
-            background: "linear-gradient(135deg, #FFF7ED, #FEF3C7)",
-            border: "1px solid #FED7AA",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px" }}>
-              <span>💡</span>
-              <span style={{ fontSize: "10px", fontWeight: 700, color: "#C2410C",
-                textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                Thought for the day
-              </span>
-            </div>
-            <p style={{ fontSize: "12px", color: "#78350F", lineHeight: 1.5, margin: 0, fontStyle: "italic" }}>
-              &ldquo;{quote.text}&rdquo;
-            </p>
-            {quote.author && (
-              <p style={{ fontSize: "10px", color: "#92400E", margin: "6px 0 0", fontWeight: 600 }}>
-                — {quote.author}
-              </p>
-            )}
-          </div>
-        </section>
-
-        {weekPlan && weekPlan.outcomes.length > 0 && onUpdateWeekPlan && (
-          <section>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <p style={sectionTitle}>This Week&apos;s Outcomes</p>
-              <span style={{ fontSize: "9px", fontWeight: 600, color: "#A8A29E" }}>
-                {weekPlan.doneOutcomes.length}/{weekPlan.outcomes.length}
-              </span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-              {weekPlan.outcomes.map((outcome, i) => {
-                const done = weekPlan.doneOutcomes.includes(outcome);
-                return (
-                  <div
-                    key={i}
-                    onClick={() => {
-                      const next = done
-                        ? weekPlan.doneOutcomes.filter((o) => o !== outcome)
-                        : [...weekPlan.doneOutcomes, outcome];
-                      onUpdateWeekPlan({ ...weekPlan, doneOutcomes: next });
-                    }}
-                    style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer" }}
-                  >
-                    <div style={{
-                      width: 15, height: 15, borderRadius: "4px", flexShrink: 0, marginTop: "1px",
-                      border: `1.5px solid ${done ? "#F97316" : "#C8BFB5"}`,
-                      backgroundColor: done ? "#F97316" : "#FFFFFF",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      transition: "background-color 0.15s, border-color 0.15s",
-                    }}>
-                      {done && <Check size={9} color="#FFFFFF" strokeWidth={3} />}
-                    </div>
-                    <p style={{
-                      fontSize: "13px", lineHeight: 1.4, margin: 0,
-                      color: done ? "#A16207" : "#1C1917",
-                      textDecoration: done ? "line-through" : "none",
-                      opacity: done ? 0.65 : 1,
-                    }}>
-                      {outcome}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-      </div>
-
       {/* ── Main planning panel ── */}
       <div className="flex-1 overflow-y-auto lg:overflow-hidden p-4 lg:p-5 flex">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full lg:flex-1 lg:min-h-0 lg:[grid-template-rows:1fr]">
 
           {/* ── Left: Today's Schedule ── */}
           <div className="min-h-52 lg:min-h-0" style={boxStyle}>
-            <div style={boxHeader}>
+            <div style={{ ...boxHeader, backgroundColor: "#FED7AA" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <p style={sectionTitle}>Today&apos;s Schedule</p>
-                <span style={{ fontSize: "10px", color: "#78716C", fontWeight: 500 }}>
+                <p style={{ ...sectionTitle, color: "#92400E" }}>Today&apos;s Schedule</p>
+                <span style={{ fontSize: "10px", color: "#92400E", fontWeight: 600 }}>
                   {todayEvents.length} block{todayEvents.length !== 1 ? "s" : ""}
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <button
-                  onClick={() => { setShowAddEvent((v) => !v); setEditingEventId(null); }}
-                  style={iconBtn} title="Add event"
-                >
-                  <Plus size={13} color="#F97316" />
-                </button>
-                <div style={{ display: "flex", borderRadius: "7px", border: "1.5px solid #E8DDD0", overflow: "hidden" }}>
+                <div style={{ display: "flex", borderRadius: "7px", border: "1.5px solid #FDBA74", overflow: "hidden" }}>
                   {([["time", "By Time"], ["group", "By Group"]] as const).map(([v, label]) => (
                     <button key={v} onClick={() => setScheduleView(v)} style={{
                       padding: "3px 9px", border: "none",
-                      backgroundColor: scheduleView === v ? "#F97316" : "#FFFFFF",
-                      color: scheduleView === v ? "#FFFFFF" : "#78716C",
+                      backgroundColor: scheduleView === v ? "#F97316" : "transparent",
+                      color: scheduleView === v ? "#FFFFFF" : "#92400E",
                       fontSize: "10px", fontWeight: 600, cursor: "pointer",
                     }}>
                       {label}
                     </button>
                   ))}
                 </div>
+                <button
+                  onClick={() => { setShowAddEvent((v) => !v); setEditingEventId(null); }}
+                  title="Add event"
+                  style={{
+                    width: 26, height: 26, borderRadius: "7px", border: "none",
+                    background: "linear-gradient(135deg, #F97316, #EA580C)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", flexShrink: 0, padding: 0,
+                  }}
+                >
+                  <Plus size={13} color="#FFFFFF" />
+                </button>
               </div>
             </div>
             <div style={boxContent}>
@@ -546,9 +431,9 @@ export default function MorningPlan({
                       <div key={ev.id} style={{
                         display: "flex", alignItems: "center", gap: "8px",
                         padding: "7px 10px", borderRadius: "9px",
-                        backgroundColor: color + "10", borderLeft: `3px solid ${color}`,
+                        backgroundColor: color + "22", borderLeft: `3px solid ${color}`,
                       }}>
-                        <span style={{ fontSize: "10px", fontWeight: 700, color, minWidth: 72, flexShrink: 0 }}>
+                        <span style={{ fontSize: "10px", fontWeight: 700, color: "#44403C", minWidth: 72, flexShrink: 0 }}>
                           {ev.startTime}–{ev.endTime}
                         </span>
                         <span style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", flex: 1,
@@ -556,16 +441,17 @@ export default function MorningPlan({
                           {ev.title}
                         </span>
                         {g && g.name !== "General" && (
-                          <span style={{ fontSize: "9px", fontWeight: 600, color, whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: "9px", fontWeight: 700, color: "#FFFFFF",
+                            backgroundColor: color, padding: "1px 6px", borderRadius: "4px", whiteSpace: "nowrap" }}>
                             {g.name}
                           </span>
                         )}
                         <button
                           onClick={() => editingEventId === ev.id ? cancelEditEvent() : startEditEvent(ev)}
-                          style={{ ...ghostBtn, color: "#A8A29E" }}
+                          style={{ ...ghostBtn }}
                           title="Edit event"
                         >
-                          <Pencil size={10} color={editingEventId === ev.id ? "#6366F1" : "#C4B5A8"} />
+                          <Pencil size={10} color={editingEventId === ev.id ? "#F97316" : "#44403C"} />
                         </button>
                       </div>
                     );
@@ -585,13 +471,14 @@ export default function MorningPlan({
                       {events.map((ev) => (
                         <div key={ev.id} style={{
                           display: "flex", gap: "8px", padding: "5px 10px",
-                          borderRadius: "8px", backgroundColor: g.color + "10", marginBottom: "3px",
+                          borderRadius: "8px", backgroundColor: g.color + "22", marginBottom: "3px",
+                          borderLeft: `3px solid ${g.color}`,
                           alignItems: "center",
                         }}>
                           <span style={{ fontSize: "10px", fontWeight: 700, color: g.color, minWidth: 72, flexShrink: 0 }}>
                             {ev.startTime}–{ev.endTime}
                           </span>
-                          <span style={{ fontSize: "11px", fontWeight: 600, color: "#1C1917", flex: 1,
+                          <span style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", flex: 1,
                             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {ev.title}
                           </span>
@@ -599,7 +486,7 @@ export default function MorningPlan({
                             onClick={() => editingEventId === ev.id ? cancelEditEvent() : startEditEvent(ev)}
                             style={ghostBtn}
                           >
-                            <Pencil size={10} color={editingEventId === ev.id ? "#6366F1" : "#C4B5A8"} />
+                            <Pencil size={10} color={editingEventId === ev.id ? "#F97316" : "#44403C"} />
                           </button>
                         </div>
                       ))}
@@ -611,15 +498,15 @@ export default function MorningPlan({
           </div>
 
           {/* ── Right: Tasks ── */}
-          <div className="min-h-52 lg:min-h-0" style={boxStyle}>
-            <div style={boxHeader}>
+          <div className="min-h-52 lg:min-h-0" style={boxStyleTasks}>
+            <div style={{ ...boxHeader, backgroundColor: "#BAE6FD" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <p style={sectionTitle}>Tasks</p>
+                <p style={{ ...sectionTitle, color: "#075985" }}>Tasks</p>
                 <div style={{ display: "flex", gap: "4px" }}>
                   {([
-                    ["overdue", "Overdue",  overdueTasks.length,  "#DC2626", "#FEF2F2", "#FECACA"],
-                    ["today",   "Due Today", todayTasks.length,   "#F97316", "#FFF7ED", "#FED7AA"],
-                    ["soon",    "Due Soon",  upcomingTasks.length, "#78716C", "#F5F5F4", "#E7E5E4"],
+                    ["overdue", "Overdue",  overdueTasks.length,  "#DC2626", "#FEF2F2"],
+                    ["today",   "Due Today", todayTasks.length,   "#F97316", "#FFF7ED"],
+                    ["soon",    "Due Soon",  upcomingTasks.length, "#44403C", "#F5F5F4"],
                   ] as const).map(([key, label, count, color, bg]) => (
                     <button
                       key={key}
@@ -627,18 +514,18 @@ export default function MorningPlan({
                       style={{
                         display: "flex", alignItems: "center", gap: "4px",
                         padding: "3px 8px", borderRadius: "20px", cursor: "pointer",
-                        border: `1px solid ${taskFilter === key ? color : "#E8DDD0"}`,
+                        border: `1px solid ${taskFilter === key ? color : "#7DD3FC"}`,
                         backgroundColor: taskFilter === key ? bg : "transparent",
                         fontSize: "10px", fontWeight: 600,
-                        color: taskFilter === key ? color : "#57534E",
+                        color: taskFilter === key ? color : "#075985",
                       }}
                     >
                       {label}
                       {count > 0 && (
                         <span style={{
                           minWidth: 14, height: 14, borderRadius: "7px", padding: "0 3px",
-                          backgroundColor: taskFilter === key ? color : "#E8DDD0",
-                          color: taskFilter === key ? "#FFFFFF" : "#78716C",
+                          backgroundColor: taskFilter === key ? color : "#0369A1",
+                          color: "#FFFFFF",
                           fontSize: "9px", fontWeight: 700,
                           display: "inline-flex", alignItems: "center", justifyContent: "center",
                         }}>
@@ -755,7 +642,7 @@ function TaskRow({
 
       <span style={{
         flex: 1, fontSize: "12px", fontWeight: 600,
-        color: done ? "#78716C" : m.color,
+        color: done ? "#78716C" : "#1C1917",
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         textDecoration: done ? "line-through" : "none",
       }}>
@@ -780,8 +667,18 @@ const sectionTitle: React.CSSProperties = {
 };
 
 const boxStyle: React.CSSProperties = {
-  backgroundColor: "#FFFFFF",
-  border: "1px solid #E8DDD0",
+  backgroundColor: "#FFF7ED",
+  border: "1.5px solid #FED7AA",
+  borderRadius: "16px",
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+  minHeight: 0,
+};
+
+const boxStyleTasks: React.CSSProperties = {
+  backgroundColor: "#F0F9FF",
+  border: "1.5px solid #BAE6FD",
   borderRadius: "16px",
   display: "flex",
   flexDirection: "column",
@@ -791,7 +688,7 @@ const boxStyle: React.CSSProperties = {
 
 const boxHeader: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "space-between",
-  padding: "11px 14px", borderBottom: "1px solid #F0EAE3", flexShrink: 0,
+  padding: "11px 14px", borderBottom: "1px solid rgba(0,0,0,0.07)", flexShrink: 0,
 };
 
 const boxContent: React.CSSProperties = {

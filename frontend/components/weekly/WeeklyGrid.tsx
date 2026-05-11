@@ -226,24 +226,23 @@ export default function WeeklyGrid({
                       style={{
                         position: "absolute", top, height,
                         left: 3, right: 3,
-                        backgroundColor: color + "1A",
+                        backgroundColor: color + "22",
                         borderLeft: `3px solid ${color}`,
-                        borderRadius: "0 6px 6px 0",
+                        borderRadius: "6px",
                         padding: short ? "2px 5px" : "5px 7px",
                         overflow: "hidden", cursor: "pointer", zIndex: 5,
                         boxSizing: "border-box",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                       }}
                     >
                       <p style={{
-                        fontSize: short ? "9px" : "11px", fontWeight: 700,
-                        color, margin: 0, lineHeight: 1.2,
+                        fontSize: short ? "9px" : "11px", fontWeight: 500,
+                        color: "#1C1917", margin: 0, lineHeight: 1.2,
                         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                       }}>
                         {ev.title}
                       </p>
                       {!short && (
-                        <p style={{ fontSize: "9px", color, fontWeight: 600, margin: "1px 0 0", lineHeight: 1 }}>
+                        <p style={{ fontSize: "9px", color: "#78716C", fontWeight: 500, margin: "1px 0 0", lineHeight: 1 }}>
                           {ev.startTime} – {ev.endTime}
                         </p>
                       )}

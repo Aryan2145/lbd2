@@ -333,7 +333,7 @@ export default function ValuesPage() {
   }
 
   return (
-    <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
+    <div style={{ minHeight: "100%", backgroundColor: "#FFFFFF" }}>
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="px-page" style={{
@@ -341,7 +341,7 @@ export default function ValuesPage() {
         borderBottom: "1px solid #EDE5D8",
         display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         flexWrap: "wrap", gap: "8px",
-        backgroundColor: "#FAF5EE",
+        backgroundColor: "#FFFFFF",
       }}>
         <div>
           <p style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em",
@@ -369,7 +369,7 @@ export default function ValuesPage() {
       </div>
 
       {/* ── Mobile layout (< lg) ────────────────────────────────────────────── */}
-      <div className="block lg:hidden" style={{ backgroundColor: "#FAF5EE" }}>
+      <div className="block lg:hidden" style={{ backgroundColor: "#FFFFFF" }}>
 
         {/* Tab switcher */}
         <div style={{
@@ -381,7 +381,7 @@ export default function ValuesPage() {
               padding: "9px 20px", borderRadius: "10px 10px 0 0",
               fontSize: "13px", fontWeight: 600,
               border: "none", cursor: "pointer",
-              backgroundColor: mobileTab === tab ? "#FAF5EE" : "transparent",
+              backgroundColor: mobileTab === tab ? "#FFFFFF" : "transparent",
               color: mobileTab === tab ? "#F97316" : "#78716C",
               borderBottom: mobileTab === tab ? "2px solid #F97316" : "2px solid transparent",
               transition: "all 0.15s",

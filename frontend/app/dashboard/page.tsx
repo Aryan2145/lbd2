@@ -89,7 +89,7 @@ function isGoalStale(g: GoalData): boolean {
 
 // ── Style tokens ──────────────────────────────────────────────────────────────
 const cardBase: React.CSSProperties = {
-  backgroundColor: "#FFFCF7",
+  backgroundColor: "#FFFFFF",
   borderRadius: 14,
   border: "1.5px solid #EDE5D8",
   boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
@@ -703,7 +703,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <div style={{ minHeight: "100%", backgroundColor: "#FAF5EE" }}>
+    <div style={{ minHeight: "100%", backgroundColor: "#FFFFFF" }}>
 
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div className="px-page" style={{

@@ -138,6 +138,7 @@ export default function WeeklyPage() {
 
   const thisWeekEvents = weekEvents.filter((e) => e.date >= weekStart && e.date < weekEnd);
   const overdueTasks   = tasks.filter((t) => t.status === "open" && t.deadline < weekStart);
+  const weekTasks      = tasks.filter((t) => t.status === "open" && t.deadline >= weekStart && t.deadline < weekEnd);
 
   function openCreateSheet(date: string, startTime: string) {
     setNewEventDate(date);
@@ -435,7 +436,10 @@ export default function WeeklyPage() {
                       ref={mobileOutcomeInputRef}
                       value={mobileOutcomeDraft}
                       onChange={(e) => setMobileOutcomeDraft(e.target.value)}
-                      onBlur={saveMobileOutcome}
+                      onBlur={(e) => {
+                        // Don't save on blur if the tick button was clicked
+                        if (!(e.relatedTarget as HTMLElement)?.dataset.outcomeConfirm) saveMobileOutcome();
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") saveMobileOutcome();
                         if (e.key === "Escape") { setMobileAddingOutcome(false); setMobileOutcomeDraft(""); }
@@ -448,6 +452,19 @@ export default function WeeklyPage() {
                         boxSizing: "border-box",
                       }}
                     />
+                    <button
+                      data-outcome-confirm="true"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={saveMobileOutcome}
+                      style={{
+                        flexShrink: 0, width: 24, height: 24, border: "none",
+                        backgroundColor: "#16A34A", borderRadius: 6,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer", padding: 0,
+                      }}
+                    >
+                      <Check size={13} color="#FFFFFF" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -795,10 +812,13 @@ export default function WeeklyPage() {
             eventGroups={eventGroups}
             weekEvents={weekEvents}
             overdueTasks={overdueTasks}
+            weekTasks={weekTasks}
             onUpdatePlan={upsertWeekPlan}
             onAddGroup={addEventGroup}
             onUpdateGroup={updateEventGroup}
             onDeleteGroup={deleteEventGroup}
+            onCompleteTask={(id) => closeTask(id, "complete")}
+            onReopenTask={reopenTask}
           />
 
           {weekView === "grid" ? (

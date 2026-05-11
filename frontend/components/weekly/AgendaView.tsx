@@ -34,7 +34,7 @@ export default function AgendaView({
   return (
     <div style={{
       flex: 1, display: "flex", overflow: "hidden",
-      borderLeft: "1px solid #EDE5D8",
+      borderLeft: "1px solid #FED7AA",
     }}>
       {days.map((date, i) => {
         const isToday  = date === today;
@@ -49,24 +49,24 @@ export default function AgendaView({
         return (
           <div key={date} style={{
             flex: 1, display: "flex", flexDirection: "column",
-            borderRight: i < 6 ? "1px solid #EDE5D8" : "none",
+            borderRight: i < 6 ? "1px solid #FED7AA" : "none",
             backgroundColor: isToday ? "#FFFCF8" : "#FFFFFF",
             overflow: "hidden",
           }}>
             {/* Day header */}
             <div style={{
-              padding: "12px 10px 10px", flexShrink: 0,
-              borderBottom: "1px solid #EDE5D8",
-              backgroundColor: isToday ? "#FFF7ED" : isPast ? "#FAFAF9" : "#FFFFFF",
-              position: "relative",
+              padding: "10px 8px 8px", flexShrink: 0,
+              borderBottom: "2px solid #FED7AA",
+              backgroundColor: isToday ? "#9A3412" : "#C2410C",
+              position: "relative", textAlign: "center",
             }}>
               <button
                 onClick={() => onCreateEvent(date, "09:00")}
                 title="Add event"
                 style={{
-                  position: "absolute", top: 8, right: 8,
+                  position: "absolute", top: 8, right: 6,
                   width: 20, height: 20, borderRadius: 5,
-                  border: "none", backgroundColor: "#F97316",
+                  border: "none", backgroundColor: "rgba(0,0,0,0.18)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   cursor: "pointer", padding: 0,
                 }}
@@ -75,23 +75,23 @@ export default function AgendaView({
               </button>
               <p style={{
                 fontSize: "9px", fontWeight: 800, textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: isToday ? "#F97316" : isPast ? "#57534E" : "#57534E",
-                marginBottom: "3px",
+                letterSpacing: "0.07em", color: "#FFFFFF", marginBottom: "3px",
               }}>
                 {DAY_NAMES[i]}
               </p>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{
-                  fontSize: "22px", fontWeight: 700, lineHeight: 1,
-                  color: isToday ? "#F97316" : isPast ? "#57534e" : "#57534e",
-                }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: "50%",
+                margin: "0 auto 2px",
+                backgroundColor: isToday ? "#FFFFFF" : "rgba(0,0,0,0.18)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: isToday ? "#9A3412" : "#FFFFFF" }}>
                   {d.getDate()}
                 </span>
-                <span style={{ fontSize: "11px", color: "#57534e" }}>
-                  {MONTH_ABBR[d.getMonth()]}
-                </span>
               </div>
+              <p style={{ fontSize: "10px", color: "#FFFFFF", margin: 0 }}>
+                {MONTH_ABBR[d.getMonth()]}
+              </p>
             </div>
 
             {/* Content */}
@@ -100,7 +100,7 @@ export default function AgendaView({
               {/* Empty state */}
               {empty && (
                 <p style={{
-                  fontSize: "10px", color: "#C4B5A8", textAlign: "center",
+                  fontSize: "10px", color: "#78716C", textAlign: "center",
                   paddingTop: "20px", fontStyle: "italic",
                 }}>
                   Nothing yet
@@ -117,16 +117,16 @@ export default function AgendaView({
                     onClick={() => onEditEvent(ev)}
                     style={{
                       borderRadius: "7px",
+                      backgroundColor: color + "22",
                       borderLeft: `3px solid ${color}`,
-                      backgroundColor: color + "12",
                       padding: "6px 9px",
                       cursor: "pointer",
                     }}
                   >
-                    <p style={{ fontSize: "9px", fontWeight: 700, color, marginBottom: "2px", lineHeight: 1 }}>
+                    <p style={{ fontSize: "9px", fontWeight: 500, color: "#78716C", marginBottom: "2px", lineHeight: 1 }}>
                       {ev.startTime} – {ev.endTime}
                     </p>
-                    <p style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917", margin: 0, lineHeight: 1.3 }}>
+                    <p style={{ fontSize: "12px", fontWeight: 500, color: "#1C1917", margin: 0, lineHeight: 1.3 }}>
                       {ev.title}
                     </p>
                     {ev.description && (

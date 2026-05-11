@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Clock, Calendar, Layers, AlignLeft, Trash2, AlertTriangle, Lightbulb, Plus, Check } from "lucide-react";
 import type { WeekEvent, EventGroup } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
+import { textOnBg } from "@/lib/colorUtils";
 import ClockTimePicker from "@/components/weekly/ClockTimePicker";
 import { validateDate } from "@/lib/dateValidation";
 import CalendarPicker from "@/components/ui/CalendarPicker";
@@ -179,8 +180,8 @@ export default function EventCreateSheet({
           <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>
             {editEvent ? "Edit Time Block" : "New Time Block"}
           </h2>
-          <button onClick={onClose} style={iconBtn}>
-            <X size={14} color="#57534E" />
+          <button onClick={onClose} style={{ ...iconBtn, backgroundColor: "#EF4444", border: "none" }}>
+            <X size={14} color="#FFFFFF" />
           </button>
         </div>
 
@@ -326,12 +327,12 @@ export default function EventCreateSheet({
                 display: "flex", alignItems: "center", gap: "6px",
                 padding: "5px 12px", borderRadius: "8px",
                 border: `1.5px solid ${groupId === g.id ? g.color : "#E8DDD0"}`,
-                backgroundColor: groupId === g.id ? g.color + "15" : "#FFFFFF",
+                backgroundColor: groupId === g.id ? g.color : "#FFFFFF",
                 fontSize: "12px", fontWeight: 600,
-                color: groupId === g.id ? g.color : "#57534E",
+                color: groupId === g.id ? textOnBg(g.color) : "#57534E",
                 cursor: "pointer",
               }}>
-                <div style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: g.color }} />
+                <div style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: groupId === g.id ? (textOnBg(g.color) === "#FFFFFF" ? "rgba(255,255,255,0.6)" : "rgba(28,25,23,0.25)") : g.color }} />
                 {g.name}
               </button>
             ))}

@@ -76,7 +76,7 @@ export default function DailyPage() {
   const reflectionDone = reflection.highlights.trim().length > 0;
 
   const isNight    = tab === "reflection";
-  const hBg        = isNight ? "#E8E6F5" : "#FAF5EE";
+  const hBg        = isNight ? "#E8E6F5" : "#FFFFFF";
   const hBorder    = isNight ? "#D0CBEC" : "#EDE5D8";
   const labelColor = isNight ? "#6C5DD3" : "#F97316";
   const titleColor = isNight ? "#13111F" : "#1C1917";
@@ -87,7 +87,7 @@ export default function DailyPage() {
 
   return (
     <div style={{
-      height: "100%", backgroundColor: isNight ? "#E8E6F5" : "#FAF5EE",
+      height: "100%", backgroundColor: isNight ? "#E8E6F5" : "#FFFFFF",
       display: "flex", flexDirection: "column", overflow: "hidden",
     }}>
 

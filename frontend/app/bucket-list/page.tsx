@@ -317,7 +317,7 @@ export default function BucketListPage() {
                     backgroundColor: isOver ? meta.bg : "rgba(255,255,255,0.5)",
                     transition: "all 0.15s",
                   }}>
-                    <p style={{ fontSize: "11px", color: "#A8A29E", lineHeight: 1.55, margin: "0 0 10px" }}>
+                    <p style={{ fontSize: "11px", color: "#78716C", lineHeight: 1.55, margin: "0 0 10px" }}>
                       {status === "dreaming" && "Add your first dream — no date required."}
                       {status === "planning" && "Drag a dream here when you're ready to plan it."}
                       {status === "achieved" && "Your legacy archive will appear here."}

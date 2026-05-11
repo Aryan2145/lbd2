@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, X, Check, Pencil, Trash2, AlertTriangle, Archive, ChevronDown, RotateCcw } from "lucide-react";
+import { Plus, X, Check, Pencil, Trash2, AlertTriangle, Archive, ChevronDown, RotateCcw, CalendarDays } from "lucide-react";
 import type { WeekPlan, EventGroup, WeekEvent } from "@/lib/weeklyTypes";
 import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import type { TaskData } from "@/components/tasks/TaskCard";
@@ -12,11 +12,14 @@ interface Props {
   plan:         WeekPlan;
   eventGroups:  EventGroup[];
   weekEvents:   WeekEvent[];
-  overdueTasks: TaskData[];
+  overdueTasks:    TaskData[];
+  weekTasks:       TaskData[];
   onUpdatePlan:    (p: WeekPlan) => void;
   onAddGroup:      (g: EventGroup) => void;
   onUpdateGroup:   (g: EventGroup) => void;
   onDeleteGroup:   (id: string)    => void;
+  onCompleteTask:  (id: string)    => void;
+  onReopenTask:    (id: string)    => void;
 }
 
 const GROUP_COLORS = [
@@ -41,8 +44,9 @@ function weekLabel(weekStart: string): { num: number; range: string } {
 }
 
 export default function WeekSidebar({
-  weekStart, plan, eventGroups, weekEvents, overdueTasks,
+  weekStart, plan, eventGroups, weekEvents, overdueTasks, weekTasks,
   onUpdatePlan, onAddGroup, onUpdateGroup, onDeleteGroup,
+  onCompleteTask, onReopenTask,
 }: Props) {
   const { num, range } = weekLabel(weekStart);
 
@@ -57,8 +61,19 @@ export default function WeekSidebar({
   const [newGroupColor, setNewGroupColor]   = useState(GROUP_COLORS[0]);
   const [editGroupId,   setEditGroupId]     = useState<string | null>(null);
   const [archiveOpen,   setArchiveOpen]     = useState(false);
+  const [completedLocal, setCompletedLocal] = useState<Record<string, TaskData>>({});
 
   useEffect(() => { if (editOutIdx !== null) outInputRef.current?.focus(); }, [editOutIdx]);
+
+  function handleComplete(t: TaskData) {
+    onCompleteTask(t.id);
+    setCompletedLocal(prev => ({ ...prev, [t.id]: t }));
+  }
+
+  function handleUndo(t: TaskData) {
+    onReopenTask(t.id);
+    setCompletedLocal(prev => { const { [t.id]: _, ...rest } = prev; return rest; });
+  }
 
   function saveOutcome() {
     if (editOutIdx === null) return;
@@ -135,7 +150,7 @@ export default function WeekSidebar({
             <p style={emptyHint}>What must be true by end of week?</p>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "160px", overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "160px", overflowY: "auto", overflowX: "hidden" }}>
             {plan.outcomes.map((out, idx) => {
               const done = (plan.doneOutcomes ?? []).includes(out);
               const toggleDone = () => {
@@ -169,18 +184,19 @@ export default function WeekSidebar({
                         if (e.key === "Enter") saveOutcome();
                         if (e.key === "Escape") setEditOutIdx(null);
                       }}
-                      style={{ ...inlineInput, flex: 1 }}
+                      style={{ ...inlineInput, flex: 1, minWidth: 0 }}
                       placeholder="Enter outcome…"
                     />
                   ) : (
                     <p
                       onClick={() => { setEditOutIdx(idx); setOutDraft(out); }}
                       style={{
-                        flex: 1, fontSize: "13px",
+                        flex: 1, minWidth: 0, fontSize: "13px",
                         color: done ? "#15803D" : "#1C1917",
                         textDecoration: done ? "line-through" : "none",
                         cursor: "text", lineHeight: 1.4, margin: 0,
                         padding: "3px 4px", borderRadius: 4,
+                        wordBreak: "break-word",
                       }}
                     >
                       {out || <span style={{ color: "#78716C", fontStyle: "italic" }}>Click to edit…</span>}
@@ -334,7 +350,7 @@ export default function WeekSidebar({
         })()}
 
         {/* Overdue tasks */}
-        {overdueTasks.length > 0 && (
+        {(overdueTasks.length > 0 || Object.values(completedLocal).some(t => t.deadline < weekStart)) && (
           <section>
             <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px" }}>
               <AlertTriangle size={11} color="#DC2626" />
@@ -342,12 +358,36 @@ export default function WeekSidebar({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "3px", maxHeight: "144px", overflowY: "auto" }}>
               {overdueTasks.map((t) => (
-                <div key={t.id} style={{ fontSize: "11px", color: "#DC2626", backgroundColor: "#FEF2F2",
-                  borderRadius: 6, padding: "4px 8px", border: "1px solid #FECACA",
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0 }}>
-                  {t.title}
-                  <span style={{ color: "#78716C", marginLeft: 4 }}>· {fmtDeadline(t.deadline)}</span>
-                </div>
+                <TaskRow key={t.id} task={t} done={false}
+                  bg="#FEF2F2" border="#FECACA" titleColor="#DC2626" dateColor="#57534E"
+                  onTick={() => handleComplete(t)} />
+              ))}
+              {Object.values(completedLocal).filter(t => t.deadline < weekStart).map((t) => (
+                <TaskRow key={t.id} task={t} done
+                  bg="#F0FDF4" border="#BBF7D0" titleColor="#A8A29E" dateColor="#A8A29E"
+                  onTick={() => handleUndo(t)} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Due this week */}
+        {(weekTasks.length > 0 || Object.values(completedLocal).some(t => t.deadline >= weekStart)) && (
+          <section>
+            <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px" }}>
+              <CalendarDays size={11} color="#F97316" />
+              <p style={{ ...sectionTitle, margin: 0 }}>Due This Week ({weekTasks.length})</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "3px", maxHeight: "144px", overflowY: "auto" }}>
+              {[...weekTasks].sort((a, b) => a.deadline.localeCompare(b.deadline)).map((t) => (
+                <TaskRow key={t.id} task={t} done={false}
+                  bg="#FFF7ED" border="#FED7AA" titleColor="#1C1917" dateColor="#C2410C"
+                  onTick={() => handleComplete(t)} />
+              ))}
+              {Object.values(completedLocal).filter(t => t.deadline >= weekStart).sort((a, b) => a.deadline.localeCompare(b.deadline)).map((t) => (
+                <TaskRow key={t.id} task={t} done
+                  bg="#F0FDF4" border="#BBF7D0" titleColor="#A8A29E" dateColor="#A8A29E"
+                  onTick={() => handleUndo(t)} />
               ))}
             </div>
           </section>
@@ -356,6 +396,41 @@ export default function WeekSidebar({
 
 
       </div>
+    </div>
+  );
+}
+
+function TaskRow({ task, done, bg, border, titleColor, dateColor, onTick }: {
+  task: TaskData; done: boolean;
+  bg: string; border: string; titleColor: string; dateColor: string;
+  onTick: () => void;
+}) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: "6px",
+      fontSize: "11px", backgroundColor: bg,
+      borderRadius: 6, padding: "4px 8px", border: `1px solid ${border}`,
+      flexShrink: 0,
+    }}>
+      <button
+        onClick={onTick}
+        style={{
+          width: 14, height: 14, borderRadius: "50%", padding: 0, flexShrink: 0,
+          border: done ? "none" : "1.5px solid #C4B5A8",
+          backgroundColor: done ? "#16A34A" : "#FFFFFF",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer",
+        }}
+      >
+        {done && <Check size={9} color="#FFFFFF" strokeWidth={3} />}
+      </button>
+      <span style={{
+        flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        color: titleColor, textDecoration: done ? "line-through" : "none",
+      }}>
+        {task.title}
+      </span>
+      <span style={{ color: dateColor, flexShrink: 0 }}>· {fmtDeadline(task.deadline)}</span>
     </div>
   );
 }
@@ -375,7 +450,7 @@ const addBtn: React.CSSProperties = {
 const ghostBtn: React.CSSProperties = {
   width: 22, height: 22, borderRadius: 5, border: "none",
   backgroundColor: "transparent", display: "flex", alignItems: "center",
-  justifyContent: "center", cursor: "pointer", padding: 0,
+  justifyContent: "center", cursor: "pointer", padding: 0, flexShrink: 0,
 };
 
 const iconBtn: React.CSSProperties = {

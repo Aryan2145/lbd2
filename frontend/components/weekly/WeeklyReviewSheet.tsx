@@ -1084,12 +1084,12 @@ export default function WeeklyReviewSheet({
 
   return (
     <div style={{
-      height:"100%", backgroundColor:"#FAF5EE",
+      height:"100%", backgroundColor:"#FFFFFF",
       display:"flex", flexDirection:"column", overflow:"hidden",
     }}>
 
       {/* ── Header ── */}
-      <div style={{ borderBottom:"1px solid #EDE5D8", flexShrink:0, backgroundColor:"#FAF5EE" }}>
+      <div style={{ borderBottom:"1px solid #EDE5D8", flexShrink:0, backgroundColor:"#FFFFFF" }}>
 
         {/* Mobile header — two rows */}
         <div className="lg:hidden">
@@ -1124,8 +1124,8 @@ export default function WeeklyReviewSheet({
             <div style={{ display:"flex", borderRadius:"10px", border:"1.5px solid #C8BFB5",
               overflow:"hidden", backgroundColor:"#FFFFFF", width:"100%" }}>
               {([
-                ["success",     "Success Story", "#F97316", "#FFF7ED"],
-                ["reflections", "Reflections",   "#7C3AED", "#FAF5FF"],
+                ["success",     "Success Story", "#F97316", "#FFFFFF"],
+                ["reflections", "Reflections",   "#7C3AED", "#FFFFFF"],
               ] as const).map(([id, label, activeColor, activeBg]) => {
                 const on = tab === id;
                 return (
@@ -1168,8 +1168,8 @@ export default function WeeklyReviewSheet({
           <div style={{ display:"flex", borderRadius:"10px",
             border:"1.5px solid #C8BFB5", overflow:"hidden", backgroundColor:"#FFFFFF" }}>
             {([
-              ["success",     "My Success Story", "#F97316", "#FFF7ED"],
-              ["reflections", "Reflections",      "#7C3AED", "#FAF5FF"],
+              ["success",     "My Success Story", "#F97316", "#FFFFFF"],
+              ["reflections", "Reflections",      "#7C3AED", "#FFFFFF"],
             ] as const).map(([id, label, activeColor, activeBg]) => {
               const on = tab === id;
               return (
