@@ -202,7 +202,7 @@ export default function EventCreateSheet({
         <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
           <div style={{ flex: 1.2 }}>
             <label style={lbl}><Calendar size={9} style={{ display: "inline", marginRight: 3 }} />Date</label>
-            <CalendarPicker value={date} onChange={setDate} accentColor="#6366F1" />
+            <CalendarPicker value={date} onChange={setDate} accentColor="#F97316" bgColor="#FFF7ED" />
             {dateError && (
               <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>
                 {dateError}
@@ -461,11 +461,6 @@ export default function EventCreateSheet({
                 {timeInvalid ? "Fix time order to continue" : "Resolve conflict to continue"}
               </span>
             )}
-            <button onClick={onClose} style={{
-              padding: "8px 20px", borderRadius: "10px",
-              border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
-              fontSize: "12px", fontWeight: 600, color: "#57534E", cursor: "pointer",
-            }}>Cancel</button>
             <button onClick={handleSave} disabled={!canSave} style={{
               padding: "8px 20px", borderRadius: "10px", border: "none",
               background: "linear-gradient(135deg, #F97316, #EA580C)",
@@ -489,7 +484,7 @@ const lbl: React.CSSProperties = {
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "9px 12px", borderRadius: "10px",
-  border: "1.5px solid #C8BFB5", backgroundColor: "#FFFFFF",
+  border: "1.5px solid #F97316", backgroundColor: "#FFF7ED",
   fontSize: "13px", color: "#1C1917", outline: "none", boxSizing: "border-box",
 };
 
