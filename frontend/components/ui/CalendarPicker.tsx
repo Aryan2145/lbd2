@@ -22,7 +22,7 @@ export default function CalendarPicker({
   /** Defaults to MAX_DATE_STR (2100-12-31). */
   max?: string;
   disabled?: boolean;
-  placement?: "up" | "down";
+  placement?: "up" | "down" | "center";
   bgColor?: string;
 }) {
   const today   = todayDateStr();
@@ -117,11 +117,13 @@ export default function CalendarPicker({
 
       {open && (
         <div style={{
-          position: "absolute",
+          position: placement === "center" ? "fixed" : "absolute",
           ...(placement === "up"
-            ? { bottom: "calc(100% + 6px)" }
-            : { top: "calc(100% + 6px)" }),
-          left: 0, zIndex: 200,
+            ? { bottom: "calc(100% + 6px)", left: 0 }
+            : placement === "center"
+            ? { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }
+            : { top: "calc(100% + 6px)", left: 0 }),
+          zIndex: placement === "center" ? 500 : 200,
           backgroundColor: "#FFFFFF", borderRadius: "14px",
           border: "1px solid #E5E9EE",
           boxShadow: "0 8px 32px rgba(28,25,23,0.14)",

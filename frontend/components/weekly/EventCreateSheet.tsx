@@ -202,7 +202,7 @@ export default function EventCreateSheet({
         <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
           <div style={{ flex: 1.2 }}>
             <label style={lbl}><Calendar size={9} style={{ display: "inline", marginRight: 3 }} />Date</label>
-            <CalendarPicker value={date} onChange={setDate} accentColor="#F97316" bgColor="#FFF7ED" />
+            <CalendarPicker value={date} onChange={setDate} accentColor="#F97316" bgColor="#FFF7ED" placement="center" />
             {dateError && (
               <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>
                 {dateError}
