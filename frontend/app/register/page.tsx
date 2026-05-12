@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Carlito } from "next/font/google";
-import { Eye, EyeOff, Lock } from "lucide-react";
+import { Eye, EyeOff, Lock, Shield, User } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { api } from "@/lib/api";
 
@@ -37,12 +37,17 @@ function dailyQuote() {
 
 const PHRASES = [
   "I want to grow as fast as possible",
-  "Wake up at 5am. No excuses.",
-  "Building my dream life, one day at a time",
-  "Every day I'm getting 1% better",
-  "My future self is watching me right now",
-  "Ship the landing page. Close 3 deals.",
-  "Fear is just resistance to growth",
+  "Become the most disciplined version of myself.",
+  "Create financial freedom for my family.",
+  "Build something that outlives me.",
+  "Wake up every day with purpose and clarity.",
+  "Design a life on my own terms.",
+  "Invest in the person I am becoming.",
+  "Leave a legacy worth remembering.",
+];
+const DECO_LINES = [
+  '"Lr5Ws2Yt9@#%&x!z$8fA3kQ92mBp7"',
+  '"t9Nh4@#%x!z$8fA3kQ92mBp7Lr5Ws"',
 ];
 const CRYPTO  = "@#%&x!z$8fA3kQ92mBp7Lr5Ws2Yt9Nh4";
 const randChar = () => CRYPTO[Math.floor(Math.random() * CRYPTO.length)];
@@ -101,86 +106,136 @@ function DarkPanel() {
   }, []);
 
   const bg = [
-    "radial-gradient(ellipse 80% 60% at 20% 100%, rgba(249,115,22,0.22) 0%, transparent 60%)",
-    "radial-gradient(ellipse 60% 80% at 100% 0%, rgba(249,115,22,0.08) 0%, transparent 50%)",
-    "#0a0a0a",
+    "radial-gradient(ellipse 80% 90% at 105% 58%, rgba(249,115,22,0.5) 0%, rgba(200,75,5,0.25) 28%, rgba(249,115,22,0.06) 55%, transparent 70%)",
+    "radial-gradient(ellipse 40% 40% at 88% 52%, rgba(180,60,0,0.55) 0%, transparent 45%)",
+    "#060504",
   ].join(", ");
 
-  const dots = [
-    "radial-gradient(1px 1px at 18% 28%, rgba(249,115,22,0.5), transparent)",
-    "radial-gradient(1px 1px at 72% 62%, rgba(255,255,255,0.25), transparent)",
-    "radial-gradient(1px 1px at 42% 78%, rgba(249,115,22,0.4), transparent)",
-    "radial-gradient(1px 1px at 88% 22%, rgba(255,255,255,0.2), transparent)",
-    "radial-gradient(1px 1px at 12% 68%, rgba(249,115,22,0.35), transparent)",
-    "radial-gradient(1px 1px at 60% 12%, rgba(255,255,255,0.3), transparent)",
+  const particles = [
+    "radial-gradient(1.5px 1.5px at 12% 18%, rgba(255,255,255,0.55), transparent)",
+    "radial-gradient(1px 1px at 78% 12%, rgba(255,255,255,0.4), transparent)",
+    "radial-gradient(1px 1px at 92% 32%, rgba(249,115,22,0.7), transparent)",
+    "radial-gradient(2px 2px at 4% 72%, rgba(255,255,255,0.35), transparent)",
+    "radial-gradient(1px 1px at 55% 82%, rgba(249,115,22,0.5), transparent)",
+    "radial-gradient(1px 1px at 28% 92%, rgba(255,255,255,0.3), transparent)",
+    "radial-gradient(1px 1px at 96% 78%, rgba(249,115,22,0.55), transparent)",
+    "radial-gradient(2px 2px at 48% 4%, rgba(249,115,22,0.45), transparent)",
+    "radial-gradient(1px 1px at 65% 48%, rgba(255,255,255,0.2), transparent)",
   ].join(", ");
 
   return (
     <div
-      className="flex-none w-full h-[48dvh] landscape:max-lg:h-auto landscape:max-lg:flex-1 lg:h-auto lg:flex-1 flex flex-col justify-between p-6 lg:p-7"
+      className="flex-none w-full h-[48dvh] landscape:max-lg:h-auto landscape:max-lg:flex-1 lg:h-auto lg:flex-1 flex flex-col p-6 lg:p-10"
       style={{ background: bg, position: "relative", overflow: "hidden" }}
     >
-      <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: dots }} />
+      {/* Orbital arc ring */}
+      <div aria-hidden style={{
+        position: "absolute", right: "-160px", top: "50%",
+        transform: "translateY(-52%)",
+        width: "540px", height: "540px", borderRadius: "50%",
+        border: "1px solid rgba(249,115,22,0.22)",
+        pointerEvents: "none", zIndex: 1,
+      }} />
+      {/* Inner warm halo */}
+      <div aria-hidden style={{
+        position: "absolute", right: "-80px", top: "50%",
+        transform: "translateY(-50%)",
+        width: "320px", height: "320px", borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(249,115,22,0.1) 0%, transparent 70%)",
+        pointerEvents: "none", zIndex: 1,
+      }} />
+      {/* Particles */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: particles, zIndex: 1 }} />
 
       {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, position: "relative", zIndex: 2 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-orange.png" alt="Life By Design" style={{ width: 34, height: 34, borderRadius: 8, display: "block" }} />
-        <span style={{ ...wordmarkFont, fontSize: 16, fontWeight: 700, color: "#FFFFFF", padding: "5px 11px", backgroundColor: "rgba(0,0,0,0.40)", borderRadius: 8 }}>
+        <img src="/logo-orange.png" alt="Life By Design" style={{ width: 52, height: 52, borderRadius: 12, display: "block" }} />
+        <span style={{ ...wordmarkFont, fontSize: 20, fontWeight: 700, color: "#FFFFFF" }}>
           Life By <span style={{ color: "#fb923c" }}>Design</span>
         </span>
       </div>
 
-      {/* Headline + crypto card */}
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <h2 className="mb-2" style={{ fontSize: 28, fontWeight: 600, color: "white", lineHeight: 1.2, margin: "0 0 8px", letterSpacing: "-0.5px" }}>
-          Your private space<br />to design your life.
-        </h2>
-        <p className="mb-3 lg:mb-[22px]" style={{ fontSize: 13, color: "#C4C4C4", margin: 0, lineHeight: 1.5 }}>
-          Goals, habits, reflections — encrypted before they leave your device.
+      {/* All content grouped at bottom */}
+      <div style={{ marginTop: "auto", position: "relative", zIndex: 2 }}>
+        {/* Main headline */}
+        <div style={{ marginBottom: 14 }}>
+          <p className="text-[26px] lg:text-[34px]" style={{ fontWeight: 400, color: "rgba(255,255,255,0.92)", margin: 0, lineHeight: 1.15, letterSpacing: "-0.3px" }}>
+            A personal growth system<br />built around
+          </p>
+          <p className="text-[26px] lg:text-[34px]" style={{ fontWeight: 700, color: "#fb923c", margin: "2px 0 6px", lineHeight: 1.15, letterSpacing: "-0.3px" }}>
+            who you want to become.
+          </p>
+          <svg width="88" height="10" viewBox="0 0 88 10" fill="none" aria-hidden>
+            <path d="M2 7 Q11 2 20 7 Q29 12 38 7 Q47 2 56 7 Q65 12 74 7 Q80 4 86 6" stroke="#fb923c" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+          </svg>
+        </div>
+
+        {/* Sub-headline */}
+        <p style={{ fontSize: 15, fontWeight: 400, color: "rgba(255,255,255,0.42)", margin: "0 0 18px", lineHeight: 1.5 }}>
+          Your private space to design your life.
         </p>
 
+        {/* Crypto card */}
         <div style={{
-          background: "rgba(255,255,255,0.05)",
-          border: "0.5px solid rgba(249,115,22,0.35)",
-          borderRadius: 12, padding: "16px 18px",
+          background: "#131211",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: 14, padding: "16px 20px",
+          maxWidth: 520, marginBottom: 16,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <div style={{
-              width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-              background: "rgba(249,115,22,0.18)",
+              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              background: "rgba(249,115,22,0.14)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <Lock size={11} color="#fb923c" strokeWidth={2.5} />
+              <Lock size={15} color="#fb923c" strokeWidth={2} />
             </div>
-            <span ref={statusRef} style={{ fontSize: 10, fontWeight: 600, color: "#AAAAAA", letterSpacing: "1.2px", textTransform: "uppercase" }}>
-              Plain text
+            <span ref={statusRef} style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "2px", textTransform: "uppercase" }}>
+              PLAIN TEXT
             </span>
           </div>
           <div ref={phraseRef} style={{
-            fontSize: 15, fontWeight: 500, color: "white",
-            lineHeight: 1.5, minHeight: 46,
-            fontFamily: "'SF Mono', 'Courier New', monospace",
-            letterSpacing: "0.2px", wordBreak: "break-all",
+            fontSize: 13, fontWeight: 400, color: "rgba(255,255,255,0.72)",
+            lineHeight: 1.7, fontFamily: "'SF Mono', 'Fira Code', 'Courier New', monospace",
+            letterSpacing: "0.1px",
           }}>
             {PHRASES[0]}
           </div>
         </div>
-      </div>
 
-      {/* Footer pills */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", position: "relative", zIndex: 2 }}>
-        {["AES-256", "END-TO-END"].map(label => (
-          <span key={label} style={{
-            background: "rgba(249,115,22,0.12)", color: "#fb923c",
-            padding: "4px 10px", borderRadius: 12,
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.5px",
-            border: "0.5px solid rgba(249,115,22,0.25)",
-          }}>
-            {label}
-          </span>
-        ))}
-        <span style={{ fontSize: 11, color: "#C4C4C4" }}>Only you can read this.</span>
+        {/* Badges */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+          {([
+            { label: "PRIVATE BY DESIGN",    Icon: Shield },
+            { label: "END-TO-END",            Icon: Lock   },
+            { label: "ONLY YOU\nCAN READ THIS", Icon: User  },
+          ] as const).map(({ label, Icon }) => (
+            <div key={label} style={{
+              display: "inline-flex", alignItems: "center", gap: 9,
+              padding: "9px 11px", borderRadius: 10,
+              background: "rgba(255,255,255,0.05)",
+              border: "0.5px solid rgba(255,255,255,0.09)",
+            }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+                background: "rgba(249,115,22,0.14)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <Icon size={13} color="#fb923c" strokeWidth={2} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.82)", letterSpacing: "0.06em", lineHeight: 1.35, whiteSpace: "pre-line" }}>
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom tagline */}
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <Shield size={11} color="rgba(255,255,255,0.28)" strokeWidth={1.5} />
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>Your data stays private and secure.</span>
+        </div>
       </div>
     </div>
   );

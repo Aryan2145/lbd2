@@ -57,7 +57,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo.png"
+            src="/logo-orange.png"
             alt=""
             className="w-7 h-7 flex-shrink-0"
             style={{ display: "block" }}
