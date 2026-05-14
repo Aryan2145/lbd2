@@ -572,7 +572,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
                               autoFocus
                             />
                             <div style={{ flex: "1 1 160px" }}>
-                              <CalendarPicker value={mDeadline} onChange={setMDeadline} onClear={() => setMDeadline("")} accentColor={areaColor} max={deadline || maxGoalDateStr()} />
+                              <CalendarPicker value={mDeadline} onChange={setMDeadline} onClear={() => setMDeadline("")} accentColor={areaColor} max={deadline || maxGoalDateStr()} placement="center" />
                             </div>
                           </div>
                           {mDeadlineError && <p style={{ fontSize: "11px", color: "#DC2626", margin: "0 0 10px" }}>{mDeadlineError}</p>}
@@ -774,8 +774,8 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
                 <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: areaColor, margin: "0 0 3px" }}>New Task</p>
                 <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Add Task</h2>
               </div>
-              <button onClick={closeModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <X size={15} color="#78716C" />
+              <button onClick={closeModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#DC2626", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X size={15} color="#FFFFFF" />
               </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
@@ -868,8 +868,8 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
                 <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: areaColor, margin: "0 0 3px" }}>New Habit</p>
                 <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Build a new habit</h2>
               </div>
-              <button onClick={closeHabitModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <X size={15} color="#78716C" />
+              <button onClick={closeHabitModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#DC2626", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X size={15} color="#FFFFFF" />
               </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
@@ -940,18 +940,18 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
                 </div>
               )}
               <div style={{ padding: "14px", borderRadius: "10px", backgroundColor: "#FAFAFA", border: "1px solid #EDE5D8" }}>
-                <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#A8A29E", marginBottom: "10px" }}>Habit Loop (optional)</p>
+                <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6B7280", marginBottom: "10px" }}>Habit Loop (optional)</p>
                 <div style={{ marginBottom: "10px" }}>
                   <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>Cue — what triggers this habit?</p>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ fontSize: "12px", color: "#A8A29E", whiteSpace: "nowrap" }}>After I</span>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" }}>After I</span>
                     <input value={hcCue} onChange={e => setHcCue(e.target.value)} placeholder="wake up / finish lunch…" style={{ ...inSt, flex: 1 }} onFocus={e => { e.currentTarget.style.borderColor = areaColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
                   </div>
                 </div>
                 <div>
                   <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>Reward — how will you celebrate?</p>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ fontSize: "12px", color: "#A8A29E", whiteSpace: "nowrap" }}>I will</span>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" }}>I will</span>
                     <input value={hcReward} onChange={e => setHcReward(e.target.value)} placeholder="enjoy a coffee / feel proud…" style={{ ...inSt, flex: 1 }} onFocus={e => { e.currentTarget.style.borderColor = areaColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
                   </div>
                 </div>
@@ -959,7 +959,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
             </div>
             <div style={{ padding: "14px 24px", borderTop: "1px solid #EDE5D8", display: "flex", gap: "8px", flexShrink: 0 }}>
               <button onClick={closeHabitModal} style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>Cancel</button>
-              <button onClick={handleHabitSave} disabled={!canSave} style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: canSave ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSave ? "#FFFFFF" : "#A8A29E", cursor: canSave ? "pointer" : "default", boxShadow: canSave ? "0 2px 8px rgba(249,115,22,0.3)" : "none" }}>Add Habit</button>
+              <button onClick={handleHabitSave} disabled={!canSave} style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: canSave ? areaColor : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSave ? "#FFFFFF" : "#A8A29E", cursor: canSave ? "pointer" : "default", boxShadow: canSave ? `0 2px 8px ${areaColor}50` : "none" }}>Add Habit</button>
             </div>
           </div>
         </>

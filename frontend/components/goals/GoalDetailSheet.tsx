@@ -54,10 +54,14 @@ function fmtShort(iso: string) {
   return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-type HealthStatus = "Good" | "On Track" | "At Risk" | "Behind";
+type HealthStatus = "Good" | "On Track" | "At Risk" | "Behind" | "New";
+
+const GRACE_DAYS = 14;
 
 function calcGoalHealth(goal: GoalData): HealthStatus {
   const now = Date.now();
+  const ageMs = now - goal.createdAt;
+  if (ageMs < GRACE_DAYS * 86_400_000) return "New";
   const deadline = new Date(goal.deadline + "T00:00:00").getTime();
   const totalDuration = deadline - goal.createdAt;
   if (totalDuration <= 0) return goal.progress >= 100 ? "Good" : "Behind";
@@ -72,6 +76,7 @@ function calcGoalHealth(goal: GoalData): HealthStatus {
 }
 
 const HEALTH_COLOR: Record<HealthStatus, string> = {
+  "New":      "#0891B2",
   "Good":     "#16A34A",
   "On Track": "#2563EB",
   "At Risk":  "#F97316",
@@ -79,6 +84,7 @@ const HEALTH_COLOR: Record<HealthStatus, string> = {
 };
 
 const HEALTH_BG: Record<HealthStatus, string> = {
+  "New":      "#ECFEFF",
   "Good":     "#F0FDF4",
   "On Track": "#EFF6FF",
   "At Risk":  "#FFF7ED",
@@ -86,6 +92,7 @@ const HEALTH_BG: Record<HealthStatus, string> = {
 };
 
 const HEALTH_DESC: Record<HealthStatus, string> = {
+  "New":      "You're just getting started — keep showing up every day!",
   "Good":     "You're ahead of schedule. Keep the momentum going!",
   "On Track": "You're progressing well. Stay consistent.",
   "At Risk":  "You're slightly behind. Push harder this week.",
@@ -962,8 +969,8 @@ export default function GoalDetailSheet({
                   <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: msColor, margin: "0 0 3px" }}>New Milestone</p>
                   <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Create Milestone</h2>
                 </div>
-                <button onClick={closeMsModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#F5F0EB", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <X size={15} color="#78716C" />
+                <button onClick={closeMsModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#DC2626", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={15} color="#FFFFFF" />
                 </button>
               </div>
               {/* Body */}
@@ -974,7 +981,7 @@ export default function GoalDetailSheet({
                 </div>
                 <div style={{ marginBottom: "20px" }}>
                   <label style={lbSt}>Deadline *</label>
-                  <CalendarPicker value={msDeadline} onChange={setMsDeadline} accentColor={msColor} max={maxGoalDateStr()} />
+                  <CalendarPicker value={msDeadline} onChange={setMsDeadline} accentColor={msColor} max={maxGoalDateStr()} placement="center" />
                   {msDeadlineError && <p style={{ fontSize: "11px", color: "#DC2626", margin: "4px 0 0" }}>{msDeadlineError}</p>}
                 </div>
                 <button onClick={saveMilestone} disabled={!msCanSave} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: msCanSave ? `linear-gradient(135deg, ${msColor}, ${msColor}CC)` : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: msCanSave ? "#FFFFFF" : "#A8A29E", cursor: msCanSave ? "pointer" : "default" }}>
@@ -1059,8 +1066,8 @@ export default function GoalDetailSheet({
                   <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: tcColor, margin: "0 0 3px" }}>{taskEditTarget ? "Edit Task" : "New Task"}</p>
                   <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{taskEditTarget ? "Edit Task" : "Add Task"}</h2>
                 </div>
-                <button onClick={closeModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <X size={15} color="#DC2626" />
+                <button onClick={closeModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#DC2626", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={15} color="#FFFFFF" />
                 </button>
               </div>
 
@@ -1109,7 +1116,7 @@ export default function GoalDetailSheet({
                 {/* Deadline */}
                 <div style={{ marginBottom: "8px" }}>
                   <label style={labelSt}>{tcForm.quadrant === "Q1" ? "Deadline — locked to today 🔒" : "Deadline *"}</label>
-                  <CalendarPicker value={tcForm.deadline} onChange={v => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: v })); }} accentColor={tcColor} disabled={tcForm.quadrant === "Q1"} />
+                  <CalendarPicker value={tcForm.deadline} onChange={v => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: v })); }} accentColor={tcColor} disabled={tcForm.quadrant === "Q1"} placement="center" />
                   {tcForm.quadrant === "Q1" && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, margin: "5px 0 0" }}>🔥 It&apos;s urgent — this one&apos;s happening today, no rescheduling!</p>}
                   {tcForm.quadrant !== "Q1" && dateError && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, margin: "5px 0 0" }}>{dateError}</p>}
                   {deadlineTodayNudge && (
@@ -1182,8 +1189,8 @@ export default function GoalDetailSheet({
                   <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: hcColor, margin: "0 0 3px" }}>{habitEditTarget ? "Edit Habit" : "New Habit"}</p>
                   <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{habitEditTarget ? "Edit habit" : "Build a new habit"}</h2>
                 </div>
-                <button onClick={closeHabitModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <X size={15} color="#DC2626" />
+                <button onClick={closeHabitModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#DC2626", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={15} color="#FFFFFF" />
                 </button>
               </div>
 
@@ -1272,18 +1279,18 @@ export default function GoalDetailSheet({
 
                 {/* Habit loop */}
                 <div style={{ padding: "14px", borderRadius: "10px", backgroundColor: "#FAFAFA", border: "1px solid #EDE5D8" }}>
-                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#A8A29E", marginBottom: "10px" }}>Habit Loop (optional)</p>
+                  <p style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6B7280", marginBottom: "10px" }}>Habit Loop (optional)</p>
                   <div style={{ marginBottom: "10px" }}>
                     <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>Cue — what triggers this habit?</p>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span style={{ fontSize: "12px", color: "#A8A29E", whiteSpace: "nowrap" }}>After I</span>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" }}>After I</span>
                       <input value={hcCue} onChange={e => setHcCue(e.target.value)} placeholder="wake up / finish lunch…" style={{ ...inSt, flex: 1 }} onFocus={e => { e.currentTarget.style.borderColor = hcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
                     </div>
                   </div>
                   <div>
                     <p style={{ fontSize: "11px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>Reward — how will you celebrate?</p>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span style={{ fontSize: "12px", color: "#A8A29E", whiteSpace: "nowrap" }}>I will</span>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" }}>I will</span>
                       <input value={hcReward} onChange={e => setHcReward(e.target.value)} placeholder="enjoy a coffee / feel proud…" style={{ ...inSt, flex: 1 }} onFocus={e => { e.currentTarget.style.borderColor = hcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
                     </div>
                   </div>
@@ -1294,7 +1301,7 @@ export default function GoalDetailSheet({
               {/* Footer */}
               <div style={{ padding: "14px 24px", borderTop: "1px solid #EDE5D8", display: "flex", gap: "8px", flexShrink: 0 }}>
                 <button onClick={closeHabitModal} style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "13px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>Cancel</button>
-                <button onClick={handleHabitSave} disabled={!canSave} style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: canSave ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSave ? "#FFFFFF" : "#A8A29E", cursor: canSave ? "pointer" : "default", boxShadow: canSave ? "0 2px 8px rgba(249,115,22,0.3)" : "none" }}>Add Habit</button>
+                <button onClick={handleHabitSave} disabled={!canSave} style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: canSave ? hcColor : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: canSave ? "#FFFFFF" : "#A8A29E", cursor: canSave ? "pointer" : "default", boxShadow: canSave ? `0 2px 8px ${hcColor}50` : "none" }}>Add Habit</button>
               </div>
             </div>
           </>

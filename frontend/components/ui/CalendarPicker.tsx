@@ -34,7 +34,8 @@ export default function CalendarPicker({
   const [viewYear,  setViewYear]  = useState(initial.getFullYear());
   const [viewMonth, setViewMonth] = useState(initial.getMonth());
   const [mode,      setMode]      = useState<"cal" | "year">("cal");
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const wrapRef     = useRef<HTMLDivElement>(null);
+  const wheelCooldown = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -63,6 +64,14 @@ export default function CalendarPicker({
     else setViewMonth(m => m + 1);
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (wheelCooldown.current) return;
+    wheelCooldown.current = true;
+    setTimeout(() => { wheelCooldown.current = false; }, 400);
+    if (e.deltaY > 0) nextMonth(); else prevMonth();
+  };
+
   const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth  = new Date(viewYear, viewMonth + 1, 0).getDate();
   const totalCells   = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
@@ -76,6 +85,10 @@ export default function CalendarPicker({
       disabled: (minDate !== "" && iso < minDate) || (maxDate !== "" && iso > maxDate),
     };
   });
+
+  const todayMonth = new Date().getMonth();
+  const todayYear  = new Date().getFullYear();
+  const isCurrentMonth = viewMonth === todayMonth && viewYear === todayYear;
 
   const baseYear = new Date().getFullYear();
   const maxYear  = Math.min(parseInt(maxDate.slice(0, 4)) || baseYear + 29, baseYear + 29);
@@ -116,7 +129,9 @@ export default function CalendarPicker({
       </div>
 
       {open && (
-        <div style={{
+        <div
+          onWheel={handleWheel}
+          style={{
           position: placement === "center" ? "fixed" : "absolute",
           ...(placement === "up"
             ? { bottom: "calc(100% + 6px)", left: 0 }
@@ -134,27 +149,39 @@ export default function CalendarPicker({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid #F5F0EB" }}>
                 <button
                   onClick={prevMonth}
-                  style={{ width: 30, height: 30, borderRadius: "8px", border: "none", backgroundColor: "#F5F5F4", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#EDE5D8"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F5F5F4"; }}
+                  style={{ width: 30, height: 30, borderRadius: "8px", border: "none", backgroundColor: accentColor, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
                 >
-                  <ChevronLeft size={15} color="#6B7280" />
+                  <ChevronLeft size={15} color="#FFFFFF" />
                 </button>
-                <button
-                  onClick={() => setMode("year")}
-                  style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", background: "none", border: "none", cursor: "pointer", padding: "4px 10px", borderRadius: "7px", transition: "background-color 0.12s" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#FFF7ED"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
-                >
-                  {MONTH_NAMES[viewMonth]} {viewYear}
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <button
+                    onClick={() => setMode("year")}
+                    style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", background: "none", border: "none", cursor: "pointer", padding: "4px 10px", borderRadius: "7px", transition: "background-color 0.12s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#FFF7ED"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
+                  >
+                    {MONTH_NAMES[viewMonth]} {viewYear}
+                  </button>
+                  {!isCurrentMonth && (
+                    <button
+                      onClick={() => { setViewMonth(todayMonth); setViewYear(todayYear); }}
+                      style={{ fontSize: "10px", fontWeight: 700, color: accentColor, backgroundColor: `${accentColor}15`, border: `1px solid ${accentColor}30`, borderRadius: "20px", padding: "2px 8px", cursor: "pointer", whiteSpace: "nowrap" }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = `${accentColor}25`; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = `${accentColor}15`; }}
+                    >
+                      Today
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={nextMonth}
-                  style={{ width: 30, height: 30, borderRadius: "8px", border: "none", backgroundColor: "#F5F5F4", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#EDE5D8"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F5F5F4"; }}
+                  style={{ width: 30, height: 30, borderRadius: "8px", border: "none", backgroundColor: accentColor, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
                 >
-                  <ChevronRight size={15} color="#6B7280" />
+                  <ChevronRight size={15} color="#FFFFFF" />
                 </button>
               </div>
 
