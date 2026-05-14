@@ -117,7 +117,7 @@ export default function WeeklyPage() {
   const handleConnectGcal = async () => {
     try {
       const { url } = await api.get<{ url: string }>("/auth/google/url");
-      window.location.href = url;
+      window.open(url, "_blank");
     } catch {}
   };
 
