@@ -51,13 +51,11 @@ function fmtDate(iso: string) {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSave: (goal: GoalData) => void;
-  onSaveTask?:  (t: TaskData)  => void;
-  onSaveHabit?: (h: HabitData) => void;
+  onSave: (goal: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
   initialData?: GoalData;
 }
 
-export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onSaveHabit, initialData }: Props) {
+export default function GoalCreateSheet({ open, onClose, onSave, initialData }: Props) {
   const isEditing = !!initialData;
   const [step, setStep] = useState(1);
 
@@ -168,14 +166,9 @@ export default function GoalCreateSheet({ open, onClose, onSave, onSaveTask, onS
       milestones,
       createdAt:  initialData?.createdAt  ?? now,
     };
-    onSave(goal);
-    // Flush locally-staged tasks and habits (only new ones added during this session)
-    Object.entries(msTasks).forEach(([, arr]) =>
-      arr.forEach(t => onSaveTask?.({ ...t, linkedGoalId: goalId }))
-    );
-    Object.entries(msHabits).forEach(([, arr]) =>
-      arr.forEach(h => onSaveHabit?.({ ...h, linkedGoalId: goalId }))
-    );
+    const tasksArr  = Object.values(msTasks).flat().map(t => ({ ...t, linkedGoalId: goalId }));
+    const habitsArr = Object.values(msHabits).flat().map(h => ({ ...h, linkedGoalId: goalId }));
+    onSave(goal, tasksArr.length ? tasksArr : undefined, habitsArr.length ? habitsArr : undefined);
     onClose();
   };
 

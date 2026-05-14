@@ -9,7 +9,7 @@ const PUBLIC_PAGES = new Set(["/privacy", "/terms", "/admin"]);
  * Edge-side auth gate. Runs before any page renders, so we can redirect
  * without flashing intermediate spinners or login screens.
  */
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Skip any request for a static file (anything with a `.` in the last

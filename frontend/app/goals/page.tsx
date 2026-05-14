@@ -387,16 +387,17 @@ export default function GoalsPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSave={addGoal}
-        onSaveTask={addTask}
-        onSaveHabit={addHabit}
       />
       <GoalCreateSheet
         open={!!editGoal}
         onClose={() => setEditGoal(null)}
         initialData={editGoal ?? undefined}
-        onSave={(g) => { updateGoal(g); setEditGoal(null); }}
-        onSaveTask={addTask}
-        onSaveHabit={addHabit}
+        onSave={(g, tasks, habits) => {
+          updateGoal(g);
+          tasks?.forEach(addTask);
+          habits?.forEach(addHabit);
+          setEditGoal(null);
+        }}
       />
       <GoalDetailSheet
         goal={detailGoal}

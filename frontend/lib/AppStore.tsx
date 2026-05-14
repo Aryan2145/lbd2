@@ -196,7 +196,7 @@ interface AppState {
   tickets:            SupportTicket[];
   userProfile:        UserProfile;
   // Goal actions
-  addGoal:    (g: GoalData) => void;
+  addGoal:    (g: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
   updateGoal: (g: GoalData) => void;
   deleteGoal: (id: string)  => void;
   // Habit actions
@@ -370,11 +370,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     eveningReflections, weeklyReviews, bucketEntries, tickets,
 
     // Goals
-    addGoal: (g) => {
+    addGoal: (g, tasks?, habits?) => {
       setGoals(prev => [...prev, g]);
+      if (tasks?.length)  setTasks(prev  => [...prev, ...tasks]);
+      if (habits?.length) setHabits(prev => [...prev, ...habits]);
       api.post<any>('/goals', goalToApi(g))
-        .then(created => setGoals(prev => prev.map(x => x.id === g.id ? mapGoal(created) : x)))
-        .catch(() => setGoals(prev => prev.filter(x => x.id !== g.id)));
+        .then(created => {
+          const realId = created.id;
+          setGoals(prev => prev.map(x => x.id === g.id ? mapGoal(created) : x));
+          tasks?.forEach(t => {
+            api.post<any>('/tasks', taskToApi({ ...t, linkedGoalId: realId }))
+              .then(ct => setTasks(prev => prev.map(x => x.id === t.id ? mapTask(ct) : x)))
+              .catch(() => setTasks(prev => prev.filter(x => x.id !== t.id)));
+          });
+          habits?.forEach(h => {
+            api.post<any>('/habits', habitToApi({ ...h, linkedGoalId: realId }))
+              .then(ch => setHabits(prev => prev.map(x => x.id === h.id ? mapHabit(ch) : x)))
+              .catch(() => setHabits(prev => prev.filter(x => x.id !== h.id)));
+          });
+        })
+        .catch(() => {
+          setGoals(prev => prev.filter(x => x.id !== g.id));
+          tasks?.forEach(t => setTasks(prev => prev.filter(x => x.id !== t.id)));
+          habits?.forEach(h => setHabits(prev => prev.filter(x => x.id !== h.id)));
+        });
     },
     updateGoal: (updated) => {
       setGoals(prev => prev.map(g => g.id === updated.id ? updated : g));
