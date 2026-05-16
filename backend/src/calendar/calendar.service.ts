@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
 import { GcalService } from '../gcal/gcal.service';
 
 @Injectable()
 export class CalendarService {
+  private readonly logger = new Logger(CalendarService.name);
+
   constructor(
     private prisma: PrismaService,
     private enc:    EncryptionService,
@@ -82,7 +84,9 @@ export class CalendarService {
           await this.prisma.weekEvent.update({ where: { id: dbEvent.id }, data: { googleEventId } }),
         );
       }
-    } catch { /* Google sync is non-blocking */ }
+    } catch (err: any) {
+      this.logger.error(`GCal createEvent failed for user ${userId}: ${err?.message ?? err}`);
+    }
 
     return this.decryptEvent(dbEvent);
   }
@@ -110,7 +114,9 @@ export class CalendarService {
           description: data.description ?? this.dStr(updated.description),
         });
       }
-    } catch { /* Google sync is non-blocking */ }
+    } catch (err: any) {
+      this.logger.error(`GCal updateEvent failed for user ${userId}: ${err?.message ?? err}`);
+    }
 
     return this.decryptEvent(updated);
   }
@@ -122,7 +128,9 @@ export class CalendarService {
       if (user?.googleRefreshToken && event?.googleEventId) {
         await this.gcal.deleteEvent(user.googleRefreshToken, event.googleEventId);
       }
-    } catch { /* Google sync is non-blocking */ }
+    } catch (err: any) {
+      this.logger.error(`GCal deleteEvent failed for user ${userId}: ${err?.message ?? err}`);
+    }
     return this.prisma.weekEvent.delete({ where: { id } });
   }
 }

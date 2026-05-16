@@ -114,10 +114,32 @@ export default function WeeklyPage() {
     setEditingUrl(false);
   };
 
+  const gcalPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const handleConnectGcal = async () => {
     try {
       const { url } = await api.get<{ url: string }>("/auth/google/url");
       window.open(url, "_blank");
+      // Poll until the backend confirms the token was saved (user completes OAuth in new tab)
+      if (gcalPollRef.current) clearInterval(gcalPollRef.current);
+      let attempts = 0;
+      gcalPollRef.current = setInterval(async () => {
+        attempts++;
+        try {
+          const d = await api.get<{ connected: boolean }>("/auth/google/status");
+          if (d.connected) {
+            setGcalConnected(true);
+            setGcalToast("connected");
+            setTimeout(() => setGcalToast(null), 4000);
+            clearInterval(gcalPollRef.current!);
+            gcalPollRef.current = null;
+          }
+        } catch {}
+        if (attempts >= 30) { // stop after 2.5 min
+          clearInterval(gcalPollRef.current!);
+          gcalPollRef.current = null;
+        }
+      }, 5000);
     } catch {}
   };
 
