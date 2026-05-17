@@ -750,12 +750,12 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
                 readOnly={locked}
                 rows={2}
                 style={{
-                  width: "100%", padding: "10px 12px 44px",
+                  width: "100%", padding: "10px 44px 10px 12px",
                   borderRadius: "10px",
                   border: `1.5px solid ${locked ? accentColor + "90" : accentColor + "55"}`,
                   backgroundColor: locked ? `${accentColor}12` : `${accentColor}08`,
                   fontSize: "12px", lineHeight: 1.6, color: "#1C1917",
-                  outline: "none", resize: "none", overflow: "hidden", caretColor: accentColor,
+                  outline: "none", resize: "none", overflowY: "auto", caretColor: accentColor,
                   fontFamily: "inherit", boxSizing: "border-box",
                   cursor: locked ? "default" : "text",
                   transition: "background-color 0.2s, border-color 0.2s",
@@ -769,7 +769,7 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
                   }}
                   title={locked ? "Edit" : "Save"}
                   style={{
-                    position: "absolute", bottom: 10, right: 10,
+                    position: "absolute", top: 8, right: 10,
                     width: 24, height: 24, borderRadius: "4px",
                     border: `1.5px solid ${locked ? accentColor + "80" : accentColor}`,
                     backgroundColor: locked ? `${accentColor}18` : accentColor,
