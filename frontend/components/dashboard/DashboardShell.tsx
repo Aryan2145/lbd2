@@ -499,20 +499,19 @@ export default function DashboardShell({
             <div className="grid grid-cols-2 gap-3">
 
               {/* Vision card */}
-              <div className="relative rounded-xl overflow-hidden bg-[#1C1917]" style={{ aspectRatio: "4/3" }}>
+              <div className="relative rounded-xl overflow-hidden bg-[#1C1917]">
                 {vision?.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={vision.imageUrl} alt=""
-                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ width: "100%", aspectRatio: "4/3", objectFit: "contain", display: "block" }}
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-[#78716C] text-[11px] font-semibold">
+                  <div style={{ width: "100%", aspectRatio: "4/3", display: "flex", alignItems: "center", justifyContent: "center" }} className="text-[#78716C] text-[11px] font-semibold">
                     No vision image
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                {/* TODO: onClick → open vision full-screen preview */}
                 <button className="absolute top-2 right-2 w-7 h-7 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center transition-colors">
                   <Eye size={13} color="white" />
                 </button>
@@ -527,15 +526,15 @@ export default function DashboardShell({
               </div>
 
               {/* Mission card */}
-              <div className="relative rounded-xl overflow-hidden bg-[#1C1917]" style={{ aspectRatio: "4/3" }}>
+              <div className="relative rounded-xl overflow-hidden bg-[#1C1917]">
                 {mission?.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={mission.imageUrl} alt=""
-                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{ width: "100%", aspectRatio: "4/3", objectFit: "contain", display: "block" }}
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-[#78716C] text-[11px] font-semibold">
+                  <div style={{ width: "100%", aspectRatio: "4/3", display: "flex", alignItems: "center", justifyContent: "center" }} className="text-[#78716C] text-[11px] font-semibold">
                     No mission image
                   </div>
                 )}

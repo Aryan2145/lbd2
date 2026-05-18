@@ -700,7 +700,7 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
 
           {/* Current image (if set) */}
           {currentImageUrl && !urlInput && (
-            <div style={{ borderRadius: "10px", overflow: "hidden", height: 180, marginBottom: "14px" }}>
+            <div style={{ borderRadius: "10px", overflow: "hidden", width: "100%", aspectRatio: "4/3", marginBottom: "14px" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={currentImageUrl} alt="current" referrerPolicy="no-referrer"
                 style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
@@ -711,7 +711,7 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
 
           {/* URL input preview */}
           {urlInput && (
-            <div style={{ borderRadius: "10px", overflow: "hidden", height: 180, marginBottom: "14px" }}>
+            <div style={{ borderRadius: "10px", overflow: "hidden", width: "100%", aspectRatio: "4/3", marginBottom: "14px" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={previewUrl} alt="preview" referrerPolicy="no-referrer"
                 style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}

@@ -225,13 +225,69 @@ function navBtnStyle(side: "left" | "right"): React.CSSProperties {
   };
 }
 
+// ── Rotating quotes ──────────────────────────────────────────────────────────
+const INSPIRATIONAL_QUOTES: { line1: string; line2: string; author?: string }[] = [
+  { line1: "The best time to plant a tree was 20 years ago.", line2: "The second best time is now.", author: "Chinese Proverb" },
+  { line1: "You don't have to be great to start,", line2: "but you have to start to be great.", author: "Zig Ziglar" },
+  { line1: "The secret of getting ahead", line2: "is getting started.", author: "Mark Twain" },
+  { line1: "What you do today", line2: "can improve all your tomorrows.", author: "Ralph Marston" },
+  { line1: "Success is the sum of small efforts,", line2: "repeated day in and day out.", author: "Robert Collier" },
+  { line1: "Your future is created by what you do today,", line2: "not tomorrow.", author: "Robert Kiyosaki" },
+  { line1: "Don't watch the clock;", line2: "do what it does. Keep going.", author: "Sam Levenson" },
+  { line1: "It always seems impossible", line2: "until it is done.", author: "Nelson Mandela" },
+  { line1: "The only way to do great work", line2: "is to love what you do.", author: "Steve Jobs" },
+  { line1: "Believe you can", line2: "and you're halfway there.", author: "Theodore Roosevelt" },
+];
+
+function QuotesCard() {
+  const [idx, setIdx]   = useState(0);
+  const [show, setShow] = useState(true);
+
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setShow(false);
+      window.setTimeout(() => {
+        setIdx(i => (i + 1) % INSPIRATIONAL_QUOTES.length);
+        setShow(true);
+      }, 500);
+    }, 9000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const q = INSPIRATIONAL_QUOTES[idx];
+
+  return (
+    <div style={{
+      ...cardBase,
+      flex: 1, minHeight: 0,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      background: "linear-gradient(135deg, #FFFCF7, #FFF7ED)",
+      borderColor: "#F4D9B6",
+      padding: "14px 24px",
+      textAlign: "center",
+      overflow: "hidden",
+    }}>
+      <div style={{ opacity: show ? 1 : 0, transition: "opacity 0.5s ease" }}>
+        <p style={{ fontSize: 22, lineHeight: 1, color: "#E8C99A", margin: "0 0 4px", fontFamily: "Georgia, serif" }}>"</p>
+        <p style={{ fontSize: 12, fontWeight: 600, color: "#57534E", margin: 0, lineHeight: 1.55 }}>{q.line1}</p>
+        <p style={{ fontSize: 12, fontWeight: 600, color: "#57534E", margin: 0, lineHeight: 1.55 }}>{q.line2}</p>
+        {q.author && (
+          <p style={{ fontSize: 10, color: "#A8A29E", margin: "6px 0 0", fontStyle: "italic" }}>— {q.author}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Image rotator (auto-scrolling, cross-fade) ────────────────────────────────
-function ImageRotator({ items, kind, intervalMs = 6000, emptyHref, emptyLabel }: {
-  items:      { imageUrl: string; caption: string }[];
-  kind:       "Vision" | "Dream";
-  intervalMs?: number;
-  emptyHref:  string;
-  emptyLabel: string;
+function ImageRotator({ items, kind, intervalMs = 6000, emptyHref, emptyLabel, aspectRatio = "4/3", objectFit = "contain" }: {
+  items:        { imageUrl: string; caption: string }[];
+  kind:         "Vision" | "Dream";
+  intervalMs?:  number;
+  emptyHref:    string;
+  emptyLabel:   string;
+  aspectRatio?: string;
+  objectFit?:   "contain" | "cover";
 }) {
   const [idx, setIdx]       = useState(0);
   const [paused, setPaused] = useState(false);
@@ -251,7 +307,7 @@ function ImageRotator({ items, kind, intervalMs = 6000, emptyHref, emptyLabel }:
     return (
       <Link href={emptyHref} style={{
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        gap: 6, height: "100%", borderRadius: 12,
+        gap: 6, aspectRatio, borderRadius: 12,
         backgroundColor: "#F5F0EB", border: "1.5px dashed #D8CDB8",
         textDecoration: "none", color: "#57534E",
       }}>
@@ -269,7 +325,7 @@ function ImageRotator({ items, kind, intervalMs = 6000, emptyHref, emptyLabel }:
       onMouseLeave={() => setPaused(false)}
       style={{
         position: "relative", overflow: "hidden",
-        borderRadius: 12, height: "100%",
+        borderRadius: 12, aspectRatio,
         backgroundColor: "#1C1917",
       }}
     >
@@ -281,7 +337,7 @@ function ImageRotator({ items, kind, intervalMs = 6000, emptyHref, emptyLabel }:
           alt=""
           style={{
             position: "absolute", inset: 0,
-            width: "100%", height: "100%", objectFit: "cover",
+            width: "100%", height: "100%", objectFit,
             opacity: i === idx ? 1 : 0,
             transform: i === idx ? "scale(1.04)" : "scale(1.0)",
             transition: "opacity 1.2s ease, transform 6.5s ease",
@@ -724,7 +780,7 @@ export default function DashboardPage() {
 
         {/* TOP ROW: Numbers | Vision+Goals | NorthStar+Tasks */}
         <div
-          className="grid gap-4 lg:[grid-template-columns:230px_minmax(0,1fr)_290px] lg:items-start"
+          className="grid gap-4 lg:[grid-template-columns:240px_500px_minmax(0,1fr)] lg:items-start"
         >
             {/* ── NUMBERS (left) ── */}
             <div ref={numbersRef} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -831,6 +887,8 @@ export default function DashboardPage() {
             {/* ── VISION + GOAL TRACKER (middle) ── */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0, ...colHeightStyle }}>
 
+              <QuotesCard />
+
               {/* Vision panel: vision strip + dreams strip */}
               <div style={{
                 ...cardBase, padding: 12, flexShrink: 0,
@@ -845,24 +903,32 @@ export default function DashboardPage() {
                   </div>
                   <Link href="/vision" style={linkLook}>Open Vision <ChevronRight size={11} /></Link>
                 </div>
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2"
-                  style={{ height: 200 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <ImageRotator
                     items={visionItems}
                     kind="Vision"
                     emptyHref="/vision"
                     emptyLabel="Add a Vision photo →"
+                    aspectRatio="4/3"
                   />
                   <ImageRotator
                     items={dreamItems}
                     kind="Dream"
                     emptyHref="/bucket-list"
                     emptyLabel="Add a Dream →"
+                    aspectRatio="3/1"
+                    objectFit="contain"
                   />
                 </div>
               </div>
 
-              {/* Goal Tracker */}
+            </div>
+
+            {/* ── NORTH STAR + CORE VALUES + TASKS + GOALS (right) ── */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, ...colHeightStyle }}>
+              <NorthStarCard data={northStar} />
+              <CoreValuesCard values={coreValues} />
+              {tasksCard}
               <div ref={goalsCardRef} style={{
                 ...cardBase, padding: 0,
                 display: "flex", flexDirection: "column",
@@ -912,13 +978,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* ── NORTH STAR + CORE VALUES + TASKS (right) ── */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, ...colHeightStyle }}>
-              <NorthStarCard data={northStar} />
-              <CoreValuesCard values={coreValues} />
-              {tasksCard}
             </div>
         </div>
 
