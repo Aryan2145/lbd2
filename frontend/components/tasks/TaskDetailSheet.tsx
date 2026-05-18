@@ -95,7 +95,7 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
               <div style={{ display: "flex", gap: "10px" }}>
                 <div style={{ flex: 1 }}>
                   <label style={lbl}>Deadline</label>
-                  <CalendarPicker value={editDeadline} onChange={setEditDeadline} accentColor="#F97316" />
+                  <CalendarPicker value={editDeadline} onChange={setEditDeadline} accentColor="#F97316" placement="up" />
                   {validateDate(editDeadline, { required: true }) && (
                     <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px" }}>
                       {validateDate(editDeadline, { required: true })}

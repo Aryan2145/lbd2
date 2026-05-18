@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { Q_META, daysUntil, fmtDeadline, type TaskData } from "@/components/tasks/TaskCard";
 
@@ -140,25 +140,37 @@ export default function ScheduleView({ tasks, onComplete, onMiss }: Props) {
 }
 
 function ScheduleRow({ task, onComplete, onMiss }: { task: TaskData; onComplete: (id: string) => void; onMiss: (id: string) => void }) {
-  const m      = Q_META[task.quadrant];
-  const days   = daysUntil(task.deadline);
+  const m       = Q_META[task.quadrant];
+  const days    = daysUntil(task.deadline);
   const overdue = days < 0;
+  const hasDesc = !!task.description?.trim();
 
-  const deadlineLabel = overdue
-    ? `${Math.abs(days)}d overdue`
-    : days === 0 ? "Due today"
-    : days === 1 ? "Tomorrow"
-    : fmtDeadline(task.deadline);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const descRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (descRef.current && !expanded) {
+      setOverflows(descRef.current.scrollWidth > descRef.current.clientWidth);
+    }
+  }, [task.description, expanded]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const collapse = () => setExpanded(false);
+    document.addEventListener("click", collapse);
+    return () => document.removeEventListener("click", collapse);
+  }, [expanded]);
 
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: "10px",
+      display: "flex", alignItems: "flex-start", gap: "10px",
       padding: "10px 12px", borderRadius: "10px",
       backgroundColor: overdue ? "#FEF2F2" : m.bg,
       border: `1px solid ${overdue ? "#FCA5A5" : m.border}`,
     }}>
       {/* Quadrant dot */}
-      <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: m.color, flexShrink: 0 }} />
+      <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: m.color, flexShrink: 0, marginTop: "5px" }} />
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -177,12 +189,33 @@ function ScheduleRow({ task, onComplete, onMiss }: { task: TaskData; onComplete:
             {task.quadrant}
           </span>
         </div>
-        <span style={{
-          fontSize: "10px", fontWeight: 600,
-          color: overdue ? "#DC2626" : "#57534E",
-        }}>
-          {deadlineLabel}
-        </span>
+        {hasDesc && (
+          <div style={{ display: "flex", alignItems: "baseline", gap: "3px", minWidth: 0 }}>
+            <span
+              ref={descRef}
+              style={{
+                fontSize: "10px", color: "#57534E", flex: "1 1 0", minWidth: 0,
+                ...(expanded
+                  ? { whiteSpace: "pre-wrap", wordBreak: "break-word" }
+                  : { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }
+                ),
+              }}
+            >
+              {task.description}
+            </span>
+            {!expanded && overflows && (
+              <span
+                onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+                style={{
+                  fontSize: "10px", fontWeight: 600, color: "#F97316",
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}
+              >
+                ...more
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Actions */}

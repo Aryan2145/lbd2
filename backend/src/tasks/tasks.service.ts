@@ -17,7 +17,7 @@ export class TasksService {
   }
 
   private decryptTask(row: any) {
-    return { ...row, title: this.dStr(row.title) ?? '' };
+    return { ...row, title: this.dStr(row.title) ?? '', description: this.dStr(row.description) ?? '' };
   }
 
   async findAll(userId: string) {
@@ -29,11 +29,12 @@ export class TasksService {
   }
 
   async create(userId: string, data: any) {
-    const { title, deadline, quadrant, status, linkedGoalId, linkedMilestoneId, kind, closedAt, variance } = data;
+    const { title, description, deadline, quadrant, status, linkedGoalId, linkedMilestoneId, kind, closedAt, variance } = data;
     const row = await this.prisma.task.create({
       data: {
         userId,
         title: this.enc.encrypt(title),
+        description: description ? this.enc.encrypt(description) : '',
         deadline,
         quadrant:          Q[quadrant] ?? 'q1',
         status:            status      ?? 'open',
@@ -50,6 +51,7 @@ export class TasksService {
   async update(id: string, data: any) {
     const fields: any = {};
     if (data.title             !== undefined) fields.title             = this.enc.encrypt(data.title);
+    if (data.description       !== undefined) fields.description       = data.description ? this.enc.encrypt(data.description) : '';
     if (data.deadline          !== undefined) fields.deadline          = data.deadline;
     if (data.quadrant          !== undefined) fields.quadrant          = Q[data.quadrant] ?? data.quadrant;
     if (data.status            !== undefined) fields.status            = data.status;

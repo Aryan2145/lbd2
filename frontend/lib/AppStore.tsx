@@ -105,7 +105,7 @@ function habitToApi(h: HabitData) {
 
 function mapTask(t: any): TaskData {
   return {
-    id: t.id, kind: t.kind ?? "one-time", title: t.title, description: "",
+    id: t.id, kind: t.kind ?? "one-time", title: t.title, description: t.description ?? "",
     deadline: t.deadline, quadrant: (Q_FROM_DB[t.quadrant] ?? t.quadrant) as any,
     status: t.status as any,
     linkedGoalId: t.linkedGoalId ?? "",
@@ -118,7 +118,7 @@ function mapTask(t: any): TaskData {
 
 function taskToApi(t: TaskData) {
   return {
-    title: t.title, deadline: t.deadline, quadrant: t.quadrant,
+    title: t.title, description: t.description ?? "", deadline: t.deadline, quadrant: t.quadrant,
     status: t.status, kind: t.kind ?? "one-time",
     linkedGoalId: t.linkedGoalId || null,
     linkedMilestoneId: t.linkedMilestoneId || null,
