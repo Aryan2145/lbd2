@@ -20,6 +20,7 @@ export class UsersService {
     password: string;
     role?: string;
     gender?: string;
+    phone?: string;
   }) {
     const existing = await this.findByEmail(data.email);
     if (existing) throw new ConflictException('Email already in use');

@@ -248,6 +248,8 @@ export default function RegisterPage() {
 
   const [name,        setName]        = useState("");
   const [email,       setEmail]       = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
+  const [phoneNum,    setPhoneNum]    = useState("");
   const [designation, setDesignation] = useState("");
   const [gender,      setGender]      = useState("");
   const [password,    setPassword]    = useState("");
@@ -260,16 +262,18 @@ export default function RegisterPage() {
 
   useEffect(() => { setMaxStep(prev => Math.max(prev, step)); }, [step]);
 
-  const TOTAL_STEPS = 6;
+  const TOTAL_STEPS = 7;
   const quote       = dailyQuote();
 
   function validateStep(s: number): string | null {
     if (s === 1 && name.trim().length < 2)        return "Please enter your full name.";
     if (s === 2 && !/^\S+@\S+\.\S+$/.test(email)) return "Please enter a valid email.";
-    if (s === 3 && designation.trim().length < 2) return "Please enter your designation.";
-    if (s === 4 && !gender)                       return "Please select your gender.";
-    if (s === 5 && password.length < 6)           return "Password must be at least 6 characters.";
-    if (s === 6 && password !== confirmPw)        return "Passwords don't match.";
+    if (s === 3 && !/^\+[0-9]{1,4}$/.test(countryCode.trim()))   return "Enter a valid country code (e.g. +91).";
+    if (s === 3 && !/^[0-9]{7,12}$/.test(phoneNum.trim()))        return "Enter a valid phone number (digits only).";
+    if (s === 4 && designation.trim().length < 2) return "Please enter your designation.";
+    if (s === 5 && !gender)                       return "Please select your gender.";
+    if (s === 6 && password.length < 6)           return "Password must be at least 6 characters.";
+    if (s === 7 && password !== confirmPw)        return "Passwords don't match.";
     return null;
   }
 
@@ -303,6 +307,7 @@ export default function RegisterPage() {
       await api.post("/auth/register", {
         name: name.trim(), email, password,
         designation: designation.trim(), gender,
+        phone: (countryCode.trim() + phoneNum.trim()) || undefined,
       });
       await login(email, password);
       router.replace("/dashboard");
@@ -387,12 +392,36 @@ export default function RegisterPage() {
               )}
               {step === 3 && (
                 <div>
-                  <label style={labelStyle}>Designation</label>
-                  <input key="step3" type="text" value={designation} onChange={e => setDesignation(e.target.value)}
-                    placeholder="e.g. Founder, Designer, Student" style={inputStyle} autoFocus />
+                  <label style={labelStyle}>Phone Number</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      key="step3-cc"
+                      type="tel"
+                      value={countryCode}
+                      onChange={e => setCountryCode(e.target.value)}
+                      placeholder="+91"
+                      style={{ ...inputStyle, width: 72, flexShrink: 0 }}
+                      autoFocus
+                    />
+                    <input
+                      key="step3-num"
+                      type="tel"
+                      value={phoneNum}
+                      onChange={e => setPhoneNum(e.target.value.replace(/\D/g, ""))}
+                      placeholder="9876543210"
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                  </div>
                 </div>
               )}
               {step === 4 && (
+                <div>
+                  <label style={labelStyle}>Designation</label>
+                  <input key="step4" type="text" value={designation} onChange={e => setDesignation(e.target.value)}
+                    placeholder="e.g. Founder, Designer, Student" style={inputStyle} autoFocus />
+                </div>
+              )}
+              {step === 5 && (
                 <div>
                   <label style={labelStyle}>Gender</label>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -415,11 +444,11 @@ export default function RegisterPage() {
                   </div>
                 </div>
               )}
-              {step === 5 && (
+              {step === 6 && (
                 <div>
                   <label style={labelStyle}>Password</label>
                   <div style={{ position: "relative" }}>
-                    <input key="step5" type={showPwd ? "text" : "password"} value={password}
+                    <input key="step6" type={showPwd ? "text" : "password"} value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="At least 6 characters"
                       style={{ ...inputStyle, paddingRight: 44 }} autoFocus />
@@ -431,11 +460,11 @@ export default function RegisterPage() {
                   </div>
                 </div>
               )}
-              {step === 6 && (
+              {step === 7 && (
                 <div>
                   <label style={labelStyle}>Confirm Password</label>
                   <div style={{ position: "relative" }}>
-                    <input key="step6" type={showPwd ? "text" : "password"} value={confirmPw}
+                    <input key="step7" type={showPwd ? "text" : "password"} value={confirmPw}
                       onChange={e => setConfirmPw(e.target.value)}
                       placeholder="Re-enter your password"
                       style={{ ...inputStyle, paddingRight: 44 }} autoFocus />
@@ -497,44 +526,106 @@ export default function RegisterPage() {
 function StepIndicator({ total, current, maxReached, onJump }: {
   total: number; current: number; maxReached: number; onJump: (n: number) => void;
 }) {
+  const containerRef               = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisible] = useState(total);
+  const [viewStart,    setStart]   = useState(0);
+
+  // Compute how many steps fit in the measured container width.
+  useEffect(() => {
+    const DOT = 26, CONNECTOR = 36, ARROW = 36;
+    const compute = () => {
+      const w = containerRef.current?.offsetWidth ?? 360;
+      // Full row without arrows: active(32) + (total-1)*(dot+connector)
+      const fullWidth = 32 + (total - 1) * (DOT + CONNECTOR);
+      if (fullWidth <= w) { setVisible(total); return; }
+      // Need arrows — each takes ~36px
+      const available = w - ARROW * 2;
+      const count = Math.max(2, Math.floor((available + CONNECTOR) / (DOT + CONNECTOR)));
+      setVisible(Math.min(count, total));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [total]);
+
+  // Auto-scroll view window to keep the active step visible.
+  useEffect(() => {
+    setStart(prev => {
+      const idx = current - 1;
+      if (idx < prev) return idx;
+      if (idx >= prev + visibleCount) return idx - visibleCount + 1;
+      return prev;
+    });
+  }, [current, visibleCount]);
+
+  const showLeft  = viewStart > 0;
+  const showRight = viewStart + visibleCount < total;
+  const visible   = Array.from({ length: total }, (_, i) => i + 1).slice(viewStart, viewStart + visibleCount);
+
+  const arrowBtn = (visible: boolean, onClick: () => void, label: string, char: string) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        visibility: visible ? "visible" : "hidden",
+        flexShrink: 0, width: 28, height: 28, borderRadius: "50%",
+        border: "1.5px solid #E5E5E5", background: "#FFFFFF",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 16, color: "#f97316", cursor: "pointer", padding: 0,
+        fontFamily: "inherit", lineHeight: 1,
+      }}
+    >
+      {char}
+    </button>
+  );
+
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-      {Array.from({ length: total }, (_, i) => i + 1).map(n => {
-        const isActive = n === current;
-        const isDone   = n <= maxReached && !isActive;
-        const dotSize  = isActive ? 32 : 26;
-        return (
-          <div key={n} style={{ display: "flex", alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={() => onJump(n)}
-              aria-label={`Go to step ${n}`}
-              aria-current={isActive ? "step" : undefined}
-              style={{
-                width: dotSize, height: dotSize, borderRadius: "50%",
-                padding: 0, cursor: "pointer", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: isActive ? 13 : 12, fontWeight: 800,
-                fontFamily: "inherit", letterSpacing: "-0.02em",
-                background: isActive ? "#f97316" : isDone ? "#FFE4CC" : "#FFFFFF",
-                border: isActive ? "2px solid #FFD7B5" : isDone ? "1.5px solid #FDBA74" : "1.5px solid #E5E5E5",
-                color: isActive ? "#FFFFFF" : isDone ? "#C2410C" : "#A8A29E",
-                boxShadow: isActive ? "0 4px 14px rgba(234,88,12,0.35)" : "none",
-                transition: "all 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
-              }}
-            >
-              {n}
-            </button>
-            {n < total && (
-              <div style={{
-                width: 28, height: 2, borderRadius: 2, margin: "0 4px",
-                backgroundColor: n < maxReached ? "#f97316" : "#E5E5E5",
-                transition: "background-color 0.2s",
-              }} />
-            )}
-          </div>
-        );
-      })}
+    <div ref={containerRef} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+      {arrowBtn(showLeft, () => setStart(v => Math.max(0, v - 1)), "Scroll steps left", "‹")}
+
+      <div style={{ display: "flex", alignItems: "center" }}>
+        {visible.map((n, i) => {
+          const isActive = n === current;
+          const isDone   = n <= maxReached && !isActive;
+          const dotSize  = isActive ? 32 : 26;
+          const isLastVisible = i === visible.length - 1;
+          return (
+            <div key={n} style={{ display: "flex", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => onJump(n)}
+                aria-label={`Go to step ${n}`}
+                aria-current={isActive ? "step" : undefined}
+                style={{
+                  width: dotSize, height: dotSize, borderRadius: "50%",
+                  padding: 0, cursor: "pointer", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: isActive ? 13 : 12, fontWeight: 800,
+                  fontFamily: "inherit", letterSpacing: "-0.02em",
+                  background: isActive ? "#f97316" : isDone ? "#FFE4CC" : "#FFFFFF",
+                  border: isActive ? "2px solid #FFD7B5" : isDone ? "1.5px solid #FDBA74" : "1.5px solid #E5E5E5",
+                  color: isActive ? "#FFFFFF" : isDone ? "#C2410C" : "#A8A29E",
+                  boxShadow: isActive ? "0 4px 14px rgba(234,88,12,0.35)" : "none",
+                  transition: "all 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
+              >
+                {n}
+              </button>
+              {!isLastVisible && (
+                <div style={{
+                  width: 28, height: 2, borderRadius: 2, margin: "0 4px",
+                  backgroundColor: n < maxReached ? "#f97316" : "#E5E5E5",
+                  transition: "background-color 0.2s",
+                }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {arrowBtn(showRight, () => setStart(v => Math.min(total - visibleCount, v + 1)), "Scroll steps right", "›")}
     </div>
   );
 }

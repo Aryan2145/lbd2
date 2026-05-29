@@ -17,6 +17,7 @@ class RegisterDto {
   @IsString() @MinLength(6) password: string;
   @IsOptional() @IsString() designation?: string;
   @IsOptional() @IsIn(['Male', 'Female', 'Other']) gender?: string;
+  @IsOptional() @IsString() phone?: string;
 }
 
 @Controller('auth')
@@ -38,6 +39,7 @@ export class AuthController {
     return this.auth.register(dto.name, dto.email, dto.password, {
       role:   dto.designation,
       gender: dto.gender,
+      phone:  dto.phone,
     });
   }
 
