@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  Shield, LayoutDashboard, Ticket, Database,
+  Shield, LayoutDashboard, Ticket,
   ArrowLeft, ChevronRight, Send, X, RefreshCw,
   Users, Activity, CheckSquare, Target, Flame,
   Calendar, BookOpen, Star, ShoppingBag,
   Eye, EyeOff, LogOut, Phone, UserCircle,
-  Briefcase, Venus, Clock, AlertCircle,
+  Briefcase, Venus, Clock, AlertCircle, Download,
 } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import type { SupportTicket, TicketStatus, TicketPriority } from "@/lib/ticketTypes";
@@ -23,8 +23,7 @@ function fmtTime(ts: number) {
 }
 function fmtDateTime(ts: number) { return `${fmtDate(ts)}, ${fmtTime(ts)}`; }
 
-type AdminTab = "overview" | "users" | "tickets" | "data";
-type DataStore = "goals" | "habits" | "tasks" | "events" | "bucketEntries" | "tickets" | "weeklyReviews" | "weekPlans" | "eveningReflections";
+type AdminTab = "overview" | "users" | "tickets";
 
 // ── Admin API secret (same security level as hardcoded credentials) ───────────
 const ADMIN_SECRET = "LBD-Admin-Secret-2025";
@@ -72,13 +71,54 @@ function fmtIso(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
+// ── CSV export of user signup details ─────────────────────────────────────────
+function csvCell(value: string | null | undefined): string {
+  const s = value ?? "";
+  // Quote if the value contains comma, quote, or newline; escape inner quotes.
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function fmtSignupDate(iso: string): string {
+  // Readable date + time in IST, e.g. "09 May 2026, 10:02 PM"
+  return new Date(iso).toLocaleString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+}
+
+function exportUsersCsv(users: AdminUser[]) {
+  const headers = ["Name", "Email", "Phone", "Gender", "Role", "Signed Up (IST)", "User ID"];
+  const rows = users.map(u => [
+    csvCell(u.name),
+    csvCell(u.email),
+    csvCell(u.phone),
+    csvCell(u.gender),
+    csvCell(u.role),
+    csvCell(fmtSignupDate(u.createdAt)),
+    csvCell(u.id),
+  ].join(","));
+
+  // Prepend BOM so Excel reads UTF-8 (names with accents/emoji) correctly.
+  const csv = "﻿" + [headers.join(","), ...rows].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `lbd-users-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({ tab, setTab }: { tab: AdminTab; setTab: (t: AdminTab) => void }) {
   const navItems: { id: AdminTab; icon: React.ReactNode; label: string }[] = [
     { id: "overview", icon: <LayoutDashboard size={15} />, label: "Overview"        },
     { id: "users",    icon: <Users           size={15} />, label: "Users"           },
     { id: "tickets",  icon: <Ticket          size={15} />, label: "Support Tickets" },
-    { id: "data",     icon: <Database        size={15} />, label: "Data Browser"    },
   ];
 
   return (
@@ -583,13 +623,29 @@ function UsersTab() {
                 ({users.length})
               </span>
             </h2>
-            <button onClick={load} title="Refresh" style={{
-              width: 30, height: 30, borderRadius: 8, border: "1px solid #E2E8F0",
-              backgroundColor: "transparent", display: "flex", alignItems: "center",
-              justifyContent: "center", cursor: "pointer",
-            }}>
-              <RefreshCw size={12} color="#64748B" />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={() => exportUsersCsv(filtered)}
+                disabled={filtered.length === 0}
+                title="Export signup details to CSV"
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, height: 30,
+                  padding: "0 12px", borderRadius: 8, border: "1px solid #E2E8F0",
+                  backgroundColor: filtered.length === 0 ? "#F8FAFC" : "#FFF7ED",
+                  color: filtered.length === 0 ? "#94A3B8" : "#EA580C",
+                  fontSize: 12, fontWeight: 600,
+                  cursor: filtered.length === 0 ? "not-allowed" : "pointer",
+                }}>
+                <Download size={13} /> Export CSV
+              </button>
+              <button onClick={load} title="Refresh" style={{
+                width: 30, height: 30, borderRadius: 8, border: "1px solid #E2E8F0",
+                backgroundColor: "transparent", display: "flex", alignItems: "center",
+                justifyContent: "center", cursor: "pointer",
+              }}>
+                <RefreshCw size={12} color="#64748B" />
+              </button>
+            </div>
           </div>
           <input
             value={search}
@@ -856,138 +912,6 @@ function UsersTab() {
   );
 }
 
-// ── Data Tab ──────────────────────────────────────────────────────────────────
-function DataTab() {
-  const store = useAppStore();
-  const [selectedStore, setSelectedStore] = useState<DataStore>("goals");
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
-
-  const storeMap: Record<DataStore, { label: string; data: unknown[] }> = {
-    goals:              { label: "Goals",              data: store.goals              },
-    habits:             { label: "Habits",             data: store.habits             },
-    tasks:              { label: "Tasks",              data: store.tasks              },
-    events:             { label: "Week Events",        data: store.weekEvents         },
-    bucketEntries:      { label: "Bucket Entries",     data: store.bucketEntries      },
-    tickets:            { label: "Support Tickets",    data: store.tickets            },
-    weeklyReviews:      { label: "Weekly Reviews",     data: store.weeklyReviews      },
-    weekPlans:          { label: "Week Plans",           data: store.weekPlans          },
-    eveningReflections: { label: "Evening Reflections",data: store.eveningReflections },
-  };
-
-  const current = storeMap[selectedStore];
-
-  function toggleRow(i: number) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
-      return next;
-    });
-  }
-
-  return (
-    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
-      {/* Store selector */}
-      <div style={{ width: "180px", borderRight: "1px solid #E2E8F0", padding: "16px 0", flexShrink: 0, overflowY: "auto" }}>
-        <p style={{ fontSize: "9px", fontWeight: 700, color: "#94A3B8", letterSpacing: "0.1em",
-          textTransform: "uppercase", padding: "0 16px 8px" }}>
-          Stores
-        </p>
-        {(Object.keys(storeMap) as DataStore[]).map((key) => {
-          const s = storeMap[key];
-          return (
-            <button key={key} onClick={() => { setSelectedStore(key); setExpanded(new Set()); }} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              width: "100%", padding: "8px 16px", border: "none", cursor: "pointer", textAlign: "left",
-              backgroundColor: selectedStore === key ? "#FFF7ED" : "transparent",
-              borderLeft: selectedStore === key ? "2px solid #F97316" : "2px solid transparent",
-            }}>
-              <span style={{ fontSize: "12px", fontWeight: selectedStore === key ? 600 : 400,
-                color: selectedStore === key ? "#EA580C" : "#374151" }}>
-                {s.label}
-              </span>
-              <span style={{ fontSize: "10px", color: "#94A3B8",
-                backgroundColor: "#F1F5F9", padding: "1px 5px", borderRadius: "10px" }}>
-                {s.data.length}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Records */}
-      <div style={{ flex: 1, overflow: "auto", padding: "16px 20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-          <h2 style={{ fontSize: "14px", fontWeight: 700, color: "#0F172A", margin: 0 }}>
-            {current.label} <span style={{ fontWeight: 400, color: "#94A3B8" }}>({current.data.length} records)</span>
-          </h2>
-          <button onClick={() => setExpanded(new Set())} style={{
-            display: "flex", alignItems: "center", gap: "4px", padding: "4px 10px",
-            borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "transparent",
-            fontSize: "11px", color: "#64748B", cursor: "pointer",
-          }}>
-            <RefreshCw size={11} /> Collapse All
-          </button>
-        </div>
-
-        {current.data.length === 0 ? (
-          <p style={{ fontSize: "13px", color: "#94A3B8", textAlign: "center", padding: "40px 0" }}>
-            No records in this store.
-          </p>
-        ) : (
-          current.data.map((record, i) => {
-            const obj = record as Record<string, unknown>;
-            const key = (obj.id ?? obj.date ?? obj.weekStart ?? i) as string;
-            const preview = Object.entries(obj).slice(0, 3).map(([k, v]) => {
-              const val = typeof v === "string" ? (v.length > 30 ? v.slice(0, 30) + "…" : v)
-                : typeof v === "number" ? String(v)
-                : Array.isArray(v) ? `[${v.length}]`
-                : typeof v === "boolean" ? String(v)
-                : "…";
-              return `${k}: ${val}`;
-            }).join(" · ");
-
-            return (
-              <div key={i} style={{
-                marginBottom: "6px", borderRadius: "8px",
-                border: "1px solid #E2E8F0", overflow: "hidden",
-              }}>
-                <button onClick={() => toggleRow(i)} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  width: "100%", padding: "10px 14px", border: "none",
-                  backgroundColor: expanded.has(i) ? "#F8FAFC" : "#FFFFFF",
-                  cursor: "pointer", textAlign: "left",
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, color: "#F97316", marginRight: "6px" }}>
-                      #{i + 1}
-                    </span>
-                    <span style={{ fontSize: "11px", color: "#374151" }}>{String(key)}</span>
-                    {!expanded.has(i) && (
-                      <span style={{ fontSize: "10px", color: "#94A3B8", marginLeft: "8px" }}>{preview}</span>
-                    )}
-                  </div>
-                  <ChevronRight size={13} color="#94A3B8"
-                    style={{ transform: expanded.has(i) ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }} />
-                </button>
-                {expanded.has(i) && (
-                  <pre style={{
-                    margin: 0, padding: "12px 14px",
-                    backgroundColor: "#F8FAFC", borderTop: "1px solid #F1F5F9",
-                    fontSize: "11px", color: "#334155", overflowX: "auto",
-                    lineHeight: 1.7, fontFamily: "monospace",
-                  }}>
-                    {JSON.stringify(record, null, 2)}
-                  </pre>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Admin credentials ─────────────────────────────────────────────────────────
 const ADMIN_EMAIL    = "admin@lbd.in";
 const ADMIN_PASSWORD = "LBD#Admin@2025";
@@ -1202,7 +1126,7 @@ export default function AdminPage() {
           <span style={{ fontSize: "12px", color: "#94A3B8" }}>Admin</span>
           <ChevronRight size={12} color="#CBD5E1" />
           <span style={{ fontSize: "12px", fontWeight: 600, color: "#0F172A" }}>
-            {tab === "overview" ? "Overview" : tab === "users" ? "Users" : tab === "tickets" ? "Support Tickets" : "Data Browser"}
+            {tab === "overview" ? "Overview" : tab === "users" ? "Users" : "Support Tickets"}
           </span>
           <button onClick={handleLogout} style={{
             marginLeft: "auto", display: "flex", alignItems: "center", gap: 6,
@@ -1217,7 +1141,6 @@ export default function AdminPage() {
           {tab === "overview" && <div style={{ height: "100%", overflowY: "auto" }}><OverviewTab /></div>}
           {tab === "users"    && <UsersTab />}
           {tab === "tickets"  && <TicketsTab />}
-          {tab === "data"     && <DataTab />}
         </div>
       </div>
     </div>
