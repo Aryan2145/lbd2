@@ -277,10 +277,23 @@ function LoginForm() {
     try {
       if (mode === "register") {
         if (name.trim().length < 2) throw new Error("Please enter your full name");
+        // Registration no longer logs in directly — collect the email OTP first.
         await api.post("/auth/register", { name: name.trim(), email, password });
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
       }
-      await login(email, password);
-      router.replace("/dashboard");
+      try {
+        await login(email, password);
+        router.replace("/dashboard");
+      } catch (err: unknown) {
+        // Unverified account → send a fresh code and route to the OTP screen.
+        if (err instanceof Error && err.message === "EMAIL_NOT_VERIFIED") {
+          try { await api.post("/auth/resend-otp", { email, purpose: "verify_email" }); } catch {}
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          return;
+        }
+        throw err;
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -394,6 +407,14 @@ function LoginForm() {
                 </button>
               </div>
             </div>
+
+            {mode === "login" && (
+              <div style={{ textAlign: "right", marginTop: -8 }}>
+                <Link href="/forgot-password" style={{ fontSize: 12, color: "#f97316", fontWeight: 700, textDecoration: "none" }}>
+                  Forgot password?
+                </Link>
+              </div>
+            )}
 
             {error && (
               <p style={{

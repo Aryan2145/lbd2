@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { Controller, Get } from '@nestjs/common';
 
 @Controller('health')
@@ -29,6 +30,10 @@ import { AdminModule } from './admin/admin.module';
   controllers: [HealthController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Provides throttler storage app-wide. No global APP_GUARD is registered, so
+    // throttling only applies to routes that opt in via @UseGuards(ThrottlerGuard)
+    // (the unauthenticated auth/OTP endpoints) — normal app traffic is untouched.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
     PrismaModule,
     EncryptionModule,
     AuthModule,

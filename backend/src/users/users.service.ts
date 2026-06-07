@@ -38,6 +38,14 @@ export class UsersService {
     return this.prisma.user.update({ where: { id }, data: { googleRefreshToken: token } });
   }
 
+  setEmailVerified(id: string) {
+    return this.prisma.user.update({ where: { id }, data: { emailVerified: true } });
+  }
+
+  updatePasswordByEmail(email: string, newHash: string) {
+    return this.prisma.user.update({ where: { email }, data: { password: newHash } });
+  }
+
   async changePassword(id: string, currentPassword: string, newPassword: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     const match = await bcrypt.compare(currentPassword, user.password);

@@ -59,6 +59,11 @@ enum TicketStatus {
   resolved
 }
 
+enum OtpPurpose {
+  verify_email
+  password_reset
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Users
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,6 +76,8 @@ model User {
   role      String?
   gender    String?
   password  String   // bcrypt hash
+
+  emailVerified Boolean @default(false)
 
   googleRefreshToken String?
 
@@ -91,6 +98,24 @@ model User {
   legacyCanvas       LegacyCanvas?
 
   @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  One-time passwords (email verification + password reset)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OtpCode {
+  id         String     @id @default(cuid())
+  email      String     // always stored lowercased
+  codeHash   String     // bcrypt hash of the 6-digit code — never plaintext
+  purpose    OtpPurpose
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int        @default(0)
+  createdAt  DateTime   @default(now())
+
+  @@index([email, purpose])
+  @@map("otp_codes")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

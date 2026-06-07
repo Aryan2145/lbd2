@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Carlito } from "next/font/google";
 import { Eye, EyeOff, Lock, Shield, User } from "lucide-react";
-import { useAuth } from "@/lib/AuthContext";
 import { api } from "@/lib/api";
 
 const carlito = Carlito({
@@ -243,8 +242,7 @@ function DarkPanel() {
 
 // ── Registration form ─────────────────────────────────────────────────────────
 export default function RegisterPage() {
-  const { login } = useAuth();
-  const router    = useRouter();
+  const router = useRouter();
 
   const [name,        setName]        = useState("");
   const [email,       setEmail]       = useState("");
@@ -309,8 +307,8 @@ export default function RegisterPage() {
         designation: designation.trim(), gender,
         phone: (countryCode.trim() + phoneNum.trim()) || undefined,
       });
-      await login(email, password);
-      router.replace("/dashboard");
+      // Collect the email OTP before any session is issued.
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

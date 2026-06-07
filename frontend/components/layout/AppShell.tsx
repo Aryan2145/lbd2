@@ -79,9 +79,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router    = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  const isLogin    = pathname === "/login";
-  const isRegister = pathname === "/register";
-  const isAuth     = isLogin || isRegister;
+  const isAuth     = ["/login", "/register", "/verify-email", "/forgot-password", "/reset-password"].includes(pathname);
   const isPublic   = pathname === "/privacy" || pathname === "/terms";
   const isAdmin    = pathname.startsWith("/admin");
 
