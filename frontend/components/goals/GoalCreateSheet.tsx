@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import type { LifeArea, GoalData, Milestone } from "./GoalCard";
 import { AREA_META } from "./GoalCard";
+import VisionBanner from "./VisionBanner";
+import { useAppStore, visionTextForArea } from "@/lib/AppStore";
 import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
 import { Q_META, daysUntil, toTaskDate } from "@/components/tasks/TaskCard";
 import type { HabitData, HabitFrequency, HabitType } from "@/components/habits/HabitCard";
@@ -59,13 +61,17 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
   const isEditing = !!initialData;
   const [step, setStep] = useState(1);
 
-  // Step 1
-  const [area,     setArea]     = useState<LifeArea>("professional");
+  const { visionAreas } = useAppStore();
+
+  // Step 1 — area starts blank; it's a required choice (no silent default).
+  const [area,     setArea]     = useState<LifeArea | "">("");
   const [title,    setTitle]    = useState("");
   const [why,      setWhy]      = useState("");
   const [metric,   setMetric]   = useState("");
   const [unit,     setUnit]     = useState("");
   const [deadline, setDeadline] = useState("");
+  const [areaOpen, setAreaOpen] = useState(false);
+  const areaRef = useRef<HTMLDivElement>(null);
 
   // Step 2 — milestones
   const [milestones,  setMilestones]  = useState<Milestone[]>([]);
@@ -101,8 +107,8 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
   useEffect(() => {
     if (!open) {
       setStep(1);
-      setArea("professional"); setTitle(""); setWhy("");
-      setMetric(""); setUnit(""); setDeadline("");
+      setArea(""); setTitle(""); setWhy("");
+      setMetric(""); setUnit(""); setDeadline(""); setAreaOpen(false);
       setMilestones([]); setMTitle(""); setMDeadline(""); setShowMsForm(false);
       setExpandedMsId(null); setMsTasks({}); setMsHabits({});
       setTaskCreateMsId(null); setTcForm({ title: "", description: "", quadrant: "Q2", deadline: "" }); setTcDelegateTo(""); setTcDelegateNudge(false); setTcQ4Bang(false);
@@ -120,13 +126,28 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Close the life-area dropdown on outside click.
+  useEffect(() => {
+    if (!areaOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (areaRef.current && !areaRef.current.contains(e.target as Node)) setAreaOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [areaOpen]);
+
   const deadlineError  = deadline ? validateGoalDate(deadline, { required: false }) : null;
   const mDeadlineError = deadline && mDeadline && mDeadline > deadline
     ? "Can't be after goal's target date" : null;
 
-  const areaColor = AREA_META[area].color;
-  const areaBg    = AREA_META[area].bg;
-  const AreaIcon  = AREA_ICONS[area];
+  // Theme falls back to neutral stone tokens until an area is chosen.
+  const areaColor = area ? AREA_META[area].color : "#78716C";
+  const areaBg    = area ? AREA_META[area].bg    : "#FAFAF9";
+  const AreaIcon  = area ? AREA_ICONS[area]       : Target;
+  const visionText = area ? visionTextForArea(visionAreas, area) : "";
+
+  // Step 1 requires both a title and a life area before moving on or saving.
+  const canProceed = !!title.trim() && !!area;
 
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "9px 12px", borderRadius: "8px",
@@ -148,7 +169,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
   };
 
   const handleSave = () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !area) return;
     const now    = Date.now();
     const goalId = initialData?.id ?? crypto.randomUUID();
     const goal: GoalData = {
@@ -257,20 +278,52 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
               <p style={{ fontSize: "18px", fontWeight: 700, color: "#1C1917", margin: "0 0 4px" }}>1. Goal Basics</p>
               <p style={{ fontSize: "13px", color: "#44403C", margin: "0 0 24px" }}>Start with the foundations of your goal.</p>
 
+              {/* Vision anchor — the life area's vision that this goal serves */}
+              {area && <VisionBanner area={area} text={visionText} style={{ marginBottom: "20px" }} />}
+
               {/* Life Area + Goal Title */}
               <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "16px", marginBottom: "20px" }}>
                 <div>
-                  <label style={labelStyle}>Life Area</label>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "8px", padding: "9px 12px", borderRadius: "8px", border: `1.5px solid ${areaColor}50`, backgroundColor: areaBg }}>
-                    <AreaIcon size={15} color={areaColor} style={{ flexShrink: 0 }} />
-                    <select
-                      value={area}
-                      onChange={e => setArea(e.target.value as LifeArea)}
-                      style={{ flex: 1, border: "none", background: "transparent", fontSize: "13px", fontWeight: 700, color: areaColor, cursor: "pointer", outline: "none", appearance: "none", WebkitAppearance: "none" }}
+                  <label style={labelStyle}>Life Area <span style={{ color: "#EF4444" }}>*</span></label>
+                  <div ref={areaRef} style={{ position: "relative" }}>
+                    {/* Trigger */}
+                    <button
+                      type="button"
+                      onClick={() => setAreaOpen(o => !o)}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "8px", border: `1.5px solid ${area ? `${areaColor}55` : "#E8DDD0"}`, backgroundColor: area ? areaBg : "#FFFFFF", cursor: "pointer", outline: "none", boxSizing: "border-box", transition: "border-color 0.15s, box-shadow 0.15s", boxShadow: areaOpen ? `0 0 0 3px ${areaColor}20` : "none" }}
                     >
-                      {AREAS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-                    </select>
-                    <ChevronDown size={13} color={areaColor} style={{ flexShrink: 0, pointerEvents: "none" }} />
+                      <span style={{ width: 12, height: 12, borderRadius: "50%", flexShrink: 0, backgroundColor: area ? areaColor : "transparent", border: area ? "none" : "2px solid #D6D3D1", boxShadow: area ? `0 0 0 3px ${areaColor}22` : "none" }} />
+                      <span style={{ flex: 1, textAlign: "left", fontSize: "13px", fontWeight: 700, color: area ? areaColor : "#A8A29E" }}>
+                        {area ? AREA_META[area].label : "Select a life area…"}
+                      </span>
+                      <ChevronDown size={14} color={area ? areaColor : "#A8A29E"} style={{ flexShrink: 0, transition: "transform 0.15s", transform: areaOpen ? "rotate(180deg)" : "none" }} />
+                    </button>
+
+                    {/* Options */}
+                    {areaOpen && (
+                      <div role="listbox" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 30, backgroundColor: "#FFFFFF", borderRadius: "12px", border: "1px solid #E5E9EE", boxShadow: "0 12px 32px rgba(28,25,23,0.14)", padding: "6px", maxHeight: 300, overflowY: "auto" }}>
+                        {AREAS.map(a => {
+                          const m = AREA_META[a.value];
+                          const selected = area === a.value;
+                          return (
+                            <button
+                              key={a.value}
+                              type="button"
+                              role="option"
+                              aria-selected={selected}
+                              onClick={() => { setArea(a.value); setAreaOpen(false); }}
+                              style={{ width: "100%", display: "flex", alignItems: "center", gap: "11px", padding: "9px 10px", borderRadius: "8px", border: "none", backgroundColor: selected ? m.bg : "transparent", cursor: "pointer", textAlign: "left", transition: "background-color 0.12s" }}
+                              onMouseEnter={e => { if (!selected) e.currentTarget.style.backgroundColor = "#FAFAF9"; }}
+                              onMouseLeave={e => { if (!selected) e.currentTarget.style.backgroundColor = "transparent"; }}
+                            >
+                              <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: m.color, flexShrink: 0, boxShadow: selected ? `0 0 0 3px ${m.color}22` : "none" }} />
+                              <span style={{ flex: 1, fontSize: "13px", fontWeight: selected ? 700 : 600, color: selected ? m.color : "#44403C" }}>{a.label}</span>
+                              {selected && <Check size={14} color={m.color} strokeWidth={3} style={{ flexShrink: 0 }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -362,19 +415,22 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
               {/* Next */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
                 <button
-                  onClick={() => { if (title.trim()) setStep(2); }}
-                  disabled={!title.trim()}
+                  onClick={() => { if (canProceed) setStep(2); }}
+                  disabled={!canProceed}
                   style={{
                     display: "flex", alignItems: "center", gap: "8px",
                     padding: "12px 36px", borderRadius: "10px", border: "none",
-                    background: title.trim() ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0",
+                    background: canProceed ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0",
                     fontSize: "14px", fontWeight: 700,
-                    color: title.trim() ? "#FFFFFF" : "#A8A29E",
-                    cursor: title.trim() ? "pointer" : "default",
+                    color: canProceed ? "#FFFFFF" : "#A8A29E",
+                    cursor: canProceed ? "pointer" : "default",
                   }}
                 >
                   Next <ArrowRight size={16} />
                 </button>
+                {!area && (
+                  <p style={{ fontSize: "12px", color: "#A8A29E", margin: 0 }}>Select a life area and enter a goal title to continue.</p>
+                )}
               </div>
             </div>
           )}
@@ -511,7 +567,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
                                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderBottom: `1px solid ${areaColor}20` }}>
                                     <span style={{ fontSize: "12px", fontWeight: 700, color: "#1C1917" }}>Habits ({mHabitsArr.length})</span>
                                     <button
-                                      onClick={e => { e.stopPropagation(); setHabitCreateMsId(m.id); setHcName(""); setHcDesc(""); setHcArea(area); setHcFrequency("daily"); setHcCustomDays([1,2,3,4,5]); setHcType("binary"); setHcTarget(1); setHcUnit(""); setHcCue(""); setHcReward(""); }}
+                                      onClick={e => { e.stopPropagation(); setHabitCreateMsId(m.id); setHcName(""); setHcDesc(""); setHcArea(area || "health"); setHcFrequency("daily"); setHcCustomDays([1,2,3,4,5]); setHcType("binary"); setHcTarget(1); setHcUnit(""); setHcCue(""); setHcReward(""); }}
                                       style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: areaColor, background: "none", border: "none", cursor: "pointer", padding: 0 }}
                                     >
                                       <Plus size={12} /> Add
@@ -603,9 +659,18 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
               )}
 
               {/* Navigation */}
+              {!canProceed && (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", borderRadius: "10px", backgroundColor: "#FFFBEB", border: "1.5px solid #FDE68A", marginBottom: "12px" }}>
+                  <AlertTriangle size={15} color="#D97706" style={{ flexShrink: 0 }} />
+                  <p style={{ fontSize: "13px", fontWeight: 500, color: "#92400E", margin: 0 }}>
+                    Go back to <button onClick={() => setStep(1)} style={{ background: "none", border: "none", padding: 0, fontWeight: 700, color: "#D97706", cursor: "pointer", fontSize: "13px" }}>Goal Basics</button> and choose a life area and goal title before saving.
+                  </p>
+                </div>
+              )}
               <button
                 onClick={handleSave}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "13px", borderRadius: "10px", border: "none", backgroundColor: "#F97316", fontSize: "14px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer", boxShadow: "0 2px 10px rgba(249,115,22,0.35)" }}
+                disabled={!canProceed}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "13px", borderRadius: "10px", border: "none", backgroundColor: canProceed ? "#F97316" : "#E8DDD0", fontSize: "14px", fontWeight: 700, color: canProceed ? "#FFFFFF" : "#A8A29E", cursor: canProceed ? "pointer" : "default", boxShadow: canProceed ? "0 2px 10px rgba(249,115,22,0.35)" : "none" }}
               >
                 {isEditing ? "Save Changes" : "Create Goal"} <ArrowRight size={16} />
               </button>
@@ -633,7 +698,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
                 <AreaIcon size={16} color="#FFFFFF" />
               </div>
               <span style={{ fontSize: "12px", fontWeight: 700, color: areaColor, backgroundColor: "#FFFFFF", padding: "3px 10px", borderRadius: "20px", border: `1px solid ${areaColor}30` }}>
-                {AREA_META[area].label}
+                {area ? AREA_META[area].label : "Life area"}
               </span>
             </div>
 

@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import type { GoalData, GoalNote, LifeArea, Milestone } from "./GoalCard";
 import { AREA_META } from "./GoalCard";
+import VisionBanner from "./VisionBanner";
+import { useAppStore, visionTextForArea } from "@/lib/AppStore";
 import type { HabitData, HabitFrequency, HabitType } from "@/components/habits/HabitCard";
 import {
   AREA_META as HABIT_AREA_META, FREQ_LABEL, calcStreak,
@@ -188,12 +190,15 @@ export default function GoalDetailSheet({
 
   const noteRef = useRef<HTMLTextAreaElement>(null);
 
+  const { visionAreas } = useAppStore();
+
   if (!goal) return null;
 
   const color     = AREA_META[goal.area].color;
   const areaBg    = AREA_META[goal.area].bg;
   const areaLabel = AREA_META[goal.area].label;
   const AreaIcon  = AREA_ICONS[goal.area];
+  const visionText = visionTextForArea(visionAreas, goal.area);
   const today     = toLocalDate();
 
   const daysLeft   = Math.max(0, Math.ceil(
@@ -341,6 +346,9 @@ export default function GoalDetailSheet({
 
                 </div>{/* end card body */}
               </div>{/* end header card */}
+
+              {/* Vision this goal serves */}
+              <VisionBanner area={goal.area} text={visionText} style={{ marginBottom: "20px" }} />
 
               {/* Stale alert */}
               {stale && (

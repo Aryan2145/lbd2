@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react";
-import type { GoalData, GoalNote } from "@/components/goals/GoalCard";
+import type { GoalData, GoalNote, LifeArea } from "@/components/goals/GoalCard";
+import type { AreaData } from "@/components/vision/PolaroidCard";
 import type { HabitData } from "@/components/habits/HabitCard";
 import type { TaskData, RecurringTemplate } from "@/components/tasks/TaskCard";
 import { toTaskDate } from "@/components/tasks/TaskCard";
@@ -12,6 +13,13 @@ import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import type { SupportTicket, TicketCategory, TicketPriority } from "@/lib/ticketTypes";
 import { api } from "@/lib/api";
 import { readAppCache, writeAppCache } from "@/lib/appCache";
+
+// ── Vision lookup ─────────────────────────────────────────────────────────────
+// A goal's vision is resolved live from the Vision canvas by matching life area —
+// no copy is stored on the goal, so vision edits reflect everywhere automatically.
+export function visionTextForArea(areas: AreaData[], area: LifeArea): string {
+  return areas.find(a => a.id === area)?.text?.trim() ?? "";
+}
 
 // ── User profile ─────────────────────────────────────────────────────────────
 export interface UserProfile {
@@ -195,6 +203,7 @@ interface AppState {
   bucketEntries:      BucketEntry[];
   tickets:            SupportTicket[];
   userProfile:        UserProfile;
+  visionAreas:        AreaData[];
   // Goal actions
   addGoal:    (g: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
   updateGoal: (g: GoalData) => void;
@@ -252,6 +261,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [bucketEntries,      setBucketEntries]      = useState<BucketEntry[]>([]);
   const [tickets,            setTickets]            = useState<SupportTicket[]>([]);
   const [userProfile,        setUserProfile]        = useState<UserProfile>({ name: "", email: "", phone: "", role: "", password: "", gender: "" });
+  const [visionAreas,        setVisionAreas]        = useState<AreaData[]>([]);
 
   // Ref so async callbacks always see latest goals (for note diffing)
   const goalsRef = useRef<GoalData[]>([]);
@@ -284,7 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const [
         apiGoals, apiHabits, apiTasks, apiGroups,
         apiWeekPlans, apiEveningReflections,
-        apiWeeklyReviews, apiBucket, apiTickets, apiUser,
+        apiWeeklyReviews, apiBucket, apiTickets, apiUser, apiVision,
       ] = await Promise.all([
         fetchSafe<any[]>('/goals', []),
         fetchSafe<any[]>('/habits', []),
@@ -296,6 +306,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fetchSafe<any[]>('/bucket', []),
         fetchSafe<any[]>('/support', []),
         fetchSafe<any>('/users/me', null),
+        fetchSafe<{ areas: AreaData[] }>('/vision', { areas: [] }),
       ]);
 
       const freshGoals    = apiGoals.map(mapGoal);
@@ -332,6 +343,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setBucketEntries(freshBucket);
       setTickets(freshTickets);
       if (apiUser) setUserProfile(freshProfile);
+      setVisionAreas(apiVision?.areas ?? []);
 
       setLoaded(true);
 
@@ -368,6 +380,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loaded,
     goals, habits, tasks, eventGroups, weekEvents, weekPlans,
     eveningReflections, weeklyReviews, bucketEntries, tickets,
+    visionAreas,
 
     // Goals
     addGoal: (g, tasks?, habits?) => {
