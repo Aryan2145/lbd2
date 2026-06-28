@@ -365,12 +365,12 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
                 onClick={(e) => { e.stopPropagation(); (onEdit ?? onClick)(); }}
                 title="Edit habit"
                 style={{
-                  width: 24, height: 24, borderRadius: 6, border: `1px solid ${area.color}40`,
-                  backgroundColor: "#FFFFFF", display: "flex", alignItems: "center",
+                  width: 24, height: 24, borderRadius: 6, border: "none",
+                  backgroundColor: area.color, display: "flex", alignItems: "center",
                   justifyContent: "center", cursor: "pointer",
                 }}
               >
-                <Pencil size={10} color={area.color} />
+                <Pencil size={10} color="#FFFFFF" />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
@@ -474,12 +474,12 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
                 onClick={(e) => { e.stopPropagation(); (onEdit ?? onClick)(); }}
                 title="Edit habit"
                 style={{
-                  width: 24, height: 24, borderRadius: 6, border: `1px solid ${area.color}40`,
-                  backgroundColor: "#FFFFFF", display: "flex", alignItems: "center",
+                  width: 24, height: 24, borderRadius: 6, border: "none",
+                  backgroundColor: area.color, display: "flex", alignItems: "center",
                   justifyContent: "center", cursor: "pointer", flexShrink: 0,
                 }}
               >
-                <Pencil size={10} color={area.color} />
+                <Pencil size={10} color="#FFFFFF" />
               </button>
             </div>
           </div>

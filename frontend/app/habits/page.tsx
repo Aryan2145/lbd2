@@ -411,6 +411,11 @@ export default function HabitsPage() {
       <HabitDetailPage
         habit={statsHabitId ? (habits.find(h => h.id === statsHabitId) ?? null) : null}
         onClose={() => setStatsHabitId(null)}
+        onEdit={() => {
+          const selected = habits.find(h => h.id === statsHabitId);
+          if (!selected) return;
+          setEditHabit(selected);
+        }}
         onToggleDate={handleToggleDate}
       />
     </div>

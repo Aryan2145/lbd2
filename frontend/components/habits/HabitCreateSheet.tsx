@@ -51,11 +51,13 @@ export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDe
   const [reward,            setReward]           = useState("");
   const [linkedGoalId,      setLinkedGoalId]     = useState("");
   const [linkedMilestoneId, setLinkedMilestoneId] = useState("");
+  const [confirmDelete,     setConfirmDelete]    = useState(false);
   const nameRef  = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
+      setConfirmDelete(false);
       if (editHabit) {
         setName(editHabit.name); setDesc(editHabit.description); setArea(editHabit.area);
         setFrequency(editHabit.frequency); setCustomDays(editHabit.customDays.length ? editHabit.customDays : [1,2,3,4,5]);
@@ -328,7 +330,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDe
         <div style={{ padding: "14px 24px", borderTop: "1px solid #EDE5D8", flexShrink: 0 }}>
           {isEdit && onDelete && (
             <button
-              onClick={() => { onDelete(editHabit!.id); onClose(); }}
+              onClick={() => setConfirmDelete(true)}
               style={{
                 width: "100%", padding: "10px", borderRadius: "10px", border: "none",
                 backgroundColor: "#FEE2E2", color: "#DC2626",
@@ -353,6 +355,46 @@ export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDe
           </div>
         </div>
       </div>
+
+      {confirmDelete && editHabit && onDelete && (
+        <>
+          <div
+            onClick={() => setConfirmDelete(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 402, backgroundColor: "rgba(28,25,23,0.55)" }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-habit-title"
+            style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+              zIndex: 403, width: "calc(100% - 32px)", maxWidth: "360px", backgroundColor: "#FFFFFF",
+              borderRadius: "16px", padding: "22px", boxShadow: "0 24px 80px rgba(0,0,0,0.24)" }}
+          >
+            <div style={{ width: 38, height: 38, borderRadius: "10px", backgroundColor: "#FEF2F2",
+              display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "14px" }}>
+              <AlertTriangle size={19} color="#DC2626" />
+            </div>
+            <h3 id="delete-habit-title" style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 800, color: "#1C1917" }}>
+              Delete habit?
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: "13px", lineHeight: 1.55, color: "#57534E" }}>
+              Are you sure you want to delete &ldquo;{editHabit.name}&rdquo;? Once done, this cannot be undone.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button onClick={() => setConfirmDelete(false)} style={{ padding: "8px 16px", borderRadius: "8px",
+                border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF", color: "#57534E",
+                fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button onClick={() => { onDelete(editHabit.id); setConfirmDelete(false); onClose(); }} style={{
+                padding: "8px 16px", borderRadius: "8px", border: "none", backgroundColor: "#DC2626",
+                color: "#FFFFFF", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                Delete habit
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

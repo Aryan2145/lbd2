@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Plus, X, Check, Clock, Lightbulb, Pencil, Trash2 } from "lucide-react";
-import CalendarPicker from "@/components/ui/CalendarPicker";
+import ClockTimePicker from "@/components/weekly/ClockTimePicker";
 import type { LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import type { WeekPlan, WeekEvent, EventGroup } from "@/lib/weeklyTypes";
@@ -14,6 +14,16 @@ import { Q_META } from "@/components/tasks/TaskCard";
 function toMins(t: string): number {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
+}
+
+function currentTime(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+function addOneHour(time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  return `${String((hours + 1) % 24).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 // ── Reusable color-coded custom select ────────────────────────────────────────
@@ -122,17 +132,23 @@ export default function MorningPlan({
   // ── Add event ──────────────────────────────────────────────────────────────
   const [showAddEvent,  setShowAddEvent]  = useState(false);
   const [newEvTitle,    setNewEvTitle]    = useState("");
+  const [newEvDescription, setNewEvDescription] = useState("");
   const [newEvStart,    setNewEvStart]    = useState("");
   const [newEvEnd,      setNewEvEnd]      = useState("");
   const [newEvGroupId,  setNewEvGroupId]  = useState("");
+  const [timePickerTarget, setTimePickerTarget] = useState<
+    "new-start" | "new-end" | "edit-start" | "edit-end" | null
+  >(null);
 
   // ── Edit event ─────────────────────────────────────────────────────────────
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [editEvTitle,    setEditEvTitle]    = useState("");
+  const [editEvDescription, setEditEvDescription] = useState("");
   const [editEvStart,    setEditEvStart]    = useState("");
   const [editEvEnd,      setEditEvEnd]      = useState("");
   const [editEvGroupId,  setEditEvGroupId]  = useState("");
   const [editEvDate,     setEditEvDate]     = useState("");
+  const [confirmDeleteEvent, setConfirmDeleteEvent] = useState(false);
 
   // ── Add task ───────────────────────────────────────────────────────────────
   const [showAddTask,   setShowAddTask]   = useState(false);
@@ -148,27 +164,32 @@ export default function MorningPlan({
       id: `ev_${Date.now()}`,
       groupId: newEvGroupId || GENERAL_GROUP_ID,
       title: newEvTitle.trim(),
-      description: "",
+      description: newEvDescription.trim(),
       date,
       startTime: newEvStart,
       endTime: newEvEnd,
       createdAt: Date.now(),
     });
-    setNewEvTitle(""); setNewEvStart(""); setNewEvEnd(""); setNewEvGroupId("");
+    setNewEvTitle(""); setNewEvDescription(""); setNewEvStart(""); setNewEvEnd(""); setNewEvGroupId("");
     setShowAddEvent(false);
   }
 
   function startEditEvent(ev: WeekEvent) {
     setShowAddEvent(false);
+    setConfirmDeleteEvent(false);
     setEditingEventId(ev.id);
     setEditEvTitle(ev.title);
+    setEditEvDescription(ev.description ?? "");
     setEditEvStart(ev.startTime);
     setEditEvEnd(ev.endTime);
     setEditEvGroupId(ev.groupId === GENERAL_GROUP_ID ? "" : ev.groupId);
     setEditEvDate(ev.date);
   }
 
-  function cancelEditEvent() { setEditingEventId(null); }
+  function cancelEditEvent() {
+    setConfirmDeleteEvent(false);
+    setEditingEventId(null);
+  }
 
   function saveEditEvent() {
     if (!editEvTitle.trim() || !editEvStart || !editEvEnd || !onUpdateEvent) return;
@@ -176,7 +197,7 @@ export default function MorningPlan({
       id: editingEventId!,
       groupId: editEvGroupId || GENERAL_GROUP_ID,
       title: editEvTitle.trim(),
-      description: "",
+      description: editEvDescription.trim(),
       date: editEvDate,
       startTime: editEvStart,
       endTime: editEvEnd,
@@ -188,6 +209,7 @@ export default function MorningPlan({
   function deleteEditEvent() {
     if (!editingEventId || !onDeleteEvent) return;
     onDeleteEvent(editingEventId);
+    setConfirmDeleteEvent(false);
     setEditingEventId(null);
   }
 
@@ -252,6 +274,25 @@ export default function MorningPlan({
     : null;
   const canSaveEdit = editEvTitle.trim().length > 0 && !!editEvStart && !!editEvEnd && !editTimeInvalid && !editEvConflict;
 
+  const pickerValue = timePickerTarget === "new-start" ? newEvStart
+    : timePickerTarget === "new-end" ? newEvEnd
+    : timePickerTarget === "edit-start" ? editEvStart
+    : editEvEnd;
+  const pickerLabel = timePickerTarget?.endsWith("start") ? "Start time" : "End time";
+
+  function setPickedTime(value: string) {
+    if (timePickerTarget === "new-start") {
+      setNewEvStart(value);
+      setNewEvEnd(addOneHour(value));
+    }
+    if (timePickerTarget === "new-end") setNewEvEnd(value);
+    if (timePickerTarget === "edit-start") {
+      setEditEvStart(value);
+      setEditEvEnd(addOneHour(value));
+    }
+    if (timePickerTarget === "edit-end") setEditEvEnd(value);
+  }
+
   // ── Schedule views ────────────────────────────────────────────────────────
   const sortedEvents  = [...todayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const groupedEvents = eventGroups
@@ -260,6 +301,55 @@ export default function MorningPlan({
 
   return (
     <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
+      {timePickerTarget && (
+        <ClockTimePicker
+          label={pickerLabel}
+          value={pickerValue}
+          onChange={setPickedTime}
+          onClose={() => setTimePickerTarget(null)}
+        />
+      )}
+
+      {confirmDeleteEvent && editingEventId && (
+        <>
+          <div
+            onClick={() => setConfirmDeleteEvent(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 220, backgroundColor: "rgba(28,25,23,0.5)" }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-event-title"
+            style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+              zIndex: 221, width: "calc(100% - 32px)", maxWidth: "360px", backgroundColor: "#FFFFFF",
+              borderRadius: "16px", padding: "22px", boxShadow: "0 24px 80px rgba(0,0,0,0.24)" }}
+          >
+            <div style={{ width: 38, height: 38, borderRadius: "10px", backgroundColor: "#FEF2F2",
+              display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "14px" }}>
+              <Trash2 size={18} color="#DC2626" />
+            </div>
+            <h3 id="delete-event-title" style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 800, color: "#1C1917" }}>
+              Delete event?
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: "13px", lineHeight: 1.55, color: "#57534E" }}>
+              Are you sure you want to delete &ldquo;{editEvTitle.trim()}&rdquo;? Once done, this cannot be undone.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button onClick={() => setConfirmDeleteEvent(false)} style={{ padding: "8px 16px", borderRadius: "8px",
+                border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF", color: "#57534E",
+                fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button onClick={deleteEditEvent} style={{ padding: "8px 16px", borderRadius: "8px",
+                border: "none", backgroundColor: "#DC2626", color: "#FFFFFF",
+                fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                Delete event
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Main planning panel ── */}
       <div className="flex-1 overflow-y-auto lg:overflow-hidden p-4 lg:p-5 flex">
@@ -288,7 +378,15 @@ export default function MorningPlan({
                   ))}
                 </div>
                 <button
-                  onClick={() => { setShowAddEvent((v) => !v); setEditingEventId(null); }}
+                  onClick={() => {
+                    if (!showAddEvent) {
+                      const start = newEvStart || currentTime();
+                      setNewEvStart(start);
+                      setNewEvEnd(newEvEnd || addOneHour(start));
+                    }
+                    setShowAddEvent((v) => !v);
+                    setEditingEventId(null);
+                  }}
                   title="Add event"
                   style={{
                     width: 26, height: 26, borderRadius: "7px", border: "none",
@@ -307,24 +405,58 @@ export default function MorningPlan({
                 <div style={{
                   marginBottom: "10px", padding: "10px 12px", borderRadius: "10px",
                   border: `1.5px solid ${evConflict || evTimeInvalid ? "#FCA5A5" : "#FED7AA"}`,
-                  backgroundColor: "#FFF7ED",
-                  display: "flex", flexDirection: "column", gap: "7px",
+                  backgroundColor: "#FFFFFF",
+                  display: "flex", flexDirection: "column", gap: "7px", position: "relative",
                 }}>
+                  <button
+                    type="button"
+                    aria-label="Close add event"
+                    onClick={() => setShowAddEvent(false)}
+                    style={{ ...ghostBtn, position: "absolute", top: "7px", right: "7px",
+                      backgroundColor: "#F5F0EB" }}
+                  >
+                    <X size={12} color="#57534E" />
+                  </button>
                   <input
                     value={newEvTitle} onChange={(e) => setNewEvTitle(e.target.value)}
                     placeholder="Event title…" autoFocus
+                    className="daily-event-title-input"
                     onKeyDown={(e) => e.key === "Enter" && canAddEvent && saveEvent()}
                     style={{ border: "none", outline: "none", backgroundColor: "transparent",
-                      fontSize: "13px", fontWeight: 600, color: "#1C1917", padding: 0, width: "100%" }}
+                      fontSize: "13px", fontWeight: 700, color: "#1C1917", padding: "0 28px 0 0", width: "100%" }}
+                  />
+                  <input
+                    value={newEvDescription}
+                    onChange={(e) => setNewEvDescription(e.target.value)}
+                    placeholder="Description (optional)…"
+                    style={{ border: "1px solid #E8DDD0", outline: "none", backgroundColor: "#FAF8F5",
+                      borderRadius: "6px", fontSize: "11px", fontWeight: 500, color: "#44403C",
+                      padding: "5px 7px", width: "100%" }}
                   />
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                    <input type="time" value={newEvStart} onChange={(e) => setNewEvStart(e.target.value)}
-                      style={{ ...timeInputStyle, borderColor: evTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
+                    <button
+                      type="button"
+                      aria-label="Start time"
+                      onClick={() => setTimePickerTarget("new-start")}
+                      style={{ ...timeInputStyle, borderColor: evTimeInvalid ? "#FCA5A5" : "#E8DDD0",
+                        display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", fontWeight: 600 }}
+                    >
+                      <span>{newEvStart || "Start"}</span>
+                      <Clock size={10} color="#F97316" />
+                    </button>
                     <span style={{ fontSize: "11px", color: "#78716C" }}>–</span>
-                    <input type="time" value={newEvEnd} onChange={(e) => setNewEvEnd(e.target.value)}
-                      style={{ ...timeInputStyle, borderColor: evTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
-                    <select value={newEvGroupId} onChange={(e) => setNewEvGroupId(e.target.value)}
-                      style={{ flex: 1, fontSize: "11px", border: "1px solid #E8DDD0", borderRadius: "6px",
+                    <button
+                      type="button"
+                      aria-label="End time"
+                      onClick={() => setTimePickerTarget("new-end")}
+                      style={{ ...timeInputStyle, borderColor: evTimeInvalid ? "#FCA5A5" : "#E8DDD0",
+                        display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", fontWeight: 600 }}
+                    >
+                      <span>{newEvEnd || "End"}</span>
+                      <Clock size={10} color="#F97316" />
+                    </button>
+                    <select value={newEvGroupId} onChange={(e) => setNewEvGroupId(e.target.value)} aria-label="Event group"
+                      style={{ flex: "0 1 112px", width: "112px", maxWidth: "112px", fontSize: "11px", border: "1px solid #E8DDD0", borderRadius: "6px",
                         padding: "3px 6px", outline: "none", backgroundColor: "#FFFFFF", color: "#78716C", cursor: "pointer" }}>
                       <option value="">No group</option>
                       {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID).map((g) => (
@@ -335,7 +467,6 @@ export default function MorningPlan({
                       style={{ ...saveBtn, opacity: canAddEvent ? 1 : 0.4, cursor: canAddEvent ? "pointer" : "not-allowed" }}>
                       Add
                     </button>
-                    <button onClick={() => setShowAddEvent(false)} style={ghostBtn}><X size={12} color="#A8A29E" /></button>
                   </div>
                   {evTimeInvalid && (
                     <p style={{ fontSize: "10px", color: "#DC2626", fontWeight: 600, margin: 0 }}>
@@ -362,25 +493,55 @@ export default function MorningPlan({
                   marginBottom: "10px", padding: "10px 12px", borderRadius: "10px",
                   border: `1.5px solid ${editTimeInvalid || editEvConflict ? "#FCA5A5" : "#A5B4FC"}`,
                   backgroundColor: "#EEF2FF",
-                  display: "flex", flexDirection: "column", gap: "7px",
+                  display: "flex", flexDirection: "column", gap: "7px", position: "relative",
                 }}>
+                  <button
+                    type="button"
+                    aria-label="Close edit event"
+                    onClick={cancelEditEvent}
+                    style={{ ...ghostBtn, position: "absolute", top: "7px", right: "7px",
+                      backgroundColor: "#FFFFFF" }}
+                  >
+                    <X size={12} color="#57534E" />
+                  </button>
                   <input
                     value={editEvTitle} onChange={(e) => setEditEvTitle(e.target.value)}
                     autoFocus
                     style={{ border: "none", outline: "none", backgroundColor: "transparent",
-                      fontSize: "13px", fontWeight: 600, color: "#1C1917", padding: 0, width: "100%" }}
+                      fontSize: "13px", fontWeight: 600, color: "#1C1917", padding: "0 28px 0 0", width: "100%" }}
+                  />
+                  <input
+                    value={editEvDescription}
+                    onChange={(e) => setEditEvDescription(e.target.value)}
+                    placeholder="Description (optional)…"
+                    style={{ border: "1px solid #C7D2FE", outline: "none", backgroundColor: "#FFFFFF",
+                      borderRadius: "6px", fontSize: "11px", fontWeight: 500, color: "#44403C",
+                      padding: "5px 7px", width: "100%" }}
                   />
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                    <input type="time" value={editEvStart} onChange={(e) => setEditEvStart(e.target.value)}
-                      style={{ ...timeInputStyle, borderColor: editTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
+                    <button
+                      type="button"
+                      aria-label="Start time"
+                      onClick={() => setTimePickerTarget("edit-start")}
+                      style={{ ...timeInputStyle, borderColor: editTimeInvalid ? "#FCA5A5" : "#E8DDD0",
+                        display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", fontWeight: 600 }}
+                    >
+                      <span>{editEvStart || "Start"}</span>
+                      <Clock size={10} color="#F97316" />
+                    </button>
                     <span style={{ fontSize: "11px", color: "#78716C" }}>–</span>
-                    <input type="time" value={editEvEnd} onChange={(e) => setEditEvEnd(e.target.value)}
-                      style={{ ...timeInputStyle, borderColor: editTimeInvalid ? "#FCA5A5" : "#E8DDD0" }} />
-                    <div style={{ minWidth: 120 }}>
-                      <CalendarPicker value={editEvDate} onChange={setEditEvDate} accentColor="#6B7280" min="" />
-                    </div>
-                    <select value={editEvGroupId} onChange={(e) => setEditEvGroupId(e.target.value)}
-                      style={{ flex: 1, fontSize: "11px", border: "1px solid #E8DDD0", borderRadius: "6px",
+                    <button
+                      type="button"
+                      aria-label="End time"
+                      onClick={() => setTimePickerTarget("edit-end")}
+                      style={{ ...timeInputStyle, borderColor: editTimeInvalid ? "#FCA5A5" : "#E8DDD0",
+                        display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", fontWeight: 600 }}
+                    >
+                      <span>{editEvEnd || "End"}</span>
+                      <Clock size={10} color="#F97316" />
+                    </button>
+                    <select value={editEvGroupId} onChange={(e) => setEditEvGroupId(e.target.value)} aria-label="Event group"
+                      style={{ flex: "0 1 112px", width: "112px", maxWidth: "112px", fontSize: "11px", border: "1px solid #E8DDD0", borderRadius: "6px",
                         padding: "3px 6px", outline: "none", backgroundColor: "#FFFFFF", color: "#78716C", cursor: "pointer" }}>
                       <option value="">No group</option>
                       {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID).map((g) => (
@@ -393,15 +554,14 @@ export default function MorningPlan({
                       style={{ ...saveBtn, opacity: canSaveEdit ? 1 : 0.4, cursor: canSaveEdit ? "pointer" : "not-allowed" }}>
                       Save
                     </button>
-                    <button onClick={deleteEditEvent} style={{
+                    <button onClick={() => setConfirmDeleteEvent(true)} style={{
                       display: "flex", alignItems: "center", gap: "4px",
                       padding: "3px 10px", borderRadius: "6px", border: "1px solid #FCA5A5",
                       backgroundColor: "#FEF2F2", fontSize: "11px", fontWeight: 700,
-                      color: "#DC2626", cursor: "pointer",
+                      color: "#DC2626", cursor: "pointer", marginLeft: "auto",
                     }}>
                       <Trash2 size={10} /> Delete
                     </button>
-                    <button onClick={cancelEditEvent} style={ghostBtn}><X size={12} color="#A8A29E" /></button>
                   </div>
                   {editTimeInvalid && (
                     <p style={{ fontSize: "10px", color: "#DC2626", fontWeight: 600, margin: 0 }}>

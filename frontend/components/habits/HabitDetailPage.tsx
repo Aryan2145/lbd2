@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft, Flame, Clock, Activity, Briefcase, TrendingUp,
-  Sparkles, User, Users, Heart, LayoutGrid, Zap, CheckCircle2, Lock, Info,
+  Sparkles, User, Users, Heart, LayoutGrid, Zap, CheckCircle2, Lock, Info, Pencil,
 } from "lucide-react";
 import type { HabitData, LifeArea } from "./HabitCard";
 import { AREA_META, FREQ_LABEL, toLocalDate, isScheduledDay, isHabitDoneOnDate } from "./HabitCard";
@@ -192,13 +192,14 @@ function Card({ title, color, children, action, titleExtra, style, className }: 
 interface Props {
   habit: HabitData | null;
   onClose: () => void;
+  onEdit: () => void;
   onToggleDate: (id: string, date: string) => void;
 }
 
 const DOW_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DOW_JS     = [1, 2, 3, 4, 5, 6, 0];
 
-export default function HabitDetailPage({ habit, onClose, onToggleDate }: Props) {
+export default function HabitDetailPage({ habit, onClose, onEdit, onToggleDate }: Props) {
   const calScrollRef   = useRef<HTMLDivElement>(null);
   const histScrollRef  = useRef<HTMLDivElement>(null);
   const freqScrollRef  = useRef<HTMLDivElement>(null);
@@ -386,15 +387,24 @@ export default function HabitDetailPage({ habit, onClose, onToggleDate }: Props)
         {/* Left content column */}
         <div className="hdp-left" style={{ flex: 1, overflowY: "auto", padding: "0 24px 48px", minWidth: 0 }}>
 
-          {/* Back button */}
-          <button onClick={onClose} style={{
-            display: "flex", alignItems: "center", gap: "6px",
-            color: "#1C1917", fontSize: "13px", fontWeight: 600,
-            background: "none", border: "none", cursor: "pointer",
-            padding: "18px 0 14px",
-          }}>
-            <ArrowLeft size={15} /> Habits
-          </button>
+          {/* Page actions */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <button onClick={onClose} style={{
+              display: "flex", alignItems: "center", gap: "6px",
+              color: "#1C1917", fontSize: "13px", fontWeight: 600,
+              background: "none", border: "none", cursor: "pointer",
+              padding: "18px 0 14px",
+            }}>
+              <ArrowLeft size={15} /> Habits
+            </button>
+            <button onClick={onEdit} title="Edit habit" style={{
+              width: 32, height: 32, borderRadius: "8px", border: "none",
+              backgroundColor: area.color, display: "flex", alignItems: "center",
+              justifyContent: "center", cursor: "pointer", boxShadow: `0 3px 10px ${area.color}35`,
+            }}>
+              <Pencil size={13} color="#FFFFFF" />
+            </button>
+          </div>
 
           {/* ── Header card ── */}
           <div style={{

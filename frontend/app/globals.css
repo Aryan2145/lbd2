@@ -135,6 +135,7 @@ body {
 /* Placeholder contrast helpers */
 .weekly-input::placeholder { color: #9CA3AF; }
 .weekly-textarea::placeholder { color: #78716C; font-weight: 500;}
+.daily-event-title-input::placeholder { color: #57534E; opacity: 1; }
 .search-input { border: 1px solid #E8DDD0; }
 .search-input:focus { border-color: #F97316; outline: none; }
 .search-input::placeholder { color: #78716C; }
