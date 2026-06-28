@@ -54,12 +54,14 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSave: (goal: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
+  onDelete?: (id: string) => void;
   initialData?: GoalData;
 }
 
-export default function GoalCreateSheet({ open, onClose, onSave, initialData }: Props) {
+export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initialData }: Props) {
   const isEditing = !!initialData;
   const [step, setStep] = useState(1);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const { visionAreas } = useAppStore();
 
@@ -107,6 +109,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
   useEffect(() => {
     if (!open) {
       setStep(1);
+      setConfirmDelete(false);
       setArea(""); setTitle(""); setWhy("");
       setMetric(""); setUnit(""); setDeadline(""); setAreaOpen(false);
       setMilestones([]); setMTitle(""); setMDeadline(""); setShowMsForm(false);
@@ -136,7 +139,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
     return () => window.removeEventListener("mousedown", onDown);
   }, [areaOpen]);
 
-  const deadlineError  = deadline ? validateGoalDate(deadline, { required: false }) : null;
+  const deadlineError  = validateGoalDate(deadline, { required: true });
   const mDeadlineError = deadline && mDeadline && mDeadline > deadline
     ? "Can't be after goal's target date" : null;
 
@@ -146,8 +149,8 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
   const AreaIcon  = area ? AREA_ICONS[area]       : Target;
   const visionText = area ? visionTextForArea(visionAreas, area) : "";
 
-  // Step 1 requires both a title and a life area before moving on or saving.
-  const canProceed = !!title.trim() && !!area;
+  // Step 1 requires a title, life area, and valid target date before moving on or saving.
+  const canProceed = !!title.trim() && !!area && !deadlineError;
 
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "9px 12px", borderRadius: "8px",
@@ -169,7 +172,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
   };
 
   const handleSave = () => {
-    if (!title.trim() || !area) return;
+    if (!title.trim() || !area || deadlineError) return;
     const now    = Date.now();
     const goalId = initialData?.id ?? crypto.randomUUID();
     const goal: GoalData = {
@@ -178,7 +181,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
       outcome:    why.trim() || title.trim(),
       metric:     metric.trim(),
       metricUnit: unit.trim(),
-      deadline:   deadline || "2099-12-31",
+      deadline,
       area,
       progress:   initialData?.progress   ?? 0,
       lastMoved:  initialData?.lastMoved  ?? now,
@@ -211,12 +214,25 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
         >
           <ArrowLeft size={15} /> Goals
         </button>
-        <button
-          onClick={handleSave}
-          style={{ padding: "9px 22px", borderRadius: "8px", border: "none", backgroundColor: "#F97316", fontSize: "13px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer", boxShadow: "0 2px 8px rgba(249,115,22,0.3)" }}
-        >
-          Save goal
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {isEditing && initialData && onDelete && (
+            <button onClick={() => setConfirmDelete(true)} style={{ padding: "8px 12px", borderRadius: "8px",
+              border: "1px solid #FCA5A5", backgroundColor: "#FEF2F2", color: "#DC2626",
+              fontSize: "12px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+              <Trash2 size={13} /> Delete
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={!canProceed}
+            style={{ padding: "9px 22px", borderRadius: "8px", border: "none",
+              backgroundColor: canProceed ? "#F97316" : "#E8DDD0", fontSize: "13px", fontWeight: 700,
+              color: canProceed ? "#FFFFFF" : "#A8A29E", cursor: canProceed ? "pointer" : "default",
+              boxShadow: canProceed ? "0 2px 8px rgba(249,115,22,0.3)" : "none" }}
+          >
+            Save goal
+          </button>
+        </div>
       </div>
 
       {/* ── Body ── */}
@@ -398,8 +414,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
                 </div>
                 <div>
                   <label style={labelStyle}>
-                    Target Date{" "}
-                    <span style={{ fontSize: "11px", fontWeight: 500, color: "#6B7280" }}>(optional)</span>
+                    Target Date <span style={{ color: "#DC2626" }}>*</span>
                   </label>
                   <CalendarPicker
                     value={deadline}
@@ -663,7 +678,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", borderRadius: "10px", backgroundColor: "#FFFBEB", border: "1.5px solid #FDE68A", marginBottom: "12px" }}>
                   <AlertTriangle size={15} color="#D97706" style={{ flexShrink: 0 }} />
                   <p style={{ fontSize: "13px", fontWeight: 500, color: "#92400E", margin: 0 }}>
-                    Go back to <button onClick={() => setStep(1)} style={{ background: "none", border: "none", padding: 0, fontWeight: 700, color: "#D97706", cursor: "pointer", fontSize: "13px" }}>Goal Basics</button> and choose a life area and goal title before saving.
+                    Go back to <button onClick={() => setStep(1)} style={{ background: "none", border: "none", padding: 0, fontWeight: 700, color: "#D97706", cursor: "pointer", fontSize: "13px" }}>Goal Basics</button> and enter a title, life area, and target date before saving.
                   </p>
                 </div>
               )}
@@ -784,6 +799,36 @@ export default function GoalCreateSheet({ open, onClose, onSave, initialData }: 
         </div>
       </div>
     </div>
+
+    {confirmDelete && initialData && onDelete && (
+      <>
+        <div onClick={() => setConfirmDelete(false)} style={{ position: "fixed", inset: 0,
+          zIndex: 250, backgroundColor: "rgba(28,25,23,0.55)" }} />
+        <div role="dialog" aria-modal="true" aria-labelledby="delete-goal-title" style={{
+          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+          zIndex: 251, width: "calc(100% - 32px)", maxWidth: "380px", backgroundColor: "#FFFFFF",
+          borderRadius: "16px", padding: "22px", boxShadow: "0 24px 80px rgba(0,0,0,0.24)" }}>
+          <div style={{ width: 38, height: 38, borderRadius: "10px", backgroundColor: "#FEF2F2",
+            display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "14px" }}>
+            <AlertTriangle size={19} color="#DC2626" />
+          </div>
+          <h3 id="delete-goal-title" style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 800, color: "#1C1917" }}>
+            Delete goal?
+          </h3>
+          <p style={{ margin: "0 0 20px", fontSize: "13px", lineHeight: 1.55, color: "#57534E" }}>
+            Are you sure you want to delete &ldquo;{initialData.statement}&rdquo;? Once done, this cannot be undone.
+          </p>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+            <button onClick={() => setConfirmDelete(false)} style={{ padding: "8px 16px", borderRadius: "8px",
+              border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF", color: "#57534E",
+              fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>Cancel</button>
+            <button onClick={() => { onDelete(initialData.id); setConfirmDelete(false); onClose(); }} style={{
+              padding: "8px 16px", borderRadius: "8px", border: "none", backgroundColor: "#DC2626",
+              color: "#FFFFFF", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>Delete goal</button>
+          </div>
+        </div>
+      </>
+    )}
 
     {/* ── Task Create Modal ── */}
     {taskCreateMsId && (() => {
@@ -1041,4 +1086,3 @@ const labelStyle: React.CSSProperties = {
   display: "block", fontSize: "12px", fontWeight: 700,
   color: "#374151", marginBottom: "6px",
 };
-

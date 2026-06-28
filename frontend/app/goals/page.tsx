@@ -392,6 +392,11 @@ export default function GoalsPage() {
         open={!!editGoal}
         onClose={() => setEditGoal(null)}
         initialData={editGoal ?? undefined}
+        onDelete={(id) => {
+          deleteGoal(id);
+          setEditGoal(null);
+          setDetailGoal(null);
+        }}
         onSave={(g, tasks, habits) => {
           updateGoal(g);
           tasks?.forEach(addTask);
