@@ -16,6 +16,7 @@ interface AuthState {
   token: string | null;
   user:  AuthUser | null;
   login:  (email: string, password: string) => Promise<void>;
+  applySession: (accessToken: string, user: AuthUser) => void;
   logout: () => void;
 }
 
@@ -58,13 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function applySession(accessToken: string, u: AuthUser) {
+    localStorage.setItem("lbd_token",     accessToken);
+    localStorage.setItem("lbd_auth_user", JSON.stringify(u));
+    writeCookie(accessToken);
+    setToken(accessToken);
+    setUser(u);
+  }
+
   async function login(email: string, password: string) {
     const res = await api.post<{ accessToken: string; user: AuthUser }>("/auth/login", { email, password });
-    localStorage.setItem("lbd_token",     res.accessToken);
-    localStorage.setItem("lbd_auth_user", JSON.stringify(res.user));
-    writeCookie(res.accessToken);
-    setToken(res.accessToken);
-    setUser(res.user);
+    applySession(res.accessToken, res.user);
   }
 
   function logout() {
@@ -76,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  return <Ctx.Provider value={{ token, user, login, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ token, user, login, applySession, logout }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthState {

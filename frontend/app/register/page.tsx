@@ -243,7 +243,7 @@ function DarkPanel() {
 
 // ── Registration form ─────────────────────────────────────────────────────────
 export default function RegisterPage() {
-  const { login } = useAuth();
+  const { applySession } = useAuth();
   const router    = useRouter();
 
   const [name,        setName]        = useState("");
@@ -254,6 +254,9 @@ export default function RegisterPage() {
   const [gender,      setGender]      = useState("");
   const [password,    setPassword]    = useState("");
   const [confirmPw,   setConfirmPw]   = useState("");
+  const [otp,         setOtp]         = useState("");
+  const [registered,  setRegistered]  = useState(false);
+  const [resendMsg,   setResendMsg]   = useState("");
   const [error,       setError]       = useState("");
   const [loading,     setLoading]     = useState(false);
   const [showPwd,     setShowPwd]     = useState(false);
@@ -262,14 +265,15 @@ export default function RegisterPage() {
 
   useEffect(() => { setMaxStep(prev => Math.max(prev, step)); }, [step]);
 
-  const TOTAL_STEPS = 7;
+  const TOTAL_STEPS = 8; // steps 1–7 collect details; step 8 verifies the email
+  const VERIFY_STEP = 8;
   const quote       = dailyQuote();
 
   function validateStep(s: number): string | null {
     if (s === 1 && name.trim().length < 2)        return "Please enter your full name.";
     if (s === 2 && !/^\S+@\S+\.\S+$/.test(email)) return "Please enter a valid email.";
     if (s === 3 && !/^\+[0-9]{1,4}$/.test(countryCode.trim()))   return "Enter a valid country code (e.g. +91).";
-    if (s === 3 && !/^[0-9]{7,12}$/.test(phoneNum.trim()))        return "Enter a valid phone number (digits only).";
+    if (s === 3 && !/^[0-9]{10}$/.test(phoneNum.trim()))          return "Enter a valid 10-digit phone number.";
     if (s === 4 && designation.trim().length < 2) return "Please enter your designation.";
     if (s === 5 && !gender)                       return "Please select your gender.";
     if (s === 6 && password.length < 6)           return "Password must be at least 6 characters.";
@@ -286,6 +290,9 @@ export default function RegisterPage() {
 
   function jumpToStep(target: number) {
     setError("");
+    // The verify step (8) is only reachable after the account is created.
+    const cap = registered ? TOTAL_STEPS : 7;
+    target = Math.min(target, cap);
     if (target <= step) { setStep(target); return; }
     for (let s = step; s < target; s++) {
       const err = validateStep(s);
@@ -294,27 +301,63 @@ export default function RegisterPage() {
     setStep(target);
   }
 
+  async function handleResend() {
+    setError(""); setResendMsg("");
+    try {
+      await api.post("/auth/resend-verification", { email });
+      setResendMsg("A fresh code is on its way — check your inbox.");
+      setOtp("");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Couldn't resend the code.");
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (step < TOTAL_STEPS) { handleNext(); return; }
-    for (let s = 1; s <= TOTAL_STEPS; s++) {
-      const err = validateStep(s);
-      if (err) { setStep(s); setError(err); return; }
+
+    // Steps 1–6: validate the current field and advance.
+    if (step < 7) { handleNext(); return; }
+
+    // Step 7: validate everything, create the (unverified) account, email the code.
+    if (step === 7) {
+      for (let s = 1; s <= 7; s++) {
+        const err = validateStep(s);
+        if (err) { setStep(s); setError(err); return; }
+      }
+      setLoading(true);
+      try {
+        await api.post("/auth/register", {
+          name: name.trim(), email, password,
+          designation: designation.trim(), gender,
+          phone: (countryCode.trim() + phoneNum.trim()) || undefined,
+        });
+        setRegistered(true);
+        setResendMsg(`We've sent a 6-digit code to ${email}.`);
+        setStep(VERIFY_STEP);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
+      return;
     }
-    setLoading(true);
-    try {
-      await api.post("/auth/register", {
-        name: name.trim(), email, password,
-        designation: designation.trim(), gender,
-        phone: (countryCode.trim() + phoneNum.trim()) || undefined,
-      });
-      await login(email, password);
-      router.replace("/dashboard");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
+
+    // Step 8: confirm the code and sign in.
+    if (step === VERIFY_STEP) {
+      if (otp.length !== 6) { setError("Enter the 6-digit code from your email."); return; }
+      setLoading(true);
+      try {
+        const res = await api.post<{ accessToken: string; user: { id: string; name: string; email: string } }>(
+          "/auth/verify-email", { email, otp },
+        );
+        applySession(res.accessToken, res.user);
+        router.replace("/dashboard");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
@@ -406,8 +449,10 @@ export default function RegisterPage() {
                     <input
                       key="step3-num"
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
                       value={phoneNum}
-                      onChange={e => setPhoneNum(e.target.value.replace(/\D/g, ""))}
+                      onChange={e => setPhoneNum(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       placeholder="9876543210"
                       style={{ ...inputStyle, flex: 1 }}
                     />
@@ -476,7 +521,36 @@ export default function RegisterPage() {
                   </div>
                 </div>
               )}
+              {step === VERIFY_STEP && (
+                <div>
+                  <label style={labelStyle}>Verification Code</label>
+                  <input
+                    key="step8"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otp}
+                    onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="123456"
+                    style={{ ...inputStyle, letterSpacing: "8px", textAlign: "center", fontSize: 20, fontWeight: 700 }}
+                    autoFocus
+                  />
+                  <p style={{ fontSize: 12, color: "#737373", margin: "8px 2px 0", lineHeight: 1.5 }}>
+                    Sent to <strong style={{ color: "#44403C" }}>{email}</strong>. Didn't get it?{" "}
+                    <button type="button" onClick={handleResend} style={{ background: "none", border: "none", color: "#f97316", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 12 }}>
+                      Resend code
+                    </button>
+                  </p>
+                </div>
+              )}
             </div>
+
+            {resendMsg && step === VERIFY_STEP && (
+              <p style={{ fontSize: 12.5, color: "#9A3412", margin: 0, padding: "9px 12px", backgroundColor: "#FFF4EC", border: "1px solid #FBD3B4", borderRadius: 8, fontWeight: 500 }}>
+                {resendMsg}
+              </p>
+            )}
 
             {error && (
               <p style={{ fontSize: 13, color: "#DC2626", margin: 0, padding: "9px 12px", backgroundColor: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, fontWeight: 600 }}>
@@ -496,7 +570,11 @@ export default function RegisterPage() {
                 transition: "background 0.15s",
               }}
             >
-              {loading ? "Creating account…" : step < TOTAL_STEPS ? "Next" : "Create account"}
+              {loading
+                ? (step === VERIFY_STEP ? "Verifying…" : "Creating account…")
+                : step < 7 ? "Next"
+                : step === 7 ? "Create account"
+                : "Verify & continue"}
             </button>
           </form>
 

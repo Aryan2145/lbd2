@@ -72,6 +72,8 @@ model User {
   gender    String?
   password  String   // bcrypt hash
 
+  emailVerified Boolean @default(false)
+
   googleRefreshToken String?
 
   createdAt DateTime @default(now())
@@ -110,6 +112,24 @@ model PasswordReset {
 
   @@index([email])
   @@map("password_resets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Email verification (signup OTP flow)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model EmailVerification {
+  id         String    @id @default(cuid())
+  email      String
+  otpHash    String    // bcrypt hash of the 6-digit OTP
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+  @@map("email_verifications")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

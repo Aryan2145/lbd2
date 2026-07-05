@@ -21,6 +21,15 @@ class RegisterDto {
   @IsOptional() @IsString() phone?: string;
 }
 
+class VerifyEmailDto {
+  @IsEmail() email: string;
+  @IsString() @Length(6, 6) otp: string;
+}
+
+class ResendVerificationDto {
+  @IsEmail() email: string;
+}
+
 class ForgotPasswordDto {
   @IsEmail() email: string;
 }
@@ -58,6 +67,16 @@ export class AuthController {
       gender: dto.gender,
       phone:  dto.phone,
     });
+  }
+
+  @Post('verify-email')
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.auth.verifyEmail(dto.email, dto.otp);
+  }
+
+  @Post('resend-verification')
+  resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.auth.resendVerification(dto.email);
   }
 
   // ── Forgot / reset password (OTP flow) ──────────────────────────────────────

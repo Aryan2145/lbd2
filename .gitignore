@@ -23,5 +23,8 @@ frontend/.env*.local
 *.jpg
 *.jpeg
 
+# Email logo assets must ship with the backend (override the image ignores above)
+!backend/src/mail/assets/*.png
+
 # Nested leftover git folder
 lbd2/

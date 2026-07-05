@@ -244,7 +244,7 @@ function DarkPanel() {
 
 // ── Main form ────────────────────────────────────────────────────────────────
 function LoginForm() {
-  const { login }    = useAuth();
+  const { login, applySession } = useAuth();
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -260,31 +260,79 @@ function LoginForm() {
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
+  const [notice,   setNotice]   = useState("");
   const [loading,  setLoading]  = useState(false);
   const [showPwd,  setShowPwd]  = useState(false);
+
+  // When set, the account exists but needs email verification — show the code panel.
+  const [verifyEmail, setVerifyEmail] = useState("");
+  const [otp,         setOtp]         = useState("");
 
   const quote = dailyQuote();
 
   function switchMode(m: Mode) {
-    setMode(m); setError("");
+    setMode(m); setError(""); setNotice("");
     setName(""); setEmail(""); setPassword("");
+    setVerifyEmail(""); setOtp("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setError(""); setNotice("");
     setLoading(true);
     try {
       if (mode === "register") {
         if (name.trim().length < 2) throw new Error("Please enter your full name");
         await api.post("/auth/register", { name: name.trim(), email, password });
+        setVerifyEmail(email);
+        setNotice(`We've sent a 6-digit code to ${email}.`);
+        return;
       }
-      await login(email, password);
+      try {
+        await login(email, password);
+        router.replace("/dashboard");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "";
+        if (/verif/i.test(msg)) {
+          setVerifyEmail(email);
+          setNotice("Your email isn't verified yet. Enter the code we just emailed you.");
+          return;
+        }
+        throw err;
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (otp.length !== 6) { setError("Enter the 6-digit code from your email."); return; }
+    setLoading(true);
+    try {
+      const res = await api.post<{ accessToken: string; user: { id: string; name: string; email: string } }>(
+        "/auth/verify-email", { email: verifyEmail, otp },
+      );
+      applySession(res.accessToken, res.user);
       router.replace("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setError(""); setNotice("");
+    try {
+      await api.post("/auth/resend-verification", { email: verifyEmail });
+      setNotice("A fresh code is on its way — check your inbox.");
+      setOtp("");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Couldn't resend the code.");
     }
   }
 
@@ -338,6 +386,51 @@ function LoginForm() {
             : <div style={{ height: 26 }} />
           }
 
+          {verifyEmail ? (
+            /* ── Verify email panel ─────────────────────────────── */
+            <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Verification Code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  autoFocus
+                  placeholder="123456"
+                  style={{ ...inputStyle, letterSpacing: "8px", textAlign: "center", fontSize: 20, fontWeight: 700 }}
+                />
+                <p style={{ fontSize: 12, color: "#737373", margin: "8px 2px 0", lineHeight: 1.5 }}>
+                  Sent to <strong style={{ color: "#404040" }}>{verifyEmail}</strong>. Didn&apos;t get it?{" "}
+                  <button type="button" onClick={handleResend} style={{ background: "none", border: "none", color: "#f97316", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: 12 }}>
+                    Resend code
+                  </button>
+                </p>
+              </div>
+
+              {notice && (
+                <p style={{ fontSize: 12.5, color: "#9A3412", margin: 0, padding: "9px 12px", backgroundColor: "#FFF4EC", border: "1px solid #FBD3B4", borderRadius: 8, fontWeight: 500 }}>
+                  {notice}
+                </p>
+              )}
+              {error && (
+                <p style={{ fontSize: 13, color: "#DC2626", margin: 0, padding: "9px 12px", backgroundColor: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, fontWeight: 600 }}>
+                  {error}
+                </p>
+              )}
+
+              <button type="submit" disabled={loading} style={{ marginTop: 4, padding: "12px 0", borderRadius: 24, border: "none", background: loading ? "#E8C8A8" : "#f97316", color: "#FFFFFF", fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", transition: "background 0.15s" }}>
+                {loading ? "Verifying…" : "Verify & continue"}
+              </button>
+
+              <button type="button" onClick={() => switchMode("login")} style={{ background: "none", border: "none", color: "#737373", fontWeight: 600, cursor: "pointer", fontSize: 13, padding: 0 }}>
+                ← Back to sign in
+              </button>
+            </form>
+          ) : (
+          <>
           {/* Form */}
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -454,6 +547,8 @@ function LoginForm() {
               </>
             )}
           </p>
+          </>
+          )}
 
           {/* Legal */}
           <p style={{ textAlign: "center", fontSize: 11, color: "#737373", fontWeight: 500, marginTop: 20, lineHeight: 1.5 }}>

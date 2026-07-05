@@ -4,6 +4,8 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "transpileOnly": true
+    "transpileOnly": true,
+    "assets": ["mail/assets/*.png"],
+    "watchAssets": true
   }
 }
