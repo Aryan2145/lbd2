@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
@@ -36,6 +36,14 @@ export default function ForgotPasswordPage() {
   const [error,   setError]   = useState("");
   const [notice,  setNotice]  = useState("");
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0); // seconds until resend is allowed
+
+  // Tick the resend cooldown down to zero.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +51,7 @@ export default function ForgotPasswordPage() {
     try {
       await api.post("/auth/forgot-password", { email: email.trim() });
       setNotice(`We've sent a 6-digit code to ${email.trim()}.`);
+      setCooldown(60);
       setStep("otp");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -90,11 +99,13 @@ export default function ForgotPasswordPage() {
   }
 
   async function resendCode() {
+    if (cooldown > 0) return;
     setError(""); setNotice(""); setLoading(true);
     try {
       await api.post("/auth/forgot-password", { email: email.trim() });
       setNotice("A new code has been sent.");
       setOtp("");
+      setCooldown(60);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -228,10 +239,10 @@ export default function ForgotPasswordPage() {
                 {loading ? "Verifying…" : "Verify code"}
               </button>
               <button
-                type="button" onClick={resendCode} disabled={loading}
-                style={{ background: "none", border: "none", color: "#f97316", fontWeight: 600, fontSize: 13, cursor: "pointer", padding: 0 }}
+                type="button" onClick={resendCode} disabled={loading || cooldown > 0}
+                style={{ background: "none", border: "none", color: cooldown > 0 ? "#a3a3a3" : "#f97316", fontWeight: 600, fontSize: 13, cursor: cooldown > 0 ? "default" : "pointer", padding: 0 }}
               >
-                Didn't get it? Resend code
+                {cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't get it? Resend code"}
               </button>
             </form>
           )}

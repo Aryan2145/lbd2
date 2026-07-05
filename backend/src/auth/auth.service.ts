@@ -13,6 +13,7 @@ import { MailService } from '../mail/mail.service';
 
 const OTP_TTL_MS = 10 * 60 * 1000; // verification codes valid for 10 minutes
 const MAX_ATTEMPTS = 5;
+const RESEND_COOLDOWN_MS = 60 * 1000; // min gap between sends to the same email
 
 interface CompleteSignupInput {
   name: string;
@@ -100,6 +101,20 @@ export class AuthService {
   }
 
   private async sendVerificationCode(email: string, name: string) {
+    // Anti-spam: if a still-valid code was sent less than a minute ago, keep it
+    // instead of emailing a new one — so rapid repeat clicks can't flood an inbox.
+    const recent = await this.prisma.emailVerification.findFirst({
+      where: { email, consumedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (
+      recent &&
+      recent.expiresAt.getTime() > Date.now() &&
+      Date.now() - recent.createdAt.getTime() < RESEND_COOLDOWN_MS
+    ) {
+      return;
+    }
+
     const otp = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const otpHash = await bcrypt.hash(otp, 10);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);

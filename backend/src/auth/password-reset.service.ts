@@ -7,6 +7,7 @@ import { MailService } from '../mail/mail.service';
 
 const OTP_TTL_MS = 10 * 60 * 1000; // codes are valid for 10 minutes
 const MAX_ATTEMPTS = 5; // wrong-OTP guesses allowed before a new code is required
+const RESEND_COOLDOWN_MS = 60 * 1000; // min gap between sends to the same email
 
 @Injectable()
 export class PasswordResetService {
@@ -26,6 +27,21 @@ export class PasswordResetService {
 
     if (!user) {
       throw new BadRequestException('No account found with that email address.');
+    }
+
+    // Anti-spam: if a still-valid code was sent less than a minute ago, don't
+    // send another — the existing code is returned to the same inbox. This means
+    // clicking "send" 100 times results in at most one email per minute.
+    const recent = await this.prisma.passwordReset.findFirst({
+      where: { email: normalized, consumedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (
+      recent &&
+      recent.expiresAt.getTime() > Date.now() &&
+      Date.now() - recent.createdAt.getTime() < RESEND_COOLDOWN_MS
+    ) {
+      return { success: true };
     }
 
     const otp = String(randomInt(0, 1_000_000)).padStart(6, '0');
