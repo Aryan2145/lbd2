@@ -9,6 +9,7 @@ class HealthController {
 
 import { PrismaModule } from './prisma/prisma.module';
 import { EncryptionModule } from './encryption/encryption.module';
+import { MailModule } from './mail/mail.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { GoalsModule } from './goals/goals.module';
@@ -31,6 +32,7 @@ import { AdminModule } from './admin/admin.module';
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     EncryptionModule,
+    MailModule,
     AuthModule,
     UsersModule,
     GoalsModule,

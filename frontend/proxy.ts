@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Pages where an unauthenticated user is allowed.
-const AUTH_PAGES   = new Set(["/", "/login", "/register"]);
+const AUTH_PAGES   = new Set(["/", "/login", "/register", "/forgot-password"]);
 const PUBLIC_PAGES = new Set(["/privacy", "/terms", "/admin"]);
 
 /**

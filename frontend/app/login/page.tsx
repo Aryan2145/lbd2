@@ -393,6 +393,16 @@ function LoginForm() {
                   {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {mode === "login" && (
+                <div style={{ textAlign: "right", marginTop: 6 }}>
+                  <Link
+                    href="/forgot-password"
+                    style={{ fontSize: 12, color: "#f97316", fontWeight: 600, textDecoration: "none" }}
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+              )}
             </div>
 
             {error && (

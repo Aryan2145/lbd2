@@ -94,6 +94,25 @@ model User {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Password reset (forgot-password OTP flow)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PasswordReset {
+  id         String    @id @default(cuid())
+  email      String
+  otpHash    String    // bcrypt hash of the 6-digit OTP
+  resetToken String?   // opaque token issued after the OTP is verified
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+  @@map("password_resets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Goals
 // ─────────────────────────────────────────────────────────────────────────────
 

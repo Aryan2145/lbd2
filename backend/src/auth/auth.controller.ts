@@ -1,7 +1,8 @@
 import { Controller, Post, Get, Delete, Body, Query, Request, Res, UseGuards } from '@nestjs/common';
-import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, Length, MinLength } from 'class-validator';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { PasswordResetService } from './password-reset.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { GcalService } from '../gcal/gcal.service';
 import { UsersService } from '../users/users.service';
@@ -20,10 +21,26 @@ class RegisterDto {
   @IsOptional() @IsString() phone?: string;
 }
 
+class ForgotPasswordDto {
+  @IsEmail() email: string;
+}
+
+class VerifyOtpDto {
+  @IsEmail() email: string;
+  @IsString() @Length(6, 6) otp: string;
+}
+
+class ResetPasswordDto {
+  @IsEmail() email: string;
+  @IsString() resetToken: string;
+  @IsString() @MinLength(6) newPassword: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
     private auth: AuthService,
+    private passwordReset: PasswordResetService,
     private gcal: GcalService,
     private users: UsersService,
     private config: ConfigService,
@@ -41,6 +58,23 @@ export class AuthController {
       gender: dto.gender,
       phone:  dto.phone,
     });
+  }
+
+  // ── Forgot / reset password (OTP flow) ──────────────────────────────────────
+
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.passwordReset.requestReset(dto.email);
+  }
+
+  @Post('verify-otp')
+  verifyOtp(@Body() dto: VerifyOtpDto) {
+    return this.passwordReset.verifyOtp(dto.email, dto.otp);
+  }
+
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.passwordReset.resetPassword(dto.email, dto.resetToken, dto.newPassword);
   }
 
   // ── Google Calendar OAuth ───────────────────────────────────────────────────

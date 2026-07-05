@@ -81,7 +81,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isLogin    = pathname === "/login";
   const isRegister = pathname === "/register";
-  const isAuth     = isLogin || isRegister;
+  const isForgot   = pathname === "/forgot-password";
+  const isAuth     = isLogin || isRegister || isForgot;
   const isPublic   = pathname === "/privacy" || pathname === "/terms";
   const isAdmin    = pathname.startsWith("/admin");
 
