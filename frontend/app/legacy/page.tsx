@@ -20,11 +20,12 @@ const ROLES = [
     title: "Children",
     question: "Your child is now a parent themselves, putting their own child to sleep and thinking about you. What do you want them to be feeling about you?",
   },
-  {
-    id: "parent",
-    title: "Parents",
-    question: "Your mother or father is sitting in their favourite chair at home, quietly looking at an old photo of you. What do you want to be going through their mind?",
-  },
+  // Hidden per request — uncomment to restore the "Parents" role card.
+  // {
+  //   id: "parent",
+  //   title: "Parents",
+  //   question: "Your mother or father is sitting in their favourite chair at home, quietly looking at an old photo of you. What do you want to be going through their mind?",
+  // },
   {
     id: "colleague",
     title: "Colleagues",
@@ -237,7 +238,7 @@ export default function LegacyPage() {
             >
               {completedCount}
               <span style={{ fontSize: "14px", fontWeight: 400, color: "#57534E" }}>
-                /6
+                /{ROLES.length}
               </span>
             </p>
           </div>
