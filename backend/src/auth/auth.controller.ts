@@ -12,22 +12,27 @@ class LoginDto {
   @IsString() password: string;
 }
 
-class RegisterDto {
+// Signup step 1 — no account is created yet, so only the email (+ name for the
+// greeting) is needed to send the verification code.
+class StartSignupDto {
+  @IsString() name: string;
+  @IsEmail() email: string;
+}
+
+// Signup step 2 — the code plus every detail needed to create the account.
+class CompleteSignupDto {
   @IsString() name: string;
   @IsEmail() email: string;
   @IsString() @MinLength(6) password: string;
   @IsOptional() @IsString() designation?: string;
   @IsOptional() @IsIn(['Male', 'Female', 'Other']) gender?: string;
   @IsOptional() @IsString() phone?: string;
-}
-
-class VerifyEmailDto {
-  @IsEmail() email: string;
   @IsString() @Length(6, 6) otp: string;
 }
 
 class ResendVerificationDto {
   @IsEmail() email: string;
+  @IsOptional() @IsString() name?: string;
 }
 
 class ForgotPasswordDto {
@@ -61,22 +66,26 @@ export class AuthController {
   }
 
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto.name, dto.email, dto.password, {
-      role:   dto.designation,
-      gender: dto.gender,
-      phone:  dto.phone,
-    });
+  register(@Body() dto: StartSignupDto) {
+    return this.auth.startSignup(dto.name, dto.email);
   }
 
   @Post('verify-email')
-  verifyEmail(@Body() dto: VerifyEmailDto) {
-    return this.auth.verifyEmail(dto.email, dto.otp);
+  verifyEmail(@Body() dto: CompleteSignupDto) {
+    return this.auth.completeSignup({
+      name:     dto.name,
+      email:    dto.email,
+      password: dto.password,
+      otp:      dto.otp,
+      role:     dto.designation,
+      gender:   dto.gender,
+      phone:    dto.phone,
+    });
   }
 
   @Post('resend-verification')
   resendVerification(@Body() dto: ResendVerificationDto) {
-    return this.auth.resendVerification(dto.email);
+    return this.auth.resendVerification(dto.email, dto.name);
   }
 
   // ── Forgot / reset password (OTP flow) ──────────────────────────────────────

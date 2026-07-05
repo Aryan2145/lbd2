@@ -304,7 +304,7 @@ export default function RegisterPage() {
   async function handleResend() {
     setError(""); setResendMsg("");
     try {
-      await api.post("/auth/resend-verification", { email });
+      await api.post("/auth/resend-verification", { name: name.trim(), email });
       setResendMsg("A fresh code is on its way — check your inbox.");
       setOtp("");
     } catch (err: unknown) {
@@ -327,11 +327,8 @@ export default function RegisterPage() {
       }
       setLoading(true);
       try {
-        await api.post("/auth/register", {
-          name: name.trim(), email, password,
-          designation: designation.trim(), gender,
-          phone: (countryCode.trim() + phoneNum.trim()) || undefined,
-        });
+        // No account is created yet — this only emails the verification code.
+        await api.post("/auth/register", { name: name.trim(), email });
         setRegistered(true);
         setResendMsg(`We've sent a 6-digit code to ${email}.`);
         setStep(VERIFY_STEP);
@@ -348,8 +345,14 @@ export default function RegisterPage() {
       if (otp.length !== 6) { setError("Enter the 6-digit code from your email."); return; }
       setLoading(true);
       try {
+        // The account is created here — only after the code is confirmed.
         const res = await api.post<{ accessToken: string; user: { id: string; name: string; email: string } }>(
-          "/auth/verify-email", { email, otp },
+          "/auth/verify-email", {
+            name: name.trim(), email, password,
+            designation: designation.trim(), gender,
+            phone: (countryCode.trim() + phoneNum.trim()) || undefined,
+            otp,
+          },
         );
         applySession(res.accessToken, res.user);
         router.replace("/dashboard");

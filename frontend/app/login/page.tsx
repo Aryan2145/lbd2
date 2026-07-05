@@ -283,23 +283,15 @@ function LoginForm() {
     try {
       if (mode === "register") {
         if (name.trim().length < 2) throw new Error("Please enter your full name");
-        await api.post("/auth/register", { name: name.trim(), email, password });
+        if (password.length < 6) throw new Error("Password must be at least 6 characters");
+        // No account is created yet — this only emails the verification code.
+        await api.post("/auth/register", { name: name.trim(), email });
         setVerifyEmail(email);
         setNotice(`We've sent a 6-digit code to ${email}.`);
         return;
       }
-      try {
-        await login(email, password);
-        router.replace("/dashboard");
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "";
-        if (/verif/i.test(msg)) {
-          setVerifyEmail(email);
-          setNotice("Your email isn't verified yet. Enter the code we just emailed you.");
-          return;
-        }
-        throw err;
-      }
+      await login(email, password);
+      router.replace("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -314,7 +306,7 @@ function LoginForm() {
     setLoading(true);
     try {
       const res = await api.post<{ accessToken: string; user: { id: string; name: string; email: string } }>(
-        "/auth/verify-email", { email: verifyEmail, otp },
+        "/auth/verify-email", { name: name.trim(), email: verifyEmail, password, otp },
       );
       applySession(res.accessToken, res.user);
       router.replace("/dashboard");
@@ -328,7 +320,7 @@ function LoginForm() {
   async function handleResend() {
     setError(""); setNotice("");
     try {
-      await api.post("/auth/resend-verification", { email: verifyEmail });
+      await api.post("/auth/resend-verification", { name: name.trim(), email: verifyEmail });
       setNotice("A fresh code is on its way — check your inbox.");
       setOtp("");
     } catch (err: unknown) {
