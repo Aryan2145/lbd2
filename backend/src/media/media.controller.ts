@@ -9,7 +9,13 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { MediaService } from './media.service';
 
 const UUID_RE   = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ALLOWED   = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']);
+const ALLOWED   = new Set([
+  'image/png', 'image/jpeg', 'image/jpg', 'image/webp',
+  'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+]);
+// HEIC uploads sometimes carry an empty/octet-stream type; let those through and
+// rely on the content gate (sharp/heic-convert) to reject genuine non-images.
+const GENERIC   = new Set(['application/octet-stream', '']);
 const MAX_BYTES = 15 * 1024 * 1024; // 15 MB accepted upload; resized down on the server
 
 @Controller('media')
@@ -22,7 +28,9 @@ export class MediaController {
   async upload(@Request() req, @Param('scope') scope: string, @UploadedFile() file: any) {
     if (!this.media.isScope(scope)) throw new BadRequestException('Invalid media scope.');
     if (!file) throw new BadRequestException('No file uploaded.');
-    if (!ALLOWED.has(file.mimetype)) throw new BadRequestException('Unsupported image type.');
+    if (!ALLOWED.has(file.mimetype) && !GENERIC.has(file.mimetype)) {
+      throw new BadRequestException('Unsupported image type.');
+    }
     return this.media.upload(scope, req.user.userId, file.buffer);
   }
 

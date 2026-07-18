@@ -5,7 +5,7 @@ import { X, Camera, Check } from "lucide-react";
 import type { BucketEntry } from "@/lib/bucketTypes";
 import { LIFE_AREA_COLORS } from "@/lib/dayTypes";
 import { uploadMedia } from "@/lib/api";
-import { VisionImg } from "@/lib/visionImage";
+import { VisionImg, UPLOAD_ACCEPT, isAllowedImageFile } from "@/lib/visionImage";
 
 interface Props {
   entry:    BucketEntry | null;
@@ -13,7 +13,6 @@ interface Props {
   onCancel: () => void;
 }
 
-const ACCEPT    = "image/png,image/jpeg,image/webp";
 const MAX_BYTES = 15 * 1024 * 1024;
 
 export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
@@ -51,7 +50,7 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!ACCEPT.split(",").includes(file.type)) { setUploadError("Choose a PNG, JPEG, or WebP image."); return; }
+    if (!isAllowedImageFile(file)) { setUploadError("Choose a PNG, JPEG, WebP, or HEIC image."); return; }
     if (file.size > MAX_BYTES) { setUploadError("Image is larger than 15 MB."); return; }
     setUploadError("");
     if (stagedPreview) URL.revokeObjectURL(stagedPreview);
@@ -237,7 +236,7 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept={ACCEPT}
+                accept={UPLOAD_ACCEPT}
                 onChange={handleFileChange}
                 style={{ display: "none" }}
               />

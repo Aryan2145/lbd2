@@ -9,12 +9,11 @@ import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import { validateDate } from "@/lib/dateValidation";
 import CalendarPicker from "@/components/ui/CalendarPicker";
 import { uploadMedia } from "@/lib/api";
-import { VisionImg } from "@/lib/visionImage";
+import { VisionImg, UPLOAD_ACCEPT, isAllowedImageFile } from "@/lib/visionImage";
 
 // Re-exported for existing importers (e.g. the bucket-list page).
 export { toDriveImgUrl } from "@/lib/visionImage";
 
-const ACCEPT     = "image/png,image/jpeg,image/webp";
 const MAX_BYTES  = 15 * 1024 * 1024;
 
 interface Props {
@@ -86,8 +85,8 @@ export default function BucketEntrySheet({
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-picking the same file
     if (!file) return;
-    if (!ACCEPT.split(",").includes(file.type)) {
-      setUploadError("Please choose a PNG, JPEG, or WebP image.");
+    if (!isAllowedImageFile(file)) {
+      setUploadError("Please choose a PNG, JPEG, WebP, or HEIC image.");
       return;
     }
     if (file.size > MAX_BYTES) {
@@ -277,7 +276,7 @@ export default function BucketEntrySheet({
             <input
               ref={fileInputRef}
               type="file"
-              accept={ACCEPT}
+              accept={UPLOAD_ACCEPT}
               onChange={handleFileChange}
               style={{ display: "none" }}
             />

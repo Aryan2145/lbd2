@@ -20,6 +20,19 @@ export function isMediaId(p: string | null | undefined): p is string {
   return !!p && UUID_RE.test(p);
 }
 
+// Accepted upload formats. HEIC/HEIF are allowed — the server transcodes them to
+// WebP (the browser never has to render HEIC). The `.heic`/`.heif` extensions are
+// included because some browsers report an empty MIME type for those files.
+export const UPLOAD_ACCEPT = "image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif";
+const ALLOWED_UPLOAD_TYPES = new Set([
+  "image/png", "image/jpeg", "image/webp",
+  "image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence",
+]);
+export function isAllowedImageFile(file: File): boolean {
+  if (ALLOWED_UPLOAD_TYPES.has(file.type.toLowerCase())) return true;
+  return /\.(heic|heif)$/i.test(file.name); // HEIC often reports empty/odd MIME
+}
+
 // Convert any Drive URL form (share link, /uc?export=view, lh3 CDN) to the
 // reliable thumbnail endpoint. Non-Drive URLs pass through unchanged.
 export function toDriveImgUrl(raw: string): string {

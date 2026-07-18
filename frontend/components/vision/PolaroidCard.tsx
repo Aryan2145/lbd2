@@ -3,10 +3,9 @@
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ImageIcon, Plus, Camera, X, Copy, Check, Briefcase, Globe, TrendingUp, Sparkles, BookOpen, Users, Activity, type LucideIcon } from "lucide-react";
-import { VisionImg } from "@/lib/visionImage";
+import { VisionImg, UPLOAD_ACCEPT, isAllowedImageFile } from "@/lib/visionImage";
 import { uploadMedia } from "@/lib/api";
 
-const ACCEPT    = "image/png,image/jpeg,image/webp";
 const MAX_BYTES = 15 * 1024 * 1024;
 
 const AREA_ICONS: Record<string, LucideIcon> = {
@@ -255,7 +254,7 @@ export default function PolaroidCard({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!ACCEPT.split(",").includes(file.type)) { setUploadError("Choose a PNG, JPEG, or WebP image."); return; }
+    if (!isAllowedImageFile(file)) { setUploadError("Choose a PNG, JPEG, WebP, or HEIC image."); return; }
     if (file.size > MAX_BYTES) { setUploadError("Image is larger than 15 MB."); return; }
     setUploadError("");
     if (stagedPreview) URL.revokeObjectURL(stagedPreview);
@@ -381,7 +380,7 @@ export default function PolaroidCard({
           </span>
         </div>
       </div>
-      <input ref={fileInputRef} type="file" accept={ACCEPT} onChange={handleFileChange} style={{ display: "none" }} />
+      <input ref={fileInputRef} type="file" accept={UPLOAD_ACCEPT} onChange={handleFileChange} style={{ display: "none" }} />
       <UrlDialog
         open={urlDialog}
         accentColor={accentColor}
@@ -602,7 +601,7 @@ export default function PolaroidCard({
         }}
       />
     </div>
-    <input ref={fileInputRef} type="file" accept={ACCEPT} onChange={handleFileChange} style={{ display: "none" }} />
+    <input ref={fileInputRef} type="file" accept={UPLOAD_ACCEPT} onChange={handleFileChange} style={{ display: "none" }} />
     <UrlDialog
       open={urlDialog}
       accentColor={accentColor}
