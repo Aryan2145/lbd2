@@ -13,7 +13,7 @@ import { toTaskDate, Q_META } from "@/components/tasks/TaskCard";
 import TaskCreateSheet from "@/components/tasks/TaskCreateSheet";
 import { isScheduledDay, isHabitDoneOnDate, calcStreak } from "@/components/habits/HabitCard";
 import { AREA_META as GOAL_AREA_META } from "@/components/goals/GoalCard";
-import { toDriveImgUrl } from "@/components/bucket/BucketEntrySheet";
+import { VisionImg } from "@/lib/visionImage";
 import { api } from "@/lib/api";
 import type { AreaData } from "@/components/vision/PolaroidCard";
 import type { HabitData } from "@/components/habits/HabitCard";
@@ -330,10 +330,11 @@ function ImageRotator({ items, kind, intervalMs = 6000, emptyHref, emptyLabel, a
       }}
     >
       {items.map((it, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <VisionImg
           key={`${i}-${it.imageUrl}`}
-          src={toDriveImgUrl(it.imageUrl)}
+          pointer={it.imageUrl}
+          scope={kind === "Vision" ? "vision" : "dreams"}
+          variant="thumb"
           alt=""
           style={{
             position: "absolute", inset: 0,

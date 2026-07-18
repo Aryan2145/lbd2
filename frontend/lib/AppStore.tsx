@@ -136,11 +136,11 @@ function taskToApi(t: TaskData) {
 }
 
 function mapEventGroup(g: any): EventGroup {
-  return { id: g.id, name: g.name, color: g.color, createdAt: g.createdAt ? new Date(g.createdAt).getTime() : Date.now(), archived: g.archived ?? false };
+  return { id: g.id, name: g.name, color: g.color, createdAt: g.createdAt ? new Date(g.createdAt).getTime() : Date.now(), archived: g.archived ?? false, kind: g.kind ?? undefined };
 }
 
 function mapWeekEvent(e: any): WeekEvent {
-  return { id: e.id, groupId: e.groupId, title: e.title, description: e.description ?? "", date: e.date, startTime: e.startTime, endTime: e.endTime, createdAt: Date.now() };
+  return { id: e.id, groupId: e.groupId, title: e.title, description: e.description ?? "", date: e.date, startTime: e.startTime, endTime: e.endTime, allDay: e.allDay ?? false, createdAt: Date.now() };
 }
 
 function mapWeekPlan(p: any): WeekPlan {
@@ -229,6 +229,10 @@ interface AppState {
   addWeekEvent:    (e: WeekEvent) => void;
   updateWeekEvent: (e: WeekEvent) => void;
   deleteWeekEvent: (id: string)   => void;
+  // Google Calendar reverse sync (pull one week Google → app)
+  syncGoogleWeek:  (weekStart: string, force?: boolean) => void;
+  gcalSyncing:     boolean;
+  gcalLastSync:    Record<string, number>; // weekStart -> epoch ms of last sync
   // Planning
   upsertWeekPlan:          (p: WeekPlan)          => void;
   upsertEveningReflection: (r: EveningReflection) => void;
@@ -256,6 +260,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tasks,              setTasks]              = useState<TaskData[]>([]);
   const [eventGroups,        setEventGroups]        = useState<EventGroup[]>([]);
   const [weekEvents,         setWeekEvents]         = useState<WeekEvent[]>([]);
+  const [gcalSyncing,        setGcalSyncing]        = useState(false);
+  const [gcalLastSync,       setGcalLastSync]       = useState<Record<string, number>>({});
+  const gcalSyncingWeeks = useRef<Set<string>>(new Set());
   const [weekPlans,          setWeekPlans]          = useState<WeekPlan[]>([]);
   const [eveningReflections, setEveningReflections] = useState<EveningReflection[]>([]);
   const [weeklyReviews,      setWeeklyReviews]      = useState<WeeklyReview[]>([]);
@@ -381,7 +388,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loaded,
     goals, habits, tasks, eventGroups, weekEvents, weekPlans,
     eveningReflections, weeklyReviews, bucketEntries, tickets,
-    visionAreas,
+    visionAreas, gcalSyncing, gcalLastSync,
 
     // Goals
     addGoal: (g, tasks?, habits?) => {
@@ -536,6 +543,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteWeekEvent: (id) => {
       setWeekEvents(prev => prev.filter(x => x.id !== id));
       api.del(`/calendar/events/${id}`).catch(console.error);
+    },
+
+    // Pull one week from Google and reconcile. The backend returns the full
+    // fresh group+event tree, so we replace state wholesale (same shape as load).
+    syncGoogleWeek: (weekStart, force) => {
+      if (gcalSyncingWeeks.current.has(weekStart)) return;                 // already in flight
+      if (!force && Date.now() - (gcalLastSync[weekStart] ?? 0) < 30_000) return; // debounce
+      gcalSyncingWeeks.current.add(weekStart);
+      setGcalSyncing(true);
+      api.post<any[]>('/calendar/sync', { weekStart })
+        .then(freshGroups => {
+          setEventGroups(freshGroups.map(mapEventGroup));
+          setWeekEvents(freshGroups.flatMap((g: any) =>
+            (g.events ?? []).map((e: any) => mapWeekEvent({ ...e, groupId: g.id }))));
+          setGcalLastSync(prev => ({ ...prev, [weekStart]: Date.now() }));
+        })
+        .catch(console.error)
+        .finally(() => {
+          gcalSyncingWeeks.current.delete(weekStart);
+          setGcalSyncing(gcalSyncingWeeks.current.size > 0);
+        });
     },
 
     // Planning (upserts)

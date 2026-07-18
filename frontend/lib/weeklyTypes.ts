@@ -4,6 +4,7 @@ export interface EventGroup {
   color: string;    // HEX e.g. "#6366F1"
   createdAt: number;
   archived?: boolean;
+  kind?: string;    // "google" = auto-managed, hideable Google Calendar bucket
 }
 
 export interface WeekEvent {
@@ -12,8 +13,9 @@ export interface WeekEvent {
   title: string;
   description: string;
   date: string;       // YYYY-MM-DD
-  startTime: string;  // HH:MM 24-h
-  endTime: string;    // HH:MM 24-h
+  startTime: string;  // HH:MM 24-h ("00:00" for all-day)
+  endTime: string;    // HH:MM 24-h ("23:59" for all-day)
+  allDay?: boolean;
   createdAt: number;
 }
 
