@@ -50,7 +50,7 @@ const DEFAULT_REL_POS: Record<string, RelPos> = Object.fromEntries(
 );
 
 const EMPTY_AREAS: AreaData[] = AREAS_META.map((m) => ({
-  id: m.id, name: m.name, text: "", score: 5, imageUrl: "",
+  id: m.id, name: m.name, text: "", score: 1, imageUrl: "",
 }));
 
 // Push a card away from the wheel center if it's too close
