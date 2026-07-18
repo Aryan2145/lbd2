@@ -72,6 +72,10 @@ model User {
   gender    String?
   password  String   // bcrypt hash
 
+  // Admin-assigned leaderboard group (one at a time; null = Ungrouped).
+  groupId   String?
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
   emailVerified Boolean @default(false)
 
   googleRefreshToken String?
@@ -91,6 +95,8 @@ model User {
   tickets            SupportTicket[]
   visionCanvas       VisionCanvas?
   legacyCanvas       LegacyCanvas?
+  valuesBoard        ValuesBoard?
+  activity           ConsistencyActivity[]
 
   @@map("users")
 }
@@ -448,4 +454,86 @@ model SupportTicket {
 
   @@index([userId])
   @@map("support_tickets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Admin accounts
+//
+//  Standalone credentials for the admin portal — deliberately independent of the
+//  User table. The same email may exist both as an app user and as an admin;
+//  the two are separate records and are never cross-checked.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AdminAccount {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String   // bcrypt hash
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admin_accounts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Leaderboard groups (cohorts) — admin-managed, one per user
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#7C3AED")
+
+  members   User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("groups")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Consistency activity ledger
+//
+//  One row per (user, head, period) records that the user did SOMETHING on that
+//  head in that period — inserted idempotently, so 1 action or 100 actions in the
+//  period is a single row. Leaderboard consistency points = Σ rows × head value.
+//  head:      weekly_plan | weekly_review | daily_review | daily_plan | tasks | habits
+//  periodKey: 'YYYY-MM-DD' day (daily heads) or Monday week-start (weekly heads)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ConsistencyActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  head      String
+  periodKey String
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, head, periodKey])
+  @@index([userId])
+  @@map("consistency_activity")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Values board (moved server-side so it can be scored)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ValuesBoard {
+  id       String   @id @default(cuid())
+  userId   String   @unique
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // { area, value }[] — up to 5 chosen core values
+  selected Json     @default("[]")
+  // { [lifeArea]: string[] } — user-added custom chips
+  custom   Json     @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("values_boards")
 }

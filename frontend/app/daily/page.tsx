@@ -172,10 +172,10 @@ export default function DailyPage() {
             eventGroups={eventGroups}
             tasks={tasks}
             onTaskClick={setSelectedTask}
-            onAddEvent={addWeekEvent}
+            onAddEvent={(e) => addWeekEvent(e, "daily")}
             onUpdateEvent={updateWeekEvent}
             onDeleteEvent={deleteWeekEvent}
-            onAddTask={addTask}
+            onAddTask={(t) => addTask(t, "daily")}
             onCompleteTask={(id) => closeTask(id, "complete")}
             onUpdateTask={updateTask}
           />

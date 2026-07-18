@@ -25,6 +25,10 @@ import { VisionModule } from './vision/vision.module';
 import { LegacyModule } from './legacy/legacy.module';
 import { GcalModule } from './gcal/gcal.module';
 import { AdminModule } from './admin/admin.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { GroupsModule } from './groups/groups.module';
+import { ActivityModule } from './activity/activity.module';
+import { ValuesModule } from './values/values.module';
 import { MediaModule } from './media/media.module';
 
 @Module({
@@ -49,6 +53,10 @@ import { MediaModule } from './media/media.module';
     LegacyModule,
     GcalModule,
     AdminModule,
+    LeaderboardModule,
+    GroupsModule,
+    ActivityModule,
+    ValuesModule,
     MediaModule,
   ],
 })

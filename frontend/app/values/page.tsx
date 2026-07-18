@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, X } from "lucide-react";
 import { AREA_META, type LifeArea } from "@/components/goals/GoalCard";
+import { api } from "@/lib/api";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MAX_VALUES   = 5;
@@ -42,7 +43,8 @@ const DEFAULT_CHIPS: Record<LifeArea, string[]> = {
 type SelectedValue = { area: LifeArea; value: string };
 type StoredData    = { selected: SelectedValue[]; custom: Partial<Record<LifeArea, string[]>> };
 
-function loadData(): StoredData {
+// Legacy browser-only store — read once to migrate into the backend, then unused.
+function loadLegacyLocal(): StoredData {
   try {
     const raw = localStorage.getItem("lbd_values_v1");
     if (raw) return JSON.parse(raw) as StoredData;
@@ -50,8 +52,8 @@ function loadData(): StoredData {
   return { selected: [], custom: {} };
 }
 
-function saveData(d: StoredData) {
-  try { localStorage.setItem("lbd_values_v1", JSON.stringify(d)); } catch {}
+function hasData(d: StoredData): boolean {
+  return (d.selected?.length ?? 0) > 0 || Object.keys(d.custom ?? {}).length > 0;
 }
 
 // ── Value Circle ──────────────────────────────────────────────────────────────
@@ -274,12 +276,33 @@ export default function ValuesPage() {
   const containerRef            = useRef<HTMLDivElement>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  // Load from localStorage after hydration
+  // Load from the backend; migrate any legacy localStorage data on first run.
   useEffect(() => {
-    const d = loadData();
-    setSelected(d.selected);
-    setCustom(d.custom);
-    setHydrated(true);
+    let cancelled = false;
+    (async () => {
+      try {
+        const server = await api.get<StoredData>("/values");
+        if (cancelled) return;
+        if (hasData(server)) {
+          setSelected(server.selected ?? []);
+          setCustom(server.custom ?? {});
+        } else {
+          const local = loadLegacyLocal();
+          if (hasData(local)) {
+            setSelected(local.selected);
+            setCustom(local.custom);
+            api.put("/values", local).catch(() => {});
+          }
+        }
+      } catch {
+        // Not logged in / offline — fall back to whatever is cached locally.
+        const local = loadLegacyLocal();
+        if (!cancelled) { setSelected(local.selected); setCustom(local.custom); }
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Measure canvas container width
@@ -295,10 +318,10 @@ export default function ValuesPage() {
     return () => ro.disconnect();
   }, []);
 
-  // Persist to localStorage on any change
+  // Persist to the backend on any change (fire-and-forget).
   useEffect(() => {
     if (!hydrated) return;
-    saveData({ selected, custom });
+    api.put("/values", { selected, custom }).catch(() => {});
   }, [selected, custom, hydrated]);
 
   function toggleValue(area: LifeArea, value: string) {

@@ -9,6 +9,8 @@ import {
   Calendar, BookOpen, Star, ShoppingBag,
   Eye, EyeOff, LogOut, Phone, UserCircle,
   Briefcase, Venus, Clock, AlertCircle, Download,
+  KeyRound, UserPlus, Trash2, Mail, Check, Loader2,
+  Trophy, Medal, Tag, Info, Minus, Plus, Pencil,
 } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import type { SupportTicket, TicketStatus, TicketPriority } from "@/lib/ticketTypes";
@@ -23,18 +25,45 @@ function fmtTime(ts: number) {
 }
 function fmtDateTime(ts: number) { return `${fmtDate(ts)}, ${fmtTime(ts)}`; }
 
-type AdminTab = "overview" | "users" | "tickets";
+type AdminTab = "overview" | "users" | "leaderboard" | "tickets" | "admins";
 
-// ── Admin API secret (same security level as hardcoded credentials) ───────────
-const ADMIN_SECRET = "LBD-Admin-Secret-2025";
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000") + "/api";
+// ── Admin API access (bearer token issued by POST /admin/login) ────────────────
+const API_BASE  = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4100") + "/api";
+const TOKEN_KEY = "lbd_admin_token";
 
-async function adminFetch<T>(path: string): Promise<T> {
+function getToken(): string | null {
+  return typeof window === "undefined" ? null : sessionStorage.getItem(TOKEN_KEY);
+}
+
+async function adminFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getToken();
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "x-admin-secret": ADMIN_SECRET },
+    ...init,
+    headers: {
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(token   ? { Authorization: `Bearer ${token}` }      : {}),
+      ...(init.headers ?? {}),
+    },
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<T>;
+
+  // Session expired or revoked — drop the token and bounce back to the login screen.
+  if (res.status === 401) {
+    if (token) { sessionStorage.removeItem(TOKEN_KEY); window.location.reload(); }
+    throw new Error("Your admin session has expired. Please sign in again.");
+  }
+
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try {
+      const j = await res.json();
+      if (j?.message) msg = Array.isArray(j.message) ? j.message.join(", ") : j.message;
+    } catch { /* non-JSON error body */ }
+    throw new Error(msg);
+  }
+
+  // 204 / empty bodies (e.g. DELETE) return nothing to parse.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 // ── User shape returned by /admin/users ───────────────────────────────────────
@@ -45,6 +74,7 @@ interface AdminUser {
   phone: string | null;
   role: string | null;
   gender: string | null;
+  group: { id: string; name: string; color: string } | null;
   createdAt: string;
   updatedAt: string;
   counts: {
@@ -116,9 +146,11 @@ function exportUsersCsv(users: AdminUser[]) {
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({ tab, setTab }: { tab: AdminTab; setTab: (t: AdminTab) => void }) {
   const navItems: { id: AdminTab; icon: React.ReactNode; label: string }[] = [
-    { id: "overview", icon: <LayoutDashboard size={15} />, label: "Overview"        },
-    { id: "users",    icon: <Users           size={15} />, label: "Users"           },
-    { id: "tickets",  icon: <Ticket          size={15} />, label: "Support Tickets" },
+    { id: "overview",    icon: <LayoutDashboard size={15} />, label: "Overview"        },
+    { id: "users",       icon: <Users           size={15} />, label: "Users"           },
+    { id: "leaderboard", icon: <Trophy          size={15} />, label: "Leaderboard"     },
+    { id: "tickets",     icon: <Ticket          size={15} />, label: "Support Tickets" },
+    { id: "admins",      icon: <KeyRound        size={15} />, label: "Admins"          },
   ];
 
   return (
@@ -566,21 +598,51 @@ function TicketsTab() {
 }
 
 // ── Users Tab ─────────────────────────────────────────────────────────────────
+interface GroupLite { id: string; name: string; color: string }
+
 function UsersTab() {
   const [users,    setUsers]    = useState<AdminUser[]>([]);
+  const [groups,   setGroups]   = useState<GroupLite[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
   const [selected, setSelected] = useState<AdminUser | null>(null);
   const [search,   setSearch]   = useState("");
+  const [sel,      setSel]      = useState<Set<string>>(new Set());
+  const [assigning, setAssigning] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try { setUsers(await adminFetch<AdminUser[]>("/admin/users")); }
+    try {
+      const [us, gs] = await Promise.all([
+        adminFetch<AdminUser[]>("/admin/users"),
+        adminFetch<GroupLite[]>("/admin/groups"),
+      ]);
+      setUsers(us); setGroups(gs);
+    }
     catch (e: any) { setError(e.message ?? "Failed to load users"); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Keep the open detail panel in sync after a reload (e.g. a group change).
+  useEffect(() => {
+    setSelected(prev => (prev ? users.find(u => u.id === prev.id) ?? null : null));
+  }, [users]);
+
+  function toggleSel(id: string) {
+    setSel(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+  async function assignUsers(userIds: string[], groupId: string | null) {
+    if (userIds.length === 0) return;
+    setAssigning(true); setError(null);
+    try {
+      await adminFetch("/admin/groups/assign", { method: "PATCH", body: JSON.stringify({ userIds, groupId }) });
+      setSel(new Set());
+      await load();
+    } catch (e: any) { setError(e.message ?? "Could not assign group"); }
+    finally { setAssigning(false); }
+  }
 
   const filtered = users.filter(u =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -657,6 +719,21 @@ function UsersTab() {
               fontSize: 12, color: "#0F172A", outline: "none", boxSizing: "border-box",
             }}
           />
+
+          {/* Bulk group assignment */}
+          {sel.size > 0 && (
+            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, backgroundColor: "#FFF7ED", border: "1px solid #FED7AA" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#9A3412" }}>{sel.size} selected</span>
+              <select disabled={assigning} value=""
+                onChange={e => { const v = e.target.value; if (!v) return; assignUsers([...sel], v === "__none__" ? null : v); }}
+                style={{ marginLeft: "auto", padding: "6px 10px", borderRadius: 8, border: "1.5px solid #FED7AA", backgroundColor: "#FFFFFF", fontSize: 12, fontWeight: 600, color: "#0F172A", cursor: "pointer", outline: "none" }}>
+                <option value="">Assign to group…</option>
+                <option value="__none__">Ungrouped</option>
+                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+              <button onClick={() => setSel(new Set())} style={{ fontSize: 12, color: "#64748B", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Clear</button>
+            </div>
+          )}
         </div>
 
         {/* Body */}
@@ -691,6 +768,11 @@ function UsersTab() {
                 transition: "background 0.12s",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {/* Bulk-select checkbox */}
+                  <input type="checkbox" checked={sel.has(u.id)}
+                    onClick={e => e.stopPropagation()}
+                    onChange={() => toggleSel(u.id)}
+                    style={{ width: 15, height: 15, flexShrink: 0, cursor: "pointer", accentColor: "#EA580C" }} />
                   {/* Avatar */}
                   <div style={{
                     width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
@@ -713,6 +795,11 @@ function UsersTab() {
                     </p>
                     {/* Quick stat pills */}
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {u.group && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: u.group.color, backgroundColor: u.group.color + "18", padding: "1px 6px", borderRadius: 20 }}>
+                          {u.group.name}
+                        </span>
+                      )}
                       {u.counts.goals > 0 && (
                         <span style={{ fontSize: 10, fontWeight: 600, color: "#6366F1", backgroundColor: "#EEF2FF", padding: "1px 6px", borderRadius: 20 }}>
                           {u.counts.goals} goals
@@ -795,6 +882,18 @@ function UsersTab() {
                       {u.name}
                     </h2>
                     <p style={{ fontSize: 13, color: "#64748B", margin: "0 0 12px" }}>{u.email}</p>
+
+                    {/* Group assignment */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                      <Tag size={12} color="#7C3AED" />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>Group</span>
+                      <select value={u.group?.id ?? ""} disabled={assigning}
+                        onChange={e => assignUsers([u.id], e.target.value || null)}
+                        style={{ padding: "5px 9px", borderRadius: 8, border: "1.5px solid #E2E8F0", backgroundColor: "#F8FAFC", fontSize: 12, fontWeight: 600, color: "#0F172A", cursor: "pointer", outline: "none" }}>
+                        <option value="">Ungrouped</option>
+                        {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      </select>
+                    </div>
 
                     {/* Meta chips */}
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -912,10 +1011,668 @@ function UsersTab() {
   );
 }
 
-// ── Admin credentials ─────────────────────────────────────────────────────────
-const ADMIN_EMAIL    = "admin@lbd.in";
-const ADMIN_PASSWORD = "LBD#Admin@2025";
-const SESSION_KEY    = "lbd_admin_auth";
+// ── Leaderboard Tab ───────────────────────────────────────────────────────────
+interface LbSetupHead { points: number; max: number; done?: boolean; areas?: number; }
+interface LbConsHead  { periods: number; points: number; }
+interface LbUser {
+  id: string; name: string; email: string;
+  group: { id: string; name: string; color: string } | null;
+  rank: number; total: number; setupTotal: number; consistencyTotal: number; isNewJoiner: boolean;
+  setup: { legacy: LbSetupHead; vision: LbSetupHead; values: LbSetupHead; bucket: LbSetupHead; goals: LbSetupHead; habits: LbSetupHead };
+  consistency: Record<string, LbConsHead>;
+}
+interface LbGroupCard {
+  key: string; id?: string; name: string; color: string;
+  count: number; avgScore: number; top3: { id: string; name: string; total: number }[]; system: boolean;
+}
+interface LbResponse { groups: LbGroupCard[]; selected: string; users: LbUser[]; }
+
+const SETUP_HEADS = [
+  { key: "legacy", label: "Legacy + Purpose" },
+  { key: "vision", label: "Vision board" },
+  { key: "values", label: "Values" },
+  { key: "bucket", label: "Bucket list" },
+  { key: "goals",  label: "Goals" },
+  { key: "habits", label: "Habits" },
+] as const;
+const CONS_HEADS = [
+  { key: "weekly_plan",   label: "Weekly plan",   unit: "wk", pts: 10 },
+  { key: "weekly_review", label: "Weekly review", unit: "wk", pts: 10 },
+  { key: "daily_review",  label: "Daily review",  unit: "d",  pts: 5 },
+  { key: "daily_plan",    label: "Daily plan",    unit: "d",  pts: 5 },
+  { key: "tasks",         label: "Tasks",         unit: "d",  pts: 3 },
+  { key: "habits",        label: "Habits",        unit: "d",  pts: 3 },
+] as const;
+const GROUP_COLORS = ["#EA580C", "#7C3AED", "#2563EB", "#059669", "#DB2777", "#D97706", "#0891B2", "#DC2626"];
+const LB_SELECT_KEY = "lbd_admin_lb_group";
+
+// ── Create / edit group modal ───────────────────────────────────────────────────
+function GroupModal({ edit, onClose, onSaved }: {
+  edit: LbGroupCard | null; onClose: () => void; onSaved: (nextSelected?: string) => void;
+}) {
+  const [name, setName]   = useState(edit?.name ?? "");
+  const [color, setColor] = useState(edit?.color ?? GROUP_COLORS[0]);
+  const [busy, setBusy]   = useState(false);
+  const [err, setErr]     = useState<string | null>(null);
+
+  async function save() {
+    if (!name.trim()) { setErr("Give the group a name."); return; }
+    setBusy(true); setErr(null);
+    try {
+      if (edit?.id) {
+        await adminFetch(`/admin/groups/${edit.id}`, { method: "PATCH", body: JSON.stringify({ name: name.trim(), color }) });
+        onSaved();
+      } else {
+        const g = await adminFetch<{ id: string }>("/admin/groups", { method: "POST", body: JSON.stringify({ name: name.trim(), color }) });
+        onSaved(g.id);
+      }
+    } catch (e: any) { setErr(e.message ?? "Could not save group"); setBusy(false); }
+  }
+
+  async function remove() {
+    if (!edit?.id) return;
+    if (!window.confirm(`Delete "${edit.name}"? Its members become Ungrouped.`)) return;
+    setBusy(true); setErr(null);
+    try { await adminFetch(`/admin/groups/${edit.id}`, { method: "DELETE" }); onSaved("overall"); }
+    catch (e: any) { setErr(e.message ?? "Could not delete group"); setBusy(false); }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, backgroundColor: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, backgroundColor: "#FFFFFF", borderRadius: 16, boxShadow: "0 20px 50px rgba(15,23,42,0.3)", padding: 22 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", margin: 0 }}>{edit ? "Edit group" : "New group"}</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}><X size={17} color="#94A3B8" /></button>
+        </div>
+
+        <label style={fieldLabel}>Name</label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Cohort A" autoFocus style={{ ...fieldStyle, marginBottom: 14 }} />
+
+        <label style={fieldLabel}>Colour</label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+          {GROUP_COLORS.map(c => (
+            <button key={c} onClick={() => setColor(c)} style={{
+              width: 28, height: 28, borderRadius: "50%", backgroundColor: c, cursor: "pointer",
+              border: color === c ? "3px solid #0F172A" : "3px solid transparent",
+            }} />
+          ))}
+        </div>
+
+        {err && <p style={{ fontSize: 12, color: "#DC2626", margin: "0 0 12px", fontWeight: 600 }}>{err}</p>}
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={save} disabled={busy} style={{
+            flex: 1, padding: "11px 0", borderRadius: 10, border: "none",
+            background: busy ? "#E8C8A8" : "linear-gradient(135deg, #F97316, #EA580C)",
+            color: "#FFFFFF", fontSize: 13, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}>
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} {edit ? "Save" : "Create"}
+          </button>
+          {edit && (
+            <button onClick={remove} disabled={busy} title="Delete group" style={{
+              width: 44, borderRadius: 10, border: "1px solid #FEE2E2", backgroundColor: "#FEF2F2",
+              cursor: busy ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Trash2 size={15} color="#EF4444" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Group grid card ─────────────────────────────────────────────────────────────
+function GroupGridCard({ g, active, onSelect, onEdit }: {
+  g: LbGroupCard; active: boolean; onSelect: () => void; onEdit?: () => void;
+}) {
+  return (
+    <div onClick={onSelect} style={{
+      position: "relative", cursor: "pointer", flexShrink: 0, width: 190,
+      backgroundColor: active ? "#FFF7ED" : "#FFFFFF",
+      border: active ? "2px solid #F97316" : "1px solid #E2E8F0",
+      borderRadius: 14, padding: "14px 16px", boxShadow: "0 1px 3px rgba(15,23,42,0.03)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: g.color, flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
+        {onEdit && (
+          <button onClick={e => { e.stopPropagation(); onEdit(); }} title="Edit group" style={{
+            marginLeft: "auto", background: "none", border: "none", cursor: "pointer", padding: 2, color: "#94A3B8",
+          }}><Pencil size={12} /></button>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <span style={{ fontSize: 22, fontWeight: 800, color: "#0F172A" }}>{g.count}</span>
+        <span style={{ fontSize: 11, color: "#64748B" }}>member{g.count !== 1 ? "s" : ""}</span>
+        {g.count > 0 && <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: "#64748B" }}>avg {g.avgScore}</span>}
+      </div>
+      {/* podium */}
+      <div style={{ display: "flex", gap: -6, marginTop: 10, minHeight: 24, alignItems: "center" }}>
+        {g.top3.length === 0 ? (
+          <span style={{ fontSize: 11, color: "#CBD5E1", fontStyle: "italic" }}>no members</span>
+        ) : g.top3.map((t, i) => (
+          <div key={t.id} title={`${t.name} · ${t.total}`} style={{
+            width: 24, height: 24, borderRadius: "50%", marginLeft: i === 0 ? 0 : -6,
+            backgroundColor: avatarColor(t.id) + "22", border: `2px solid #FFFFFF`,
+            boxShadow: `0 0 0 1.5px ${avatarColor(t.id)}55`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 9, fontWeight: 700, color: avatarColor(t.id), zIndex: 3 - i,
+          }}>{initials(t.name)}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Leaderboard row ─────────────────────────────────────────────────────────────
+function LbRow({ u, active, onClick, showGroup }: {
+  u: LbUser; active: boolean; onClick: () => void; showGroup: boolean;
+}) {
+  const color = avatarColor(u.id);
+  const medal = u.rank === 1 ? "#EAB308" : u.rank === 2 ? "#94A3B8" : u.rank === 3 ? "#B45309" : null;
+  return (
+    <div onClick={onClick} style={{
+      display: "flex", alignItems: "center", gap: 12, padding: "12px 24px", cursor: "pointer",
+      borderBottom: "1px solid #F1F5F9",
+      backgroundColor: active ? "#FFF7ED" : "transparent",
+      borderLeft: active ? "3px solid #F97316" : "3px solid transparent",
+    }}>
+      <div style={{ width: 24, flexShrink: 0, textAlign: "center" }}>
+        {medal ? <Medal size={17} color={medal} /> : <span style={{ fontSize: 13, fontWeight: 700, color: "#94A3B8" }}>{u.rank}</span>}
+      </div>
+      <div style={{
+        width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+        backgroundColor: color + "22", border: `2px solid ${color}44`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color,
+      }}>{initials(u.name)}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
+          {u.isNewJoiner && <span style={{ fontSize: 9, fontWeight: 700, color: "#0891B2", backgroundColor: "#ECFEFF", padding: "1px 6px", borderRadius: 20, flexShrink: 0 }}>NEW</span>}
+          {showGroup && u.group && (
+            <span style={{ fontSize: 10, fontWeight: 600, color: u.group.color, backgroundColor: u.group.color + "18", padding: "1px 7px", borderRadius: 20, flexShrink: 0 }}>{u.group.name}</span>
+          )}
+        </div>
+        <span style={{ fontSize: 11, color: "#94A3B8" }}>{u.setupTotal} setup · {u.consistencyTotal} rhythm</span>
+      </div>
+      <div style={{ minWidth: 54, textAlign: "right", flexShrink: 0 }}>
+        <span style={{ fontSize: 17, fontWeight: 800, color: "#0F172A" }}>{u.total}</span>
+        <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600 }}> pts</span>
+      </div>
+    </div>
+  );
+}
+
+function LeaderboardTab() {
+  const [data,    setData]    = useState<LbResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+  const [group,   setGroup]   = useState<string>(() => {
+    if (typeof window === "undefined") return "overall";
+    return sessionStorage.getItem(LB_SELECT_KEY) || "overall";
+  });
+  const [selected, setSelected] = useState<LbUser | null>(null);
+  const [modal, setModal] = useState<{ edit: LbGroupCard | null } | null>(null);
+  const [assigning, setAssigning] = useState(false);
+
+  const load = useCallback(async (g: string) => {
+    setLoading(true); setError(null);
+    try { setData(await adminFetch<LbResponse>(`/admin/leaderboard?group=${encodeURIComponent(g)}`)); }
+    catch (e: any) { setError(e.message ?? "Failed to load leaderboard"); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(group); sessionStorage.setItem(LB_SELECT_KEY, group); }, [load, group]);
+
+  // Keep an open drill-down in sync after a reload.
+  useEffect(() => {
+    if (!selected || !data) return;
+    setSelected(data.users.find(u => u.id === selected.id) ?? null);
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const realGroups = (data?.groups ?? []).filter(g => !g.system);
+
+  async function assign(userId: string, groupId: string | null) {
+    setAssigning(true);
+    try { await adminFetch("/admin/groups/assign", { method: "PATCH", body: JSON.stringify({ userIds: [userId], groupId }) }); await load(group); }
+    catch (e: any) { setError(e.message ?? "Could not assign group"); }
+    finally { setAssigning(false); }
+  }
+
+  return (
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+      {/* ── Left: grid + list ── */}
+      <div style={{ width: selected ? "56%" : "100%", flexShrink: 0, borderRight: selected ? "1px solid #E2E8F0" : undefined, display: "flex", flexDirection: "column", overflow: "hidden", transition: "width 0.2s" }}>
+        {/* Header */}
+        <div style={{ padding: "18px 24px 12px", borderBottom: "1px solid #F1F5F9", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <div>
+            <h1 style={{ fontSize: 18, fontWeight: 800, color: "#0F172A", margin: "0 0 3px" }}>Leaderboard</h1>
+            <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>Cumulative points — setup earned once, consistency every day. Pick a group to scope the board.</p>
+          </div>
+          <button onClick={() => load(group)} title="Refresh" style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #E2E8F0", backgroundColor: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+            <RefreshCw size={13} color="#64748B" />
+          </button>
+        </div>
+
+        {/* Group grid (persistent switcher) */}
+        <div style={{ padding: "14px 24px", borderBottom: "1px solid #F1F5F9", flexShrink: 0, display: "flex", gap: 10, overflowX: "auto" }}>
+          {(data?.groups ?? []).map(g => (
+            <GroupGridCard key={g.key} g={g} active={group === g.key}
+              onSelect={() => { setGroup(g.key); setSelected(null); }}
+              onEdit={g.system ? undefined : () => setModal({ edit: g })} />
+          ))}
+          <button onClick={() => setModal({ edit: null })} style={{
+            flexShrink: 0, width: 130, borderRadius: 14, border: "1.5px dashed #CBD5E1", backgroundColor: "transparent",
+            cursor: "pointer", color: "#64748B", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600,
+          }}>
+            <Plus size={18} /> New group
+          </button>
+        </div>
+
+        {/* Ranked list */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {loading && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 48, gap: 10 }}>
+              <Loader2 size={16} color="#F97316" className="animate-spin" /><span style={{ fontSize: 13, color: "#94A3B8" }}>Scoring…</span>
+            </div>
+          )}
+          {error && (
+            <div style={{ margin: 24, padding: "12px 14px", borderRadius: 10, backgroundColor: "#FEF2F2", border: "1px solid #FECACA", display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertCircle size={14} color="#DC2626" /><span style={{ fontSize: 12, color: "#DC2626" }}>{error}</span>
+            </div>
+          )}
+          {!loading && !error && data && (
+            data.users.length === 0
+              ? <p style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", padding: "40px 20px" }}>No users in this group yet.</p>
+              : data.users.map(u => <LbRow key={u.id} u={u} active={selected?.id === u.id} onClick={() => setSelected(u)} showGroup={group === "overall"} />)
+          )}
+        </div>
+      </div>
+
+      {/* ── Right: drill-down / breakdown ── */}
+      {selected && (
+        <div style={{ flex: 1, overflowY: "auto", backgroundColor: "#F8FAFC" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 20px 0" }}>
+            <button onClick={() => setSelected(null)} style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid #E2E8F0", backgroundColor: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <X size={13} color="#64748B" />
+            </button>
+          </div>
+          <div style={{ padding: "8px 24px 32px" }}>
+            {/* header */}
+            <div style={{ backgroundColor: "#FFFFFF", borderRadius: 16, border: "1px solid #E2E8F0", padding: 20, marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 50, height: 50, borderRadius: "50%", flexShrink: 0, backgroundColor: avatarColor(selected.id) + "18", border: `2.5px solid ${avatarColor(selected.id)}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: avatarColor(selected.id) }}>{initials(selected.name)}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: "0 0 2px" }}>{selected.name}</h2>
+                  <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>{selected.email}</p>
+                </div>
+                <div style={{ textAlign: "center", flexShrink: 0 }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: "#0F172A", lineHeight: 1 }}>{selected.total}</div>
+                  <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>points</div>
+                </div>
+              </div>
+              {/* group assign */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14 }}>
+                <Tag size={13} color="#7C3AED" />
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>Group</span>
+                <select value={selected.group?.id ?? ""} disabled={assigning}
+                  onChange={e => assign(selected.id, e.target.value || null)}
+                  style={{ marginLeft: "auto", padding: "6px 10px", borderRadius: 8, border: "1.5px solid #E2E8F0", backgroundColor: "#F8FAFC", fontSize: 12, fontWeight: 600, color: "#0F172A", cursor: "pointer", outline: "none" }}>
+                  <option value="">Ungrouped</option>
+                  {realGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Setup breakdown */}
+            <SectionCard title="Setup" subtitle="earned once" total={selected.setupTotal}>
+              {SETUP_HEADS.map(h => {
+                const s = (selected.setup as any)[h.key] as LbSetupHead;
+                const detail = h.key === "goals" || h.key === "habits"
+                  ? `${s.areas ?? 0}/7 life areas`
+                  : s.done ? "complete" : "not yet";
+                return <BreakdownRow key={h.key} label={h.label} detail={detail} points={s.points} max={s.max} done={h.key === "goals" || h.key === "habits" ? (s.points >= s.max) : s.done} />;
+              })}
+            </SectionCard>
+
+            {/* Consistency breakdown */}
+            <SectionCard title="Consistency" subtitle="accrues over time" total={selected.consistencyTotal}>
+              {CONS_HEADS.map(h => {
+                const c = selected.consistency[h.key] ?? { periods: 0, points: 0 };
+                return <BreakdownRow key={h.key} label={h.label}
+                  detail={`${c.periods} ${h.unit === "wk" ? (c.periods === 1 ? "week" : "weeks") : (c.periods === 1 ? "day" : "days")} × ${h.pts}`}
+                  points={c.points} done={c.points > 0} />;
+              })}
+            </SectionCard>
+          </div>
+        </div>
+      )}
+
+      {modal && (
+        <GroupModal edit={modal.edit} onClose={() => setModal(null)}
+          onSaved={(next) => { setModal(null); if (next) setGroup(next); else load(group); }} />
+      )}
+    </div>
+  );
+}
+
+function SectionCard({ title, subtitle, total, children }: { title: string; subtitle: string; total: number; children: React.ReactNode }) {
+  return (
+    <div style={{ backgroundColor: "#FFFFFF", borderRadius: 14, border: "1px solid #E2E8F0", padding: "14px 18px", marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+        <div>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{title}</span>
+          <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 6 }}>{subtitle}</span>
+        </div>
+        <span style={{ fontSize: 15, fontWeight: 800, color: "#EA580C" }}>{total}<span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 400 }}> pts</span></span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function BreakdownRow({ label, detail, points, max, done }: { label: string; detail: string; points: number; max?: number; done?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #F8FAFC" }}>
+      <div style={{ width: 15, flexShrink: 0 }}>
+        {done ? <Check size={13} color="#15803D" /> : <Minus size={12} color="#CBD5E1" />}
+      </div>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: "#334155", width: 120, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 11.5, color: "#94A3B8", flex: 1 }}>{detail}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: points > 0 ? "#0F172A" : "#CBD5E1", flexShrink: 0 }}>
+        {points}{max ? <span style={{ color: "#CBD5E1", fontWeight: 400 }}>/{max}</span> : ""}
+      </span>
+    </div>
+  );
+}
+
+// ── Admins Tab ────────────────────────────────────────────────────────────────
+interface AdminAccount {
+  id: string;
+  email: string;
+  name: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const fieldStyle: React.CSSProperties = {
+  width: "100%", padding: "9px 12px", borderRadius: 8,
+  border: "1.5px solid #E2E8F0", backgroundColor: "#F8FAFC",
+  fontSize: 13, color: "#0F172A", outline: "none", boxSizing: "border-box",
+};
+const fieldLabel: React.CSSProperties = {
+  display: "block", fontSize: 11, fontWeight: 700, color: "#57534E",
+  textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
+};
+
+function AdminsTab({ currentAdminId }: { currentAdminId: string | null }) {
+  const [admins,  setAdmins]  = useState<AdminAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+
+  // Add-admin form
+  const [nEmail, setNEmail] = useState("");
+  const [nName,  setNName]  = useState("");
+  const [nPwd,   setNPwd]   = useState("");
+  const [nShow,  setNShow]  = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addErr, setAddErr] = useState<string | null>(null);
+  const [addOk,  setAddOk]  = useState<string | null>(null);
+
+  // Change-my-password form
+  const [cur,     setCur]     = useState("");
+  const [next,    setNext]    = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [pShow,   setPShow]   = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [pErr,    setPErr]    = useState<string | null>(null);
+  const [pOk,     setPOk]     = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { setAdmins(await adminFetch<AdminAccount[]>("/admin/admins")); }
+    catch (e: any) { setError(e.message ?? "Failed to load admins"); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function addAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    setAddErr(null); setAddOk(null);
+    if (nPwd.length < 8) { setAddErr("Password must be at least 8 characters."); return; }
+    setAdding(true);
+    try {
+      const created = await adminFetch<AdminAccount>("/admin/admins", {
+        method: "POST",
+        body: JSON.stringify({ email: nEmail.trim(), password: nPwd, name: nName.trim() || undefined }),
+      });
+      setAddOk(`${created.email} can now sign in to the admin portal.`);
+      setNEmail(""); setNName(""); setNPwd("");
+      await load();
+    } catch (e: any) { setAddErr(e.message ?? "Could not add admin."); }
+    finally { setAdding(false); }
+  }
+
+  async function removeAdmin(a: AdminAccount) {
+    if (!window.confirm(`Remove admin access for ${a.email}? This cannot be undone.`)) return;
+    setError(null);
+    try { await adminFetch(`/admin/admins/${a.id}`, { method: "DELETE" }); await load(); }
+    catch (e: any) { setError(e.message ?? "Could not remove admin."); }
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPErr(null); setPOk(false);
+    if (next.length < 8)  { setPErr("New password must be at least 8 characters."); return; }
+    if (next !== confirm) { setPErr("New password and confirmation do not match.");  return; }
+    setSaving(true);
+    try {
+      await adminFetch("/admin/me/password", {
+        method: "PATCH",
+        body: JSON.stringify({ currentPassword: cur, newPassword: next }),
+      });
+      setPOk(true); setCur(""); setNext(""); setConfirm("");
+    } catch (e: any) { setPErr(e.message ?? "Could not update password."); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ height: "100%", overflowY: "auto", padding: "32px 36px" }}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: "#0F172A", margin: "0 0 4px" }}>Admins & Security</h1>
+        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
+          Manage who can sign in to this admin portal and update your own password.
+        </p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 380px)", gap: 20, alignItems: "start" }}>
+
+        {/* ── Left: admin accounts list ── */}
+        <div style={{ backgroundColor: "#FFFFFF", borderRadius: 14, border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(15,23,42,0.03)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid #F1F5F9" }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", margin: 0 }}>
+              Admin Accounts <span style={{ fontWeight: 400, color: "#94A3B8" }}>({admins.length})</span>
+            </h2>
+            <button onClick={load} title="Refresh" style={{
+              width: 30, height: 30, borderRadius: 8, border: "1px solid #E2E8F0",
+              backgroundColor: "transparent", display: "flex", alignItems: "center",
+              justifyContent: "center", cursor: "pointer",
+            }}>
+              <RefreshCw size={12} color="#64748B" />
+            </button>
+          </div>
+
+          {error && (
+            <div style={{ margin: "16px 22px 0", padding: "10px 12px", borderRadius: 10, backgroundColor: "#FEF2F2", border: "1px solid #FECACA", display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertCircle size={14} color="#DC2626" />
+              <span style={{ fontSize: 12, color: "#DC2626" }}>{error}</span>
+            </div>
+          )}
+
+          {loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "40px", gap: 10 }}>
+              <Loader2 size={16} color="#F97316" className="animate-spin" />
+              <span style={{ fontSize: 13, color: "#94A3B8" }}>Loading admins…</span>
+            </div>
+          ) : (
+            <div>
+              {admins.map(a => {
+                const isSelf = a.id === currentAdminId;
+                const color = avatarColor(a.id);
+                return (
+                  <div key={a.id} style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "14px 22px", borderBottom: "1px solid #F1F5F9",
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                      backgroundColor: color + "22", border: `2px solid ${color}44`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 700, color,
+                    }}>
+                      {initials(a.name || a.email)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {a.name || a.email}
+                        </span>
+                        {isSelf && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "#EA580C", backgroundColor: "#FFF7ED", padding: "1px 7px", borderRadius: 20 }}>
+                            You
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                        <Mail size={11} color="#94A3B8" />
+                        <span style={{ fontSize: 11, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {a.email}
+                        </span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10, color: "#94A3B8", flexShrink: 0 }}>Added {fmtIso(a.createdAt)}</span>
+                    <button
+                      onClick={() => removeAdmin(a)}
+                      disabled={isSelf || admins.length <= 1}
+                      title={isSelf ? "You cannot remove your own account" : admins.length <= 1 ? "At least one admin must remain" : "Remove admin"}
+                      style={{
+                        width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                        border: "1px solid " + (isSelf || admins.length <= 1 ? "#F1F5F9" : "#FEE2E2"),
+                        backgroundColor: isSelf || admins.length <= 1 ? "#F8FAFC" : "#FEF2F2",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: isSelf || admins.length <= 1 ? "not-allowed" : "pointer",
+                      }}>
+                      <Trash2 size={13} color={isSelf || admins.length <= 1 ? "#CBD5E1" : "#EF4444"} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add-admin form */}
+          <form onSubmit={addAdmin} style={{ padding: "18px 22px", backgroundColor: "#F8FAFC", borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <UserPlus size={15} color="#EA580C" />
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", margin: 0 }}>Add an admin</h3>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={fieldLabel}>Email</label>
+                <input type="email" required value={nEmail} onChange={e => setNEmail(e.target.value)} placeholder="person@example.com" style={fieldStyle} />
+              </div>
+              <div>
+                <label style={fieldLabel}>Name <span style={{ color: "#94A3B8", fontWeight: 400 }}>(optional)</span></label>
+                <input type="text" value={nName} onChange={e => setNName(e.target.value)} placeholder="Full name" style={fieldStyle} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={fieldLabel}>Temporary password</label>
+              <div style={{ position: "relative" }}>
+                <input type={nShow ? "text" : "password"} required value={nPwd} onChange={e => setNPwd(e.target.value)} placeholder="At least 8 characters" style={{ ...fieldStyle, paddingRight: 40 }} />
+                <button type="button" onClick={() => setNShow(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 2, color: "#78716C", display: "flex" }}>
+                  {nShow ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {addErr && (
+              <p style={{ fontSize: 12, color: "#DC2626", margin: "0 0 10px", padding: "8px 10px", backgroundColor: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, fontWeight: 600 }}>{addErr}</p>
+            )}
+            {addOk && (
+              <p style={{ fontSize: 12, color: "#15803D", margin: "0 0 10px", padding: "8px 10px", backgroundColor: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <Check size={13} /> {addOk}
+              </p>
+            )}
+
+            <button type="submit" disabled={adding} style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              padding: "10px 16px", borderRadius: 10, border: "none",
+              background: adding ? "#E8C8A8" : "linear-gradient(135deg, #F97316, #EA580C)",
+              color: "#FFFFFF", fontSize: 13, fontWeight: 700,
+              cursor: adding ? "not-allowed" : "pointer",
+            }}>
+              {adding ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+              {adding ? "Adding…" : "Add admin"}
+            </button>
+          </form>
+        </div>
+
+        {/* ── Right: change my password ── */}
+        <div style={{ backgroundColor: "#FFFFFF", borderRadius: 14, border: "1px solid #E2E8F0", padding: "22px", boxShadow: "0 1px 3px rgba(15,23,42,0.03)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <KeyRound size={15} color="#EA580C" />
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", margin: 0 }}>Change my password</h2>
+          </div>
+          <p style={{ fontSize: 12, color: "#64748B", margin: "0 0 18px" }}>Update the password for your admin account.</p>
+
+          <form onSubmit={changePassword} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={fieldLabel}>Current password</label>
+              <input type={pShow ? "text" : "password"} required value={cur} onChange={e => setCur(e.target.value)} placeholder="••••••••" style={fieldStyle} />
+            </div>
+            <div>
+              <label style={fieldLabel}>New password</label>
+              <div style={{ position: "relative" }}>
+                <input type={pShow ? "text" : "password"} required value={next} onChange={e => setNext(e.target.value)} placeholder="At least 8 characters" style={{ ...fieldStyle, paddingRight: 40 }} />
+                <button type="button" onClick={() => setPShow(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 2, color: "#78716C", display: "flex" }}>
+                  {pShow ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label style={fieldLabel}>Confirm new password</label>
+              <input type={pShow ? "text" : "password"} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Re-enter new password" style={fieldStyle} />
+            </div>
+
+            {pErr && (
+              <p style={{ fontSize: 12, color: "#DC2626", margin: 0, padding: "8px 10px", backgroundColor: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, fontWeight: 600 }}>{pErr}</p>
+            )}
+            {pOk && (
+              <p style={{ fontSize: 12, color: "#15803D", margin: 0, padding: "8px 10px", backgroundColor: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <Check size={13} /> Password updated successfully.
+              </p>
+            )}
+
+            <button type="submit" disabled={saving} style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              marginTop: 4, padding: "11px 16px", borderRadius: 10, border: "none",
+              background: saving ? "#E8C8A8" : "linear-gradient(135deg, #F97316, #EA580C)",
+              color: "#FFFFFF", fontSize: 13, fontWeight: 700,
+              cursor: saving ? "not-allowed" : "pointer",
+            }}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
+              {saving ? "Saving…" : "Update password"}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin session ─────────────────────────────────────────────────────────────
 
 // ── Admin login screen ────────────────────────────────────────────────────────
 function AdminLogin({ onAuth }: { onAuth: () => void }) {
@@ -925,19 +1682,30 @@ function AdminLogin({ onAuth }: { onAuth: () => void }) {
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      if (email.trim().toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        sessionStorage.setItem(SESSION_KEY, "1");
-        onAuth();
-      } else {
-        setError("Invalid admin credentials.");
+    try {
+      const res = await fetch(`${API_BASE}/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      if (!res.ok) {
+        let msg = "Invalid admin credentials.";
+        try { const j = await res.json(); if (res.status !== 401 && j?.message) msg = Array.isArray(j.message) ? j.message.join(", ") : j.message; } catch { /* ignore */ }
+        setError(msg);
+        return;
       }
+      const data = await res.json();
+      sessionStorage.setItem(TOKEN_KEY, data.token);
+      onAuth();
+    } catch {
+      setError("Could not reach the server. Please try again.");
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -1099,19 +1867,33 @@ export default function AdminPage() {
   const [tab,       setTab]       = useState<AdminTab>("overview");
   const [authed,    setAuthed]    = useState(false);
   const [checked,   setChecked]   = useState(false);
+  const [adminId,   setAdminId]   = useState<string | null>(null);
 
-  useEffect(() => {
-    setAuthed(sessionStorage.getItem(SESSION_KEY) === "1");
-    setChecked(true);
+  // Resolve the signed-in admin (also validates the stored token on load).
+  const loadMe = useCallback(async () => {
+    if (!getToken()) { setAuthed(false); setChecked(true); return; }
+    try {
+      const me = await adminFetch<AdminAccount>("/admin/me");
+      setAdminId(me.id);
+      setAuthed(true);
+    } catch {
+      // adminFetch clears an expired token; treat any failure as logged-out.
+      setAuthed(false);
+    } finally {
+      setChecked(true);
+    }
   }, []);
 
+  useEffect(() => { loadMe(); }, [loadMe]);
+
   function handleLogout() {
-    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    setAdminId(null);
     setAuthed(false);
   }
 
   if (!checked) return null;
-  if (!authed)  return <AdminLogin onAuth={() => setAuthed(true)} />;
+  if (!authed)  return <AdminLogin onAuth={loadMe} />;
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -1126,7 +1908,7 @@ export default function AdminPage() {
           <span style={{ fontSize: "12px", color: "#94A3B8" }}>Admin</span>
           <ChevronRight size={12} color="#CBD5E1" />
           <span style={{ fontSize: "12px", fontWeight: 600, color: "#0F172A" }}>
-            {tab === "overview" ? "Overview" : tab === "users" ? "Users" : "Support Tickets"}
+            {tab === "overview" ? "Overview" : tab === "users" ? "Users" : tab === "leaderboard" ? "Leaderboard" : tab === "tickets" ? "Support Tickets" : "Admins"}
           </span>
           <button onClick={handleLogout} style={{
             marginLeft: "auto", display: "flex", alignItems: "center", gap: 6,
@@ -1138,9 +1920,11 @@ export default function AdminPage() {
           </button>
         </div>
         <div style={{ flex: 1, overflow: "hidden" }}>
-          {tab === "overview" && <div style={{ height: "100%", overflowY: "auto" }}><OverviewTab /></div>}
-          {tab === "users"    && <UsersTab />}
-          {tab === "tickets"  && <TicketsTab />}
+          {tab === "overview"    && <div style={{ height: "100%", overflowY: "auto" }}><OverviewTab /></div>}
+          {tab === "users"       && <UsersTab />}
+          {tab === "leaderboard" && <LeaderboardTab />}
+          {tab === "tickets"     && <TicketsTab />}
+          {tab === "admins"      && <AdminsTab currentAdminId={adminId} />}
         </div>
       </div>
     </div>
