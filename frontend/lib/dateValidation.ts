@@ -28,17 +28,19 @@ export function maxGoalDateDisplay(): string {
  * Validate a YYYY-MM-DD date string against the global rules.
  * - `required: true`  → empty string is an error.
  * - `maxDate`         → override the upper bound (defaults to MAX_DATE_STR).
+ * - `minDate`         → override the lower bound (defaults to today).
+ *                       Pass "" to allow past dates.
  * Returns null when the value is acceptable.
  */
 export function validateDate(
   value: string,
-  opts?: { required?: boolean; maxDate?: string; maxDateLabel?: string },
+  opts?: { required?: boolean; maxDate?: string; maxDateLabel?: string; minDate?: string },
 ): string | null {
   if (!value) return opts?.required ? "Please pick a date." : null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "Invalid date format.";
-  const today  = todayDateStr();
+  const minStr = opts?.minDate ?? todayDateStr();
   const maxStr = opts?.maxDate ?? MAX_DATE_STR;
-  if (value < today)   return "Date can't be in the past.";
+  if (minStr !== "" && value < minStr) return "Date can't be in the past.";
   if (value > maxStr) {
     const label = opts?.maxDateLabel ?? maxStr;
     return `Date must be on or before ${label}.`;

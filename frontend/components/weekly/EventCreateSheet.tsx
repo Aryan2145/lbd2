@@ -124,7 +124,8 @@ export default function EventCreateSheet({
       }) ?? null
     : null;
 
-  const dateError = validateDate(date, { required: true });
+  // Weekly plan allows scheduling on past days (e.g. logging what actually happened).
+  const dateError = validateDate(date, { required: true, minDate: "" });
   const canSave   = title.trim().length > 0 && !dateError && !timeInvalid && conflicts.length === 0;
 
   function handleSave() {
@@ -203,7 +204,7 @@ export default function EventCreateSheet({
         <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
           <div style={{ flex: 1.2 }}>
             <label style={lbl}><Calendar size={9} style={{ display: "inline", marginRight: 3 }} />Date</label>
-            <CalendarPicker value={date} onChange={setDate} accentColor="#F97316" bgColor="#FFF7ED" placement="center" />
+            <CalendarPicker value={date} onChange={setDate} min="" accentColor="#F97316" bgColor="#FFF7ED" placement="center" />
             {dateError && (
               <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>
                 {dateError}
