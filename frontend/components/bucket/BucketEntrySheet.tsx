@@ -8,6 +8,14 @@ import type { LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import { validateDate } from "@/lib/dateValidation";
 import CalendarPicker from "@/components/ui/CalendarPicker";
+import { uploadMedia } from "@/lib/api";
+import { VisionImg } from "@/lib/visionImage";
+
+// Re-exported for existing importers (e.g. the bucket-list page).
+export { toDriveImgUrl } from "@/lib/visionImage";
+
+const ACCEPT     = "image/png,image/jpeg,image/webp";
+const MAX_BYTES  = 15 * 1024 * 1024;
 
 interface Props {
   open:           boolean;
@@ -16,26 +24,6 @@ interface Props {
   onDelete?:      (id: string) => void;
   editEntry?:     BucketEntry | null;
   initialStatus?: BucketStatus;
-}
-
-// Convert any Drive URL form (share link, /uc?export=view, lh3 CDN) to the
-// reliable thumbnail endpoint. Non-Drive URLs pass through unchanged.
-export function toDriveImgUrl(raw: string): string {
-  if (!raw) return raw;
-  if (raw.includes("drive.google.com/thumbnail?id=")) return raw;
-
-  let id: string | null = null;
-  const fileMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (fileMatch) id = fileMatch[1];
-  if (!id) {
-    const idMatch = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (idMatch) id = idMatch[1];
-  }
-  if (!id) {
-    const lh3Match = raw.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
-    if (lh3Match) id = lh3Match[1];
-  }
-  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1500` : raw;
 }
 
 function generatePrompt(title: string, description: string, lifeArea: LifeArea): string {
@@ -52,9 +40,19 @@ export default function BucketEntrySheet({
   const [targetDate,  setTargetDate]  = useState("");
   const [status,      setStatus]      = useState<BucketStatus>("dreaming");
   const [imgError,    setImgError]    = useState(false);
-  const [imgRetryKey, setImgRetryKey] = useState(0);
+  const [uploading,   setUploading]   = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [stagedFile,    setStagedFile]    = useState<File | null>(null);
+  const [stagedPreview, setStagedPreview] = useState("");
   const [copied,      setCopied]      = useState(false);
   const [confirmDel,  setConfirmDel]  = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Revoke a staged local preview object URL (avoids leaking blobs).
+  function clearStaged() {
+    setStagedFile(null);
+    setStagedPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return ""; });
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -71,6 +69,8 @@ export default function BucketEntrySheet({
       setStatus(initialStatus);
     }
     setImgError(false); setCopied(false); setConfirmDel(false);
+    setUploading(false); setUploadError("");
+    clearStaged();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -78,8 +78,27 @@ export default function BucketEntrySheet({
 
   const colMeta = COLUMN_META[status];
   const targetDateError = validateDate(targetDate, { required: false });
-  const canSave         = title.trim().length > 0 && !targetDateError;
-  const processedSrc  = imageUrl ? toDriveImgUrl(imageUrl) : "";
+  const canSave         = title.trim().length > 0 && !targetDateError && !uploading;
+
+  // Stage the file locally only — nothing is uploaded to R2 until the user Saves,
+  // so an abandoned sheet never leaves an orphaned object behind.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    if (!ACCEPT.split(",").includes(file.type)) {
+      setUploadError("Please choose a PNG, JPEG, or WebP image.");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setUploadError("Image is larger than 15 MB. Please pick a smaller file.");
+      return;
+    }
+    setUploadError(""); setImgError(false);
+    if (stagedPreview) URL.revokeObjectURL(stagedPreview);
+    setStagedFile(file);
+    setStagedPreview(URL.createObjectURL(file));
+  }
 
   async function handleCopyPrompt() {
     try {
@@ -89,14 +108,29 @@ export default function BucketEntrySheet({
     } catch { /* ignore */ }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!canSave) return;
+
+    // Upload the staged image now (only on commit) and use the returned id.
+    let finalImage = imageUrl.trim();
+    if (stagedFile) {
+      setUploading(true); setUploadError("");
+      try {
+        finalImage = (await uploadMedia(stagedFile, "dreams")).id;
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+        setUploading(false);
+        return; // keep the sheet open; nothing persisted
+      }
+      setUploading(false);
+    }
+
     onSave({
       id:               editEntry?.id ?? `bl_${Date.now()}`,
       title:            title.trim(),
       description:      description.trim(),
       lifeArea,
-      imageUrl:         toDriveImgUrl(imageUrl.trim()),
+      imageUrl:         finalImage,
       targetDate:       targetDate.trim(),
       status,
       createdAt:        editEntry?.createdAt ?? Date.now(),
@@ -104,6 +138,7 @@ export default function BucketEntrySheet({
       memoryPhotoUrl:   editEntry?.memoryPhotoUrl,
       changeReflection: editEntry?.changeReflection,
     });
+    clearStaged();
     onClose();
   }
 
@@ -228,50 +263,78 @@ export default function BucketEntrySheet({
             </div>
           </div>
 
-          {/* Vision Image */}
+          {/* Dream Image */}
           <div style={{ marginBottom: "16px" }}>
             <label style={lbl}>
               <Image size={9} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
-              Vision Image
+              Dream Image
               <span style={{ fontSize: "9px", fontWeight: 500, color: "#A8A29E",
                 textTransform: "none", letterSpacing: 0, marginLeft: 6 }}>
-                Google Drive share link or direct image URL
+                PNG, JPEG or WebP · up to 15 MB · stored privately &amp; encrypted
               </span>
             </label>
+
             <input
-              value={imageUrl}
-              onChange={(e) => { setImageUrl(e.target.value); setImgError(false); }}
-              placeholder="https://drive.google.com/file/d/…"
-              className="weekly-input"
-              style={inp}
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPT}
+              onChange={handleFileChange}
+              style={{ display: "none" }}
             />
-            {processedSrc && !imgError && (
-              <div style={{ marginTop: 8, borderRadius: 10, overflow: "hidden",
-                border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img key={imgRetryKey} src={processedSrc} alt="" referrerPolicy="no-referrer" onError={() => setImgError(true)}
-                  style={{ width: "100%", height: "auto", maxHeight: "240px",
-                    display: "block", objectFit: "contain" }} />
+
+            {(stagedFile || imageUrl) ? (
+              <div style={{ marginTop: 4, borderRadius: 10, overflow: "hidden",
+                border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA", position: "relative" }}>
+                {stagedFile ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={stagedPreview} alt=""
+                    style={{ width: "100%", height: "auto", maxHeight: "240px",
+                      display: "block", objectFit: "contain" }} />
+                ) : (
+                  <VisionImg pointer={imageUrl} scope="dreams" variant="full" onError={() => setImgError(true)}
+                    style={{ width: "100%", height: "auto", maxHeight: "240px",
+                      display: "block", objectFit: "contain" }} />
+                )}
+                {imgError && !stagedFile && (
+                  <div style={{ padding: 12, fontSize: 11, color: "#EF4444" }}>
+                    Could not load the image preview.
+                  </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: 8, borderTop: "1px solid #EDE5D8" }}>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} style={smallBtn}>
+                    Replace
+                  </button>
+                  <button type="button" disabled={uploading}
+                    onClick={() => { clearStaged(); setImageUrl(""); setImgError(false); }}
+                    style={{ ...smallBtn, color: "#DC2626", borderColor: "#FCA5A5" }}>
+                    Remove
+                  </button>
+                  {stagedFile && (
+                    <span style={{ marginLeft: "auto", fontSize: 10, color: "#A8A29E", fontWeight: 600 }}>
+                      {uploading ? "Uploading…" : "Uploads on save"}
+                    </span>
+                  )}
+                </div>
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  width: "100%", padding: "22px 12px", borderRadius: 10,
+                  border: "1.5px dashed #D6CEC5", backgroundColor: "#FAFAF9",
+                  cursor: "pointer",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                  color: "#78716C", fontSize: 12, fontWeight: 600,
+                }}
+              >
+                <Image size={18} color="#A8A29E" />
+                Click to upload your dream image
+              </button>
             )}
-            {processedSrc && imgError && (
-              <div style={{ marginTop: 4, display: "flex", alignItems: "center",
-                gap: 8, flexWrap: "wrap" }}>
-                <p style={{ fontSize: "10px", color: "#EF4444", margin: 0 }}>
-                  Could not load image. Make sure the file is shared as &ldquo;Anyone with the link&rdquo; on Google Drive.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => { setImgError(false); setImgRetryKey((k) => k + 1); }}
-                  style={{
-                    fontSize: "10px", fontWeight: 700, color: "#FFFFFF",
-                    backgroundColor: "#F97316", border: "none",
-                    padding: "3px 10px", borderRadius: 6, cursor: "pointer",
-                  }}
-                >
-                  Retry
-                </button>
-              </div>
+
+            {uploadError && (
+              <p style={{ fontSize: "10px", color: "#EF4444", margin: "6px 2px 0" }}>{uploadError}</p>
             )}
           </div>
 
@@ -285,7 +348,7 @@ export default function BucketEntrySheet({
               <Sparkles size={13} color="#EA580C" />
               <div>
                 <p style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", margin: 0 }}>
-                  AI Vision Image Prompt
+                  AI Dream Image Prompt
                 </p>
                 <p style={{ fontSize: "10px", color: "#57534E", margin: 0 }}>
                   Copy prompt → use in Midjourney, DALL·E, Ideogram
@@ -379,6 +442,12 @@ const iconBtn: React.CSSProperties = {
   width: 30, height: 30, borderRadius: 8, border: "1px solid #EDE5D8",
   backgroundColor: "#FAFAFA", display: "flex", alignItems: "center",
   justifyContent: "center", cursor: "pointer",
+};
+
+const smallBtn: React.CSSProperties = {
+  flex: 1, padding: "6px 10px", borderRadius: 8,
+  border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+  fontSize: 11, fontWeight: 700, color: "#57534E", cursor: "pointer",
 };
 
 function StatusDropdown({ value, onChange }: { value: BucketStatus; onChange: (s: BucketStatus) => void }) {

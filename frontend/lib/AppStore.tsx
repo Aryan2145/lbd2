@@ -11,7 +11,8 @@ import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import type { EveningReflection, WeeklyReview } from "@/lib/dayTypes";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import type { SupportTicket, TicketCategory, TicketPriority } from "@/lib/ticketTypes";
-import { api } from "@/lib/api";
+import { api, deleteMedia } from "@/lib/api";
+import { isMediaId } from "@/lib/visionImage";
 import { readAppCache, writeAppCache } from "@/lib/appCache";
 
 // ── Vision lookup ─────────────────────────────────────────────────────────────
@@ -560,7 +561,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         achievedAt: e.achievedAt, memoryPhotoUrl: e.memoryPhotoUrl, changeReflection: e.changeReflection,
       })
         .then(created => setBucketEntries(prev => prev.map(x => x.id === e.id ? mapBucketEntry(created) : x)))
-        .catch(() => setBucketEntries(prev => prev.filter(x => x.id !== e.id)));
+        .catch(() => {
+          // Roll back the optimistic row, and purge any image we uploaded for an
+          // entry that never persisted — so R2 keeps no orphans.
+          setBucketEntries(prev => prev.filter(x => x.id !== e.id));
+          if (isMediaId(e.imageUrl)) deleteMedia(e.imageUrl, "dreams");
+          if (isMediaId(e.memoryPhotoUrl)) deleteMedia(e.memoryPhotoUrl, "dreams");
+        });
     },
     updateBucketEntry: (e) => {
       setBucketEntries(prev => prev.map(x => x.id === e.id ? e : x));

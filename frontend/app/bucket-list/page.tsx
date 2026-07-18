@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, Calendar, GripVertical } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
-import BucketEntrySheet, { toDriveImgUrl } from "@/components/bucket/BucketEntrySheet";
+import BucketEntrySheet from "@/components/bucket/BucketEntrySheet";
+import { VisionImg } from "@/lib/visionImage";
 import AchievedTransition from "@/components/bucket/AchievedTransition";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import { COLUMN_META, formatTargetDate } from "@/lib/bucketTypes";
@@ -551,8 +552,7 @@ function BucketCard({ entry, isDragging, onEdit, onDragStart, onDragEnd, onMoveF
     >
       {/* Image banner */}
       {entry.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={toDriveImgUrl(entry.imageUrl)} alt="" referrerPolicy="no-referrer"
+        <VisionImg pointer={entry.imageUrl} scope="dreams" variant="thumb" alt=""
           style={{ width: "100%", aspectRatio: "3 / 1", objectFit: "cover", display: "block" }} />
       )}
 

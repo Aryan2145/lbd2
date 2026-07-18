@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Camera, Check } from "lucide-react";
 import type { BucketEntry } from "@/lib/bucketTypes";
 import { LIFE_AREA_COLORS } from "@/lib/dayTypes";
+import { uploadMedia } from "@/lib/api";
+import { VisionImg } from "@/lib/visionImage";
 
 interface Props {
   entry:    BucketEntry | null;
@@ -11,47 +13,67 @@ interface Props {
   onCancel: () => void;
 }
 
-function processImageUrl(raw: string): string {
-  if (!raw) return raw;
-  if (raw.includes("drive.google.com/thumbnail?id=")) return raw;
-
-  let id: string | null = null;
-  const fileMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (fileMatch) id = fileMatch[1];
-  if (!id) {
-    const idMatch = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (idMatch) id = idMatch[1];
-  }
-  if (!id) {
-    const lh3Match = raw.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
-    if (lh3Match) id = lh3Match[1];
-  }
-  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1500` : raw;
-}
+const ACCEPT    = "image/png,image/jpeg,image/webp";
+const MAX_BYTES = 15 * 1024 * 1024;
 
 export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
   const [isFlipped,      setIsFlipped]      = useState(false);
   const [memoryPhotoUrl, setMemoryPhotoUrl] = useState("");
   const [changeText,     setChangeText]     = useState("");
-  const [imgError,       setImgError]       = useState(false);
+  const [uploading,      setUploading]      = useState(false);
+  const [uploadError,    setUploadError]    = useState("");
+  const [stagedFile,     setStagedFile]     = useState<File | null>(null);
+  const [stagedPreview,  setStagedPreview]  = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function clearStaged() {
+    setStagedFile(null);
+    setStagedPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return ""; });
+  }
 
   useEffect(() => {
     if (entry) {
       setIsFlipped(false);
       setMemoryPhotoUrl("");
       setChangeText("");
-      setImgError(false);
+      setUploading(false);
+      setUploadError("");
+      clearStaged();
     }
   }, [entry]);
 
   if (!entry) return null;
 
   const areaColor = LIFE_AREA_COLORS[entry.lifeArea];
-  const imgSrc    = entry.imageUrl ? processImageUrl(entry.imageUrl) : "";
-  const memorySrc = memoryPhotoUrl ? processImageUrl(memoryPhotoUrl) : "";
 
-  function handleSave() {
-    onSave({ memoryPhotoUrl: memoryPhotoUrl.trim(), changeReflection: changeText.trim() });
+  // Stage locally; upload to R2 only on save so an abandoned form leaves no orphan.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!ACCEPT.split(",").includes(file.type)) { setUploadError("Choose a PNG, JPEG, or WebP image."); return; }
+    if (file.size > MAX_BYTES) { setUploadError("Image is larger than 15 MB."); return; }
+    setUploadError("");
+    if (stagedPreview) URL.revokeObjectURL(stagedPreview);
+    setStagedFile(file);
+    setStagedPreview(URL.createObjectURL(file));
+  }
+
+  async function handleSave() {
+    let finalPhoto = memoryPhotoUrl.trim();
+    if (stagedFile) {
+      setUploading(true); setUploadError("");
+      try {
+        finalPhoto = (await uploadMedia(stagedFile, "dreams")).id;
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Upload failed.");
+        setUploading(false);
+        return;
+      }
+      setUploading(false);
+    }
+    onSave({ memoryPhotoUrl: finalPhoto, changeReflection: changeText.trim() });
+    clearStaged();
   }
 
   return (
@@ -110,9 +132,8 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
               border: `1.5px solid ${areaColor}30`,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              {imgSrc ? (
-                <img src={imgSrc} alt=""
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              {entry.imageUrl ? (
+                <VisionImg pointer={entry.imageUrl} scope="dreams" variant="full" alt=""
                   style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <div style={{ textAlign: "center" }}>
@@ -206,25 +227,60 @@ export default function AchievedTransition({ entry, onSave, onCancel }: Props) {
             <div>
               <label style={lbl}>
                 <Camera size={10} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
-                Memory Photo URL
+                Memory Photo
                 <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0,
                   marginLeft: 5, color: "#A8A29E", fontSize: "9px" }}>
-                  optional
+                  optional · encrypted
                 </span>
               </label>
+
               <input
-                value={memoryPhotoUrl}
-                onChange={(e) => { setMemoryPhotoUrl(e.target.value); setImgError(false); }}
-                placeholder="Paste a photo link from the moment…"
-                className="weekly-input"
-                style={inp}
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT}
+                onChange={handleFileChange}
+                style={{ display: "none" }}
               />
-              {memoryPhotoUrl && !imgError && (
-                <div style={{ marginTop: 8, height: 80, borderRadius: 8, overflow: "hidden",
-                  border: "1px solid #E8DDD0" }}>
-                  <img src={memorySrc} alt="" onError={() => setImgError(true)}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+
+              {(stagedFile || memoryPhotoUrl) ? (
+                <div style={{ marginTop: 4, borderRadius: 8, overflow: "hidden", border: "1px solid #E8DDD0" }}>
+                  <div style={{ height: 80 }}>
+                    {stagedFile ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={stagedPreview} alt=""
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <VisionImg pointer={memoryPhotoUrl} scope="dreams" variant="thumb" alt=""
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: 6, borderTop: "1px solid #EDE5D8" }}>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} style={smallBtn}>Replace</button>
+                    <button type="button" disabled={uploading} onClick={() => { clearStaged(); setMemoryPhotoUrl(""); }}
+                      style={{ ...smallBtn, color: "#DC2626", borderColor: "#FCA5A5" }}>Remove</button>
+                    {stagedFile && (
+                      <span style={{ marginLeft: "auto", fontSize: 9, color: "#A8A29E", fontWeight: 600 }}>
+                        {uploading ? "Uploading…" : "Uploads on save"}
+                      </span>
+                    )}
+                  </div>
                 </div>
+              ) : (
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    width: "100%", padding: "14px 12px", borderRadius: 8,
+                    border: "1.5px dashed #D6CEC5", backgroundColor: "#FAFAF9",
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    color: "#78716C", fontSize: 11, fontWeight: 600,
+                  }}>
+                  <Camera size={13} color="#A8A29E" />
+                  Upload a photo from the moment
+                </button>
+              )}
+
+              {uploadError && (
+                <p style={{ fontSize: "10px", color: "#EF4444", margin: "6px 2px 0" }}>{uploadError}</p>
               )}
             </div>
 
@@ -277,4 +333,10 @@ const inp: React.CSSProperties = {
   width: "100%", padding: "9px 13px", borderRadius: "10px",
   border: "1.5px solid #D6CEC5", backgroundColor: "#FAFAF9",
   fontSize: "13px", color: "#1C1917", outline: "none", boxSizing: "border-box",
+};
+
+const smallBtn: React.CSSProperties = {
+  flex: 1, padding: "5px 10px", borderRadius: 7,
+  border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
+  fontSize: 11, fontWeight: 700, color: "#57534E", cursor: "pointer",
 };
