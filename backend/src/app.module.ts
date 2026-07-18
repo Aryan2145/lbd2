@@ -25,6 +25,7 @@ import { VisionModule } from './vision/vision.module';
 import { LegacyModule } from './legacy/legacy.module';
 import { GcalModule } from './gcal/gcal.module';
 import { AdminModule } from './admin/admin.module';
+import { MediaModule } from './media/media.module';
 
 @Module({
   controllers: [HealthController],
@@ -48,6 +49,7 @@ import { AdminModule } from './admin/admin.module';
     LegacyModule,
     GcalModule,
     AdminModule,
+    MediaModule,
   ],
 })
 export class AppModule {}

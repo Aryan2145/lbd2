@@ -74,6 +74,38 @@ export class EncryptionService implements OnModuleInit {
     }
   }
 
+  /**
+   * Binary-safe encryption for file bytes (images, etc.).
+   * Same AES-256-GCM key and IV+tag+ciphertext layout as encrypt(), but takes
+   * and returns raw Buffers — no utf8 coercion, no base64 wrapper (which would
+   * inflate binary payloads ~33%). Output layout: [ iv | tag | ciphertext ].
+   */
+  encryptBuffer(data: Buffer, aad?: string): Buffer {
+    const iv = randomBytes(IV_BYTES);
+    const cipher = createCipheriv(ALGORITHM, this.key, iv);
+    if (aad) cipher.setAAD(Buffer.from(aad, 'utf8'));
+    const ct  = Buffer.concat([cipher.update(data), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return Buffer.concat([iv, tag, ct]);
+  }
+
+  decryptBuffer(blob: Buffer, aad?: string): Buffer {
+    if (blob.length < IV_BYTES + TAG_BYTES) {
+      throw new Error('Ciphertext is truncated or malformed.');
+    }
+    const iv  = blob.subarray(0, IV_BYTES);
+    const tag = blob.subarray(IV_BYTES, IV_BYTES + TAG_BYTES);
+    const ct  = blob.subarray(IV_BYTES + TAG_BYTES);
+    const decipher = createDecipheriv(ALGORITHM, this.key, iv);
+    if (aad) decipher.setAAD(Buffer.from(aad, 'utf8'));
+    decipher.setAuthTag(tag);
+    try {
+      return Buffer.concat([decipher.update(ct), decipher.final()]);
+    } catch {
+      throw new Error('Decryption failed (wrong key, tampered data, or AAD mismatch).');
+    }
+  }
+
   encryptIfPresent(value: string | null | undefined, aad?: string): string | null {
     if (value == null || value === '') return value ?? null;
     return this.encrypt(value, aad);
