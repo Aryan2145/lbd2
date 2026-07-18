@@ -18,7 +18,10 @@ import { GcalModule } from '../gcal/gcal.module';
       imports: [ConfigModule],
       useFactory: (cfg: ConfigService) => ({
         secret: cfg.get('JWT_SECRET'),
-        signOptions: { expiresIn: '7d' },
+        // 30-day tokens, renewed every time the app is opened (see /auth/refresh),
+        // so an actively-used account effectively never gets logged out. Only ~30
+        // days of no activity lets the token lapse and forces a fresh login.
+        signOptions: { expiresIn: '30d' },
       }),
       inject: [ConfigService],
     }),

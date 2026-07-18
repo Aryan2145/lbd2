@@ -44,6 +44,18 @@ export class AuthService {
   }
 
   /**
+   * Sliding session — the client calls this each time it opens (with its still-valid
+   * token) to get a fresh 30-day token, pushing the expiry forward. An expired token
+   * can't reach here (the guard rejects it), so genuine inactivity still forces login.
+   */
+  async refreshSession(userId: string) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new UnauthorizedException('Session no longer valid');
+    const payload = { sub: user.id, email: user.email };
+    return { accessToken: this.jwt.sign(payload), user: this.strip(user) };
+  }
+
+  /**
    * Signup step 1 — email a verification code. NO account is created yet, so a
    * fake or abandoned signup leaves nothing behind but a short-lived code row.
    */

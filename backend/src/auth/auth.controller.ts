@@ -65,6 +65,14 @@ export class AuthController {
     return this.auth.login(dto.email, dto.password);
   }
 
+  // Sliding session — called by the client on app open to extend the token's
+  // 30-day life. Requires a still-valid token, so expired sessions can't renew.
+  @Post('refresh')
+  @UseGuards(JwtAuthGuard)
+  refresh(@Request() req: any) {
+    return this.auth.refreshSession(req.user.userId);
+  }
+
   @Post('register')
   register(@Body() dto: StartSignupDto) {
     return this.auth.startSignup(dto.name, dto.email);
