@@ -60,6 +60,7 @@ export default function LegacyPage() {
     Object.fromEntries(ROLES.map((r) => [r.id, false]))
   );
   const [savingCard, setSavingCard] = useState<string | null>(null);
+  const [synthError, setSynthError] = useState<string | null>(null);
 
   const persist = (patch: { roleTexts?: Record<string, string>; purposeText?: string; isSealed?: boolean }) => {
     api.put("/legacy", patch).catch(() => {});
@@ -104,6 +105,12 @@ export default function LegacyPage() {
 
   const handleSynthesize = async () => {
     if (!allComplete) return;
+    if (synthesisState === "processing" || synthesisState === "streaming") return;
+
+    // Keep the previous purpose (if any) so a failed re-synthesize doesn't wipe it.
+    const prevPurpose = purposeText;
+    const prevReady   = synthesisState === "ready" || synthesisState === "sealed";
+    setSynthError(null);
     setSynthesisState("processing");
     setPurposeText("");
 
@@ -115,7 +122,15 @@ export default function LegacyPage() {
       });
 
       if (!res.ok || !res.body) {
-        setSynthesisState("idle");
+        // Surface the reason (rate limit, server error, …) instead of failing silently.
+        let msg = "Something went wrong generating your North Star. Please try again.";
+        try {
+          const data = await res.json();
+          if (data?.message) msg = String(data.message);
+        } catch { /* non-JSON body — keep the default message */ }
+        setSynthError(msg);
+        setPurposeText(prevPurpose);
+        setSynthesisState(prevReady ? "ready" : "idle");
         return;
       }
 
@@ -135,7 +150,9 @@ export default function LegacyPage() {
       setSynthesisState("ready");
       persist({ roleTexts, purposeText: fullText, isSealed: false });
     } catch {
-      setSynthesisState("idle");
+      setSynthError("Network error — please check your connection and try again.");
+      setPurposeText(prevPurpose);
+      setSynthesisState(prevReady ? "ready" : "idle");
     }
   };
 
@@ -326,6 +343,21 @@ export default function LegacyPage() {
               state={synthesisState}
               onClick={handleSynthesize}
             />
+            {synthError && (
+              <p
+                role="alert"
+                style={{
+                  marginTop: "10px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#DC2626",
+                  textAlign: "center",
+                  lineHeight: 1.5,
+                }}
+              >
+                {synthError}
+              </p>
+            )}
           </div>
         </div>
 

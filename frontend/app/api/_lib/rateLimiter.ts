@@ -35,6 +35,8 @@ class SlidingWindowLimiter {
   }
 }
 
-// 12 global req/min, 2 per-IP req/min — safely under Gemini free tier (15 RPM).
-// Swap globalMax/perIpMax here when upgrading to a paid plan.
-export const aiLimiter = new SlidingWindowLimiter(12, 2);
+// Shared across the legacy North Star (/api/synthesize) and the vision
+// purpose generator (/api/generate-purpose), both on the paid Anthropic tier.
+// Per-IP is generous enough that a user can re-synthesize a few times in a row
+// without being blocked; global caps runaway/abuse across all users.
+export const aiLimiter = new SlidingWindowLimiter(60, 10);
