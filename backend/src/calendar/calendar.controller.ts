@@ -15,4 +15,10 @@ export class CalendarController {
   @Post('events') createEvent(@Request() req, @Body() body: any) { return this.cal.createEvent(req.user.userId, body); }
   @Patch('events/:id') updateEvent(@Request() req, @Param('id') id: string, @Body() body: any) { return this.cal.updateEvent(req.user.userId, id, body); }
   @Delete('events/:id') removeEvent(@Request() req, @Param('id') id: string) { return this.cal.removeEvent(req.user.userId, id); }
+
+  // Reverse sync: pull the given week from Google Calendar, reconcile, and
+  // return the fresh group+event tree. Body: { weekStart: "YYYY-MM-DD" }.
+  @Post('sync') syncWeek(@Request() req, @Body() body: { weekStart: string }) {
+    return this.cal.syncGoogleWeek(req.user.userId, body.weekStart);
+  }
 }

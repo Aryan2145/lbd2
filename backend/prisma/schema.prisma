@@ -244,6 +244,9 @@ model EventGroup {
   name     String
   color    String
   archived Boolean @default(false)
+  // "google" = the auto-managed, hideable bucket that holds events imported
+  // from Google Calendar. null = a normal user-created group.
+  kind     String?
 
   events WeekEvent[]
 
@@ -260,10 +263,15 @@ model WeekEvent {
 
   title         String
   date          String     // YYYY-MM-DD
-  startTime     String     // HH:MM
-  endTime       String     // HH:MM
+  startTime     String     // HH:MM   (all-day events use "00:00")
+  endTime       String     // HH:MM   (all-day events use "23:59")
   description   String?
+  allDay        Boolean    @default(false)
   googleEventId String?
+  // Last Google `updated` timestamp we've seen for this event. Breaks the
+  // two-way echo loop: on reverse sync, a Google event whose `updated` still
+  // equals this value is our own push echoing back, so it's skipped.
+  googleUpdatedAt String?
 
   @@index([userId, date])
   @@map("week_events")
