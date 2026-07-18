@@ -3,6 +3,11 @@
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ImageIcon, Plus, Camera, X, Copy, Check, Briefcase, Globe, TrendingUp, Sparkles, BookOpen, Users, Activity, type LucideIcon } from "lucide-react";
+import { VisionImg } from "@/lib/visionImage";
+import { uploadMedia } from "@/lib/api";
+
+const ACCEPT    = "image/png,image/jpeg,image/webp";
+const MAX_BYTES = 15 * 1024 * 1024;
 
 const AREA_ICONS: Record<string, LucideIcon> = {
   professional:  Briefcase,
@@ -222,22 +227,21 @@ export default function PolaroidCard({
   const w = typeof cardWidth === "number" ? `${cardWidth}px` : cardWidth;
 
   const cardRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [urlDialog, setUrlDialog] = useState(false);
-  const [urlInput, setUrlInput]   = useState("");
+  const [stagedFile,    setStagedFile]    = useState<File | null>(null);
+  const [stagedPreview, setStagedPreview] = useState("");
+  const [removed,       setRemoved]       = useState(false);
+  const [uploading,     setUploading]     = useState(false);
+  const [uploadError,   setUploadError]   = useState("");
 
-  function toDriveImgUrl(raw: string): string {
-    if (!raw) return raw;
-    if (raw.includes("drive.google.com/thumbnail?id=")) return raw;
-    let id: string | null = null;
-    const fileMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (fileMatch) id = fileMatch[1];
-    if (!id) { const m = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/); if (m) id = m[1]; }
-    if (!id) { const m = raw.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/); if (m) id = m[1]; }
-    return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1500` : raw;
+  function clearStaged() {
+    setStagedFile(null);
+    setStagedPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return ""; });
   }
 
   function openDialog() {
-    setUrlInput(area.imageUrl || "");
+    clearStaged(); setRemoved(false); setUploadError("");
     setUrlDialog(true);
   }
 
@@ -246,12 +250,39 @@ export default function PolaroidCard({
     openDialog();
   }
 
-  // Commits the whole card in one write: the dialog's vision text plus the
-  // resolved image URL. Called by the single "Save Vision" button.
-  function saveCard(text: string) {
-    const resolved = toDriveImgUrl(urlInput.trim());
-    onSaveCard?.({ text, imageUrl: resolved });
-    setUrlDialog(false);
+  // Stage the picked file locally — nothing is uploaded to R2 until Save.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!ACCEPT.split(",").includes(file.type)) { setUploadError("Choose a PNG, JPEG, or WebP image."); return; }
+    if (file.size > MAX_BYTES) { setUploadError("Image is larger than 15 MB."); return; }
+    setUploadError("");
+    if (stagedPreview) URL.revokeObjectURL(stagedPreview);
+    setStagedFile(file);
+    setStagedPreview(URL.createObjectURL(file));
+    setRemoved(false);
+  }
+
+  function removeImage() { clearStaged(); setRemoved(true); }
+
+  // Commits the whole card in one write: uploads the staged image (if any) on
+  // save, then persists the vision text + resulting image pointer together.
+  async function saveCard(text: string) {
+    let imageUrl = removed ? "" : area.imageUrl;
+    if (stagedFile) {
+      setUploading(true); setUploadError("");
+      try {
+        imageUrl = (await uploadMedia(stagedFile, "vision")).id;
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+        setUploading(false);
+        return; // keep dialog open; nothing persisted
+      }
+      setUploading(false);
+    }
+    onSaveCard?.({ text, imageUrl });
+    clearStaged(); setRemoved(false); setUrlDialog(false);
   }
 
   function onHover(enter: boolean) {
@@ -297,9 +328,8 @@ export default function PolaroidCard({
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           {area.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={area.imageUrl} alt={area.name}
-              referrerPolicy="no-referrer" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
+            <VisionImg pointer={area.imageUrl} scope="vision" variant="thumb" alt={area.name}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
           ) : (
             <AreaIllustration id={area.id} color={accentColor} />
           )}
@@ -351,17 +381,22 @@ export default function PolaroidCard({
           </span>
         </div>
       </div>
+      <input ref={fileInputRef} type="file" accept={ACCEPT} onChange={handleFileChange} style={{ display: "none" }} />
       <UrlDialog
         open={urlDialog}
-        urlInput={urlInput}
         accentColor={accentColor}
         areaName={area.name}
         areaText={area.text}
         areaScore={area.score}
         currentImageUrl={area.imageUrl}
-        previewUrl={toDriveImgUrl(urlInput)}
+        stagedPreview={stagedPreview}
+        hasStaged={!!stagedFile}
+        removed={removed}
+        uploading={uploading}
+        uploadError={uploadError}
+        onPick={() => fileInputRef.current?.click()}
+        onRemove={removeImage}
         gender={gender}
-        onChange={setUrlInput}
         onConfirm={saveCard}
         onClose={() => setUrlDialog(false)}
         onSaveScore={onSaveScore}
@@ -418,9 +453,10 @@ export default function PolaroidCard({
           }}
         >
           {area.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={area.imageUrl}
+            <VisionImg
+              pointer={area.imageUrl}
+              scope="vision"
+              variant="thumb"
               alt={area.name}
               style={{
                 width: "100%",
@@ -566,17 +602,22 @@ export default function PolaroidCard({
         }}
       />
     </div>
+    <input ref={fileInputRef} type="file" accept={ACCEPT} onChange={handleFileChange} style={{ display: "none" }} />
     <UrlDialog
       open={urlDialog}
-      urlInput={urlInput}
       accentColor={accentColor}
       areaName={area.name}
       areaText={area.text}
       areaScore={area.score}
       currentImageUrl={area.imageUrl}
-      previewUrl={toDriveImgUrl(urlInput)}
+      stagedPreview={stagedPreview}
+      hasStaged={!!stagedFile}
+      removed={removed}
+      uploading={uploading}
+      uploadError={uploadError}
+      onPick={() => fileInputRef.current?.click()}
+      onRemove={removeImage}
       gender={gender}
-      onChange={setUrlInput}
       onConfirm={saveCard}
       onClose={() => setUrlDialog(false)}
       onSaveScore={onSaveScore}
@@ -587,21 +628,25 @@ export default function PolaroidCard({
 
 interface UrlDialogProps {
   open:            boolean;
-  urlInput:        string;
   accentColor:     string;
   areaName:        string;
   areaText:        string;
   areaScore:       number;
   currentImageUrl: string;
-  previewUrl:      string;
+  stagedPreview:   string;
+  hasStaged:       boolean;
+  removed:         boolean;
+  uploading:       boolean;
+  uploadError:     string;
+  onPick:          () => void;
+  onRemove:        () => void;
   gender:          string;
-  onChange:        (v: string) => void;
   onConfirm:       (text: string) => void;
   onClose:         () => void;
   onSaveScore?:    (score: number) => void;
 }
 
-function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore, currentImageUrl, previewUrl, gender, onChange, onConfirm, onClose, onSaveScore }: UrlDialogProps) {
+function UrlDialog({ open, accentColor, areaName, areaText, areaScore, currentImageUrl, stagedPreview, hasStaged, removed, uploading, uploadError, onPick, onRemove, gender, onConfirm, onClose, onSaveScore }: UrlDialogProps) {
   const [copied, setCopied]         = useState(false);
   const [localText, setLocalText]   = useState(areaText);
   const [localScore, setLocalScore] = useState(areaScore);
@@ -706,26 +751,51 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
           style={{ padding: "16px 20px 20px", overflowY: "auto", flex: 1 }}
         >
 
-          {/* Current image (if set) */}
-          {currentImageUrl && !urlInput && (
-            <div style={{ borderRadius: "10px", overflow: "hidden", width: "100%", aspectRatio: "4/3", marginBottom: "14px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={currentImageUrl} alt="current" referrerPolicy="no-referrer"
-                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
+          {/* Image upload / preview */}
+          {(hasStaged || (currentImageUrl && !removed)) ? (
+            <div style={{ marginBottom: "14px" }}>
+              <div style={{ borderRadius: "10px", overflow: "hidden", width: "100%", aspectRatio: "4/3",
+                border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA" }}>
+                {hasStaged ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={stagedPreview} alt="preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
+                ) : (
+                  <VisionImg pointer={currentImageUrl} scope="vision" variant="full" alt="current"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                <button type="button" onClick={onPick} disabled={uploading}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: `1.5px solid ${accentColor}55`,
+                    backgroundColor: "#FFFFFF", fontSize: 11, fontWeight: 700, color: accentColor, cursor: "pointer" }}>
+                  Replace
+                </button>
+                <button type="button" onClick={onRemove} disabled={uploading}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1.5px solid #FCA5A5",
+                    backgroundColor: "#FFFFFF", fontSize: 11, fontWeight: 700, color: "#DC2626", cursor: "pointer" }}>
+                  Remove
+                </button>
+                {hasStaged && (
+                  <span style={{ marginLeft: "auto", fontSize: 9, color: "#A8A29E", fontWeight: 600 }}>
+                    {uploading ? "Uploading…" : "Uploads on save"}
+                  </span>
+                )}
+              </div>
             </div>
+          ) : (
+            <button type="button" onClick={onPick}
+              style={{ width: "100%", padding: "20px 12px", borderRadius: 10, marginBottom: "14px",
+                border: `1.5px dashed ${accentColor}55`, backgroundColor: `${accentColor}08`, cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                color: accentColor, fontSize: 12, fontWeight: 600 }}>
+              <Camera size={18} color={accentColor} />
+              Upload your vision image
+            </button>
           )}
 
-          {/* URL input preview */}
-          {urlInput && (
-            <div style={{ borderRadius: "10px", overflow: "hidden", width: "100%", aspectRatio: "4/3", marginBottom: "14px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewUrl} alt="preview" referrerPolicy="no-referrer"
-                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-            </div>
+          {uploadError && (
+            <p style={{ fontSize: "10px", color: "#EF4444", margin: "-6px 2px 12px" }}>{uploadError}</p>
           )}
 
           {/* Visualization text + save */}
@@ -768,34 +838,6 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
               }}
             />
           </div>
-
-          {/* URL input */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: "8px",
-            padding: "8px 12px", borderRadius: "10px",
-            border: `1.5px solid ${accentColor}55`,
-            backgroundColor: `${accentColor}08`,
-            marginBottom: "6px",
-          }}>
-            <ImageIcon size={13} color={accentColor} />
-            <input
-              type="text"
-              value={urlInput}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="Paste Google Drive or direct image URL…"
-              autoFocus
-              style={{
-                flex: 1, fontSize: "12px", color: "#1C1917",
-                outline: "none", border: "none",
-                backgroundColor: "transparent", fontFamily: "inherit",
-              }}
-            />
-          </div>
-
-          {/* Google Drive instructions */}
-          <p style={{ fontSize: "10px", color: "#1C1917", marginBottom: "14px", lineHeight: 1.5 }}>
-            Upload to Google Drive → Share → &ldquo;Anyone with the link&rdquo; → copy link and paste above.
-          </p>
 
           {/* Current Reality Score */}
           <div style={{ marginBottom: "16px" }}>
@@ -848,14 +890,16 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
           <div style={{ display: "flex", gap: "8px" }}>
             <button
               onClick={() => onConfirm(localText)}
+              disabled={uploading}
               style={{
                 flex: 1, padding: "10px", borderRadius: "10px", border: "none",
                 background: accentColor,
                 color: "#FFFFFF", fontSize: "12px", fontWeight: 600,
-                cursor: "pointer", boxShadow: `0 4px 12px ${accentColor}44`,
+                cursor: uploading ? "default" : "pointer", opacity: uploading ? 0.6 : 1,
+                boxShadow: `0 4px 12px ${accentColor}44`,
               }}
             >
-              Save Vision
+              {uploading ? "Uploading…" : "Save Vision"}
             </button>
             <button
               onClick={onClose}
