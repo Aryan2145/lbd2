@@ -750,8 +750,8 @@ function UrlDialog({ open, accentColor, areaName, areaText, areaScore, currentIm
           style={{ padding: "16px 20px 20px", overflowY: "auto", flex: 1 }}
         >
 
-          {/* Image upload / preview */}
-          {(hasStaged || (currentImageUrl && !removed)) ? (
+          {/* Image preview — loads at the top once an image is selected */}
+          {(hasStaged || (currentImageUrl && !removed)) && (
             <div style={{ marginBottom: "14px" }}>
               <div style={{ borderRadius: "10px", overflow: "hidden", width: "100%", aspectRatio: "4/3",
                 border: "1px solid #E8DDD0", backgroundColor: "#FAFAFA" }}>
@@ -782,42 +782,13 @@ function UrlDialog({ open, accentColor, areaName, areaText, areaScore, currentIm
                 )}
               </div>
             </div>
-          ) : (
-            <button type="button" onClick={onPick}
-              style={{ width: "100%", padding: "20px 12px", borderRadius: 10, marginBottom: "14px",
-                border: `1.5px dashed ${accentColor}55`, backgroundColor: `${accentColor}08`, cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                color: accentColor, fontSize: 12, fontWeight: 600 }}>
-              <Camera size={18} color={accentColor} />
-              Upload your vision image
-            </button>
           )}
 
-          {uploadError && (
-            <p style={{ fontSize: "10px", color: "#EF4444", margin: "-6px 2px 12px" }}>{uploadError}</p>
-          )}
-
-          {/* Visualization text + save */}
-          <div style={{ marginBottom: "14px" }}>
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              marginBottom: "6px",
-            }}>
-              <label style={{ fontSize: "11px", fontWeight: 600, color: "#1C1917" }}>
-                10-Year Visualization
-              </label>
-              <button
-                onClick={handleCopy}
-                style={{
-                  display: "flex", alignItems: "center", gap: "4px",
-                  fontSize: "10px", fontWeight: 600, color: accentColor,
-                  cursor: "pointer", background: "none", border: "none", padding: 0,
-                }}
-              >
-                {copied ? <Check size={11} /> : <Copy size={11} />}
-                {copied ? "Copied!" : "Copy AI prompt"}
-              </button>
-            </div>
+          {/* 10-Year Visualization — first */}
+          <div style={{ marginBottom: "10px" }}>
+            <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#1C1917", marginBottom: "6px" }}>
+              10-Year Visualization
+            </label>
             {/* Always-editable, auto-growing textarea — saved with the card below */}
             <textarea
               ref={textareaRef}
@@ -837,6 +808,36 @@ function UrlDialog({ open, accentColor, areaName, areaText, areaScore, currentIm
               }}
             />
           </div>
+
+          {/* Copy AI prompt — full-width, compact */}
+          <button
+            onClick={handleCopy}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+              padding: "8px", borderRadius: "10px", marginBottom: "14px",
+              border: `1.5px solid ${accentColor}55`, backgroundColor: `${accentColor}0C`,
+              fontSize: "11px", fontWeight: 700, color: copied ? "#16A34A" : accentColor, cursor: "pointer",
+            }}
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? "Copied!" : "Copy AI prompt"}
+          </button>
+
+          {/* Upload your vision image — shown until an image is selected */}
+          {!(hasStaged || (currentImageUrl && !removed)) && (
+            <button type="button" onClick={onPick}
+              style={{ width: "100%", padding: "20px 12px", borderRadius: 10, marginBottom: "14px",
+                border: `1.5px dashed ${accentColor}55`, backgroundColor: `${accentColor}08`, cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                color: accentColor, fontSize: 12, fontWeight: 600 }}>
+              <Camera size={18} color={accentColor} />
+              Upload your vision image
+            </button>
+          )}
+
+          {uploadError && (
+            <p style={{ fontSize: "10px", color: "#EF4444", margin: "-6px 2px 12px" }}>{uploadError}</p>
+          )}
 
           {/* Current Reality Score */}
           <div style={{ marginBottom: "16px" }}>
