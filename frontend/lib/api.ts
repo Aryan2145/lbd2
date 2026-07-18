@@ -56,12 +56,15 @@ export const api = {
  * auth-guarded stream endpoint — which `<img src>` can't reach directly (no auth
  * header), so we fetch as a blob and hand back an object URL for the caller to use.
  */
-export async function uploadMedia(file: File): Promise<{ id: string }> {
+/** Feature folder the image belongs to — becomes the top-level R2 prefix. */
+export type MediaScope = "dreams" | "vision";
+
+export async function uploadMedia(file: File, scope: MediaScope): Promise<{ id: string }> {
   const token = getToken();
   const form = new FormData();
   form.append("file", file); // field name must match FileInterceptor('file')
 
-  const res = await fetch(`${BASE}/media/upload`, {
+  const res = await fetch(`${BASE}/media/${scope}/upload`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form, // NB: let the browser set the multipart Content-Type + boundary
@@ -77,9 +80,9 @@ export async function uploadMedia(file: File): Promise<{ id: string }> {
 }
 
 /** Fetch an encrypted media variant and return an object URL (caller revokes it). */
-export async function fetchMediaObjectUrl(id: string, variant: "full" | "thumb" = "full"): Promise<string> {
+export async function fetchMediaObjectUrl(id: string, scope: MediaScope, variant: "full" | "thumb" = "full"): Promise<string> {
   const token = getToken();
-  const path  = variant === "thumb" ? `/media/${id}/thumb` : `/media/${id}`;
+  const path  = variant === "thumb" ? `/media/${scope}/${id}/thumb` : `/media/${scope}/${id}`;
   const res = await fetch(`${BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
@@ -88,9 +91,9 @@ export async function fetchMediaObjectUrl(id: string, variant: "full" | "thumb" 
 }
 
 /** Best-effort delete of an uploaded media object (e.g. rolling back a failed save). */
-export function deleteMedia(id: string): void {
+export function deleteMedia(id: string, scope: MediaScope): void {
   const token = getToken();
-  fetch(`${BASE}/media/${id}`, {
+  fetch(`${BASE}/media/${scope}/${id}`, {
     method: "DELETE",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   }).catch(() => {});
