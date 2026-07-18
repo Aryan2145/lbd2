@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, LayoutGrid, AlignJustify, CalendarDays, X, Settings2, Link2, Link2Off, CheckCircle, Plus, Check, Pencil, CalendarRange, ClipboardList } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, AlignJustify, CalendarDays, X, Link2, Link2Off, CheckCircle, Plus, Check, Pencil, CalendarRange, ClipboardList, RefreshCw } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import { api } from "@/lib/api";
 import WeekSidebar        from "@/components/weekly/WeekSidebar";
@@ -40,6 +40,16 @@ function getISOWeekNum(iso: string): number {
   return Math.ceil((((utc.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
+function relativeTime(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 function formatDateRange(weekStart: string): string {
   const start = new Date(weekStart + "T00:00:00");
   const end   = new Date(weekStart + "T00:00:00");
@@ -58,6 +68,7 @@ export default function WeeklyPage() {
     addWeekEvent, updateWeekEvent, deleteWeekEvent,
     upsertWeekPlan, upsertWeeklyReview, upsertEveningReflection,
     closeTask, reopenTask, toggleHabitDay,
+    syncGoogleWeek, gcalSyncing, gcalLastSync,
   } = useAppStore();
 
   const [weekStart,    setWeekStart]    = useState(() => getWeekStart());
@@ -76,17 +87,10 @@ export default function WeeklyPage() {
   const [reviewOpen,   setReviewOpen]   = useState(false);
   const [mobileTab,    setMobileTab]    = useState<"plan" | "calendar" | "review">("plan");
   const [gcalOpen,       setGcalOpen]       = useState(false);
-  const [gcalUrl,        setGcalUrl]        = useState("");
-  const [editingUrl,     setEditingUrl]     = useState(false);
-  const [urlDraft,       setUrlDraft]       = useState("");
   const [gcalConnected,  setGcalConnected]  = useState(false);
   const [gcalToast,      setGcalToast]      = useState<"connected" | "error" | null>(null);
-  const urlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("lbd_gcal_embed_url") ?? "";
-    setGcalUrl(saved);
-
     // Check OAuth connection status
     api.get<{ connected: boolean }>("/auth/google/status")
       .then(d => setGcalConnected(d.connected))
@@ -106,13 +110,6 @@ export default function WeeklyPage() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
-
-  const saveGcalUrl = () => {
-    const trimmed = urlDraft.trim();
-    setGcalUrl(trimmed);
-    localStorage.setItem("lbd_gcal_embed_url", trimmed);
-    setEditingUrl(false);
-  };
 
   const gcalPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -149,6 +146,88 @@ export default function WeeklyPage() {
       setGcalConnected(false);
     } catch {}
   };
+
+  // Reverse sync: pull the viewed week from Google whenever it changes (or on
+  // connect). The store debounces, so this is cheap to fire on every navigation.
+  useEffect(() => {
+    if (gcalConnected) syncGoogleWeek(weekStart);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gcalConnected, weekStart]);
+
+  const lastSync = gcalLastSync[weekStart];
+  const syncLabel = gcalSyncing
+    ? "Syncing…"
+    : lastSync
+      ? `Synced ${relativeTime(lastSync)}`
+      : "Not synced yet";
+
+  // Single Google Calendar hub — connection status, connect/disconnect, and
+  // manual refresh with last-synced time. Shared by the desktop modal and the
+  // mobile Calendar tab (the old read-only embed iframe is gone; events now sync
+  // straight into the week).
+  const gcalHub = (
+    <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: gcalConnected ? "#22C55E" : "#D6D3D1" }} />
+        <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>
+          {gcalConnected ? "Connected — syncing both ways" : "Not connected"}
+        </span>
+      </div>
+      <p style={{ fontSize: "12px", color: "#57534E", lineHeight: 1.55, margin: 0 }}>
+        {gcalConnected
+          ? "Events you add here appear on Google Calendar, and events from Google show up in your week — under the “Google Calendar” group, which you can hide. Each week syncs automatically when you open it."
+          : "Connect your Google Calendar to keep events in sync both ways. Each week syncs automatically when you open it."}
+      </p>
+
+      {gcalConnected && (
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <button
+            onClick={() => syncGoogleWeek(weekStart, true)}
+            disabled={gcalSyncing}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px",
+              padding: "7px 13px", borderRadius: "8px",
+              border: "1.5px solid #C8BFB5", backgroundColor: "#FFFFFF",
+              fontSize: "12px", fontWeight: 700, color: "#57534E",
+              cursor: gcalSyncing ? "default" : "pointer",
+            }}
+          >
+            <RefreshCw size={13} color="#F97316" className={gcalSyncing ? "spin" : undefined} />
+            Refresh this week
+          </button>
+          <span style={{ fontSize: "11px", fontWeight: 600, color: "#78716C" }}>{syncLabel}</span>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: "8px" }}>
+        {gcalConnected ? (
+          <button
+            onClick={handleDisconnectGcal}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px",
+              padding: "8px 14px", borderRadius: "8px",
+              border: "1px solid #FECACA", backgroundColor: "#FEF2F2",
+              fontSize: "12px", fontWeight: 700, color: "#DC2626", cursor: "pointer",
+            }}
+          >
+            <Link2Off size={13} /> Disconnect
+          </button>
+        ) : (
+          <button
+            onClick={handleConnectGcal}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px",
+              padding: "8px 16px", borderRadius: "8px", border: "none",
+              background: "linear-gradient(135deg,#F97316,#EA580C)",
+              fontSize: "12px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
+            }}
+          >
+            <Link2 size={13} /> Connect Google Calendar
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   const weekNum   = getISOWeekNum(weekStart);
   const dateRange = formatDateRange(weekStart);
@@ -534,120 +613,21 @@ export default function WeeklyPage() {
             </button>
           </>}
 
-          {/* ── CALENDAR TAB ── */}
+          {/* ── CALENDAR TAB (Google Calendar sync hub) ── */}
           {mobileTab === "calendar" && (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#FFFFFF" }}>
-              {/* Header */}
+            <div style={{ flex: 1, overflowY: "auto", backgroundColor: "#FAFAF9", padding: "16px" }}>
               <div style={{
-                padding: "12px 16px 10px",
-                borderBottom: "1px solid #EDE5D8",
-                flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "space-between",
+                backgroundColor: "#FFFFFF", borderRadius: "16px",
+                border: "1px solid #EDE5D8", overflow: "hidden",
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{
+                  padding: "14px 20px", borderBottom: "1px solid #F2EAE0",
+                  display: "flex", alignItems: "center", gap: "8px",
+                }}>
                   <CalendarDays size={16} color="#F97316" />
                   <span style={{ fontSize: "15px", fontWeight: 700, color: "#1C1917" }}>Google Calendar</span>
                 </div>
-                <div style={{ display: "flex", gap: "7px" }}>
-                  {gcalConnected ? (
-                    <button onClick={handleDisconnectGcal} style={{
-                      display: "flex", alignItems: "center", gap: "4px",
-                      padding: "4px 10px", borderRadius: "7px",
-                      border: "1px solid #BBF7D0", backgroundColor: "#F0FDF4",
-                      fontSize: "11px", color: "#16A34A", cursor: "pointer",
-                    }}>
-                      <Link2 size={11} /> Sync On
-                    </button>
-                  ) : (
-                    <button onClick={handleConnectGcal} style={{
-                      display: "flex", alignItems: "center", gap: "4px",
-                      padding: "4px 10px", borderRadius: "7px",
-                      border: "1px solid #FED7AA", backgroundColor: "#FFF7ED",
-                      fontSize: "11px", color: "#EA580C", cursor: "pointer",
-                    }}>
-                      <Link2Off size={11} /> Connect
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setUrlDraft(gcalUrl);
-                      setEditingUrl((v) => !v);
-                      setTimeout(() => urlInputRef.current?.focus(), 50);
-                    }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "4px",
-                      padding: "4px 10px", borderRadius: "7px",
-                      border: "1px solid #E8DDD0", backgroundColor: "#F5F0EB",
-                      fontSize: "11px", color: "#78716C", cursor: "pointer",
-                    }}
-                  >
-                    <Settings2 size={11} /> URL
-                  </button>
-                </div>
-              </div>
-
-              {/* URL input */}
-              {editingUrl && (
-                <div style={{
-                  padding: "10px 16px", borderBottom: "1px solid #F2EAE0",
-                  display: "flex", gap: "8px", alignItems: "center", flexShrink: 0,
-                  backgroundColor: "#FDFAF7",
-                }}>
-                  <input
-                    ref={urlInputRef}
-                    value={urlDraft}
-                    onChange={(e) => setUrlDraft(e.target.value)}
-                    placeholder="Paste Google Calendar embed URL…"
-                    onKeyDown={(e) => { if (e.key === "Enter") saveGcalUrl(); if (e.key === "Escape") setEditingUrl(false); }}
-                    style={{
-                      flex: 1, fontSize: "12px", color: "#1C1917",
-                      padding: "7px 10px", borderRadius: "8px",
-                      border: "1.5px solid #F97316", outline: "none",
-                      backgroundColor: "#FFFFFF", fontFamily: "inherit",
-                    }}
-                  />
-                  <button onClick={saveGcalUrl} style={{
-                    padding: "7px 14px", borderRadius: "8px", border: "none",
-                    background: "linear-gradient(135deg,#F97316,#EA580C)",
-                    color: "#fff", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                  }}>
-                    Save
-                  </button>
-                </div>
-              )}
-
-              {/* Content */}
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                {gcalUrl ? (
-                  <iframe
-                    src={gcalUrl}
-                    style={{ width: "100%", height: "100%", border: "none" }}
-                    title="Google Calendar"
-                  />
-                ) : (
-                  <div style={{
-                    height: "100%", display: "flex", flexDirection: "column",
-                    alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px",
-                  }}>
-                    <CalendarDays size={40} color="#F97316" />
-                    <p style={{ fontSize: "14px", fontWeight: 600, color: "#1C1917", textAlign: "center", margin: 0 }}>
-                      No calendar linked yet
-                    </p>
-                    <p style={{ fontSize: "12px", color: "#1C1917", maxWidth: 300, textAlign: "center", margin: 0 }}>
-                      Tap <strong>URL</strong> above and paste your Google Calendar embed link.
-                    </p>
-                    <button
-                      onClick={() => { setUrlDraft(""); setEditingUrl(true); setTimeout(() => urlInputRef.current?.focus(), 50); }}
-                      style={{
-                        padding: "9px 22px", borderRadius: "9px", border: "none",
-                        background: "linear-gradient(135deg,#F97316,#EA580C)",
-                        color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer",
-                      }}
-                    >
-                      Set embed URL
-                    </button>
-                  </div>
-                )}
+                {gcalHub}
               </div>
             </div>
           )}
@@ -789,10 +769,10 @@ export default function WeeklyPage() {
               {currentReview ? "✓ Review Done · Edit" : "Write Week Review"}
             </button>
 
-            {/* Google Calendar embed button */}
+            {/* Google Calendar sync hub — status dot + last-synced at a glance */}
             <button
-              onClick={() => { setGcalOpen(true); setEditingUrl(false); }}
-              title="View Google Calendar"
+              onClick={() => setGcalOpen(true)}
+              title="Google Calendar sync"
               style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 padding: "5px 13px", borderRadius: "8px",
@@ -801,6 +781,11 @@ export default function WeeklyPage() {
               }}
             >
               <CalendarDays size={13} color="#F97316" /> Google Calendar
+              {gcalConnected && (
+                <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#78716C", fontWeight: 600 }}>
+                  · {syncLabel}
+                </span>
+              )}
             </button>
 
             {/* View toggle */}
@@ -894,172 +879,48 @@ export default function WeeklyPage() {
         onReopen={reopenTask}
       />
 
-      {/* ── Google Calendar Modal ── */}
+      {/* ── Google Calendar sync hub ── */}
       {gcalOpen && (
         <>
           {/* Backdrop */}
           <div
-            onClick={() => { setGcalOpen(false); setEditingUrl(false); }}
+            onClick={() => setGcalOpen(false)}
             style={{
               position: "fixed", inset: 0, zIndex: 40,
               backgroundColor: "rgba(28,25,23,0.4)", backdropFilter: "blur(3px)",
             }}
           />
-          {/* Panel */}
+          {/* Compact panel */}
           <div style={{
-            position: "fixed", top: "5vh", left: "5vw",
-            width: "90vw", height: "90vh", zIndex: 50,
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+            width: "min(92vw, 420px)", zIndex: 50,
             backgroundColor: "#FFFFFF", borderRadius: "16px",
             border: "1px solid #E8DDD0",
             boxShadow: "0 24px 80px rgba(28,25,23,0.18)",
-            display: "flex", flexDirection: "column", overflow: "hidden",
+            overflow: "hidden",
           }}>
-            {/* Modal header */}
+            {/* Header */}
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "14px 20px", borderBottom: "1px solid #F2EAE0", flexShrink: 0,
+              padding: "14px 20px", borderBottom: "1px solid #F2EAE0",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <CalendarDays size={16} color="#F97316" />
-                <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>
-                  Google Calendar
-                </span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>Google Calendar</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {/* Sync connect/disconnect */}
-                {gcalConnected ? (
-                  <button
-                    onClick={handleDisconnectGcal}
-                    title="Disconnect Google Calendar sync"
-                    style={{
-                      display: "flex", alignItems: "center", gap: "5px",
-                      padding: "4px 10px", borderRadius: "7px",
-                      border: "1px solid #BBF7D0", backgroundColor: "#F0FDF4",
-                      fontSize: "11px", color: "#16A34A", cursor: "pointer",
-                    }}
-                  >
-                    <Link2 size={11} /> Sync On
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleConnectGcal}
-                    title="Connect Google Calendar to auto-sync events"
-                    style={{
-                      display: "flex", alignItems: "center", gap: "5px",
-                      padding: "4px 10px", borderRadius: "7px",
-                      border: "1px solid #FED7AA", backgroundColor: "#FFF7ED",
-                      fontSize: "11px", color: "#EA580C", cursor: "pointer",
-                    }}
-                  >
-                    <Link2Off size={11} /> Connect Sync
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    setUrlDraft(gcalUrl);
-                    setEditingUrl(v => !v);
-                    setTimeout(() => urlInputRef.current?.focus(), 50);
-                  }}
-                  title="Set embed URL"
-                  style={{
-                    display: "flex", alignItems: "center", gap: "5px",
-                    padding: "4px 10px", borderRadius: "7px",
-                    border: "none", backgroundColor: "#F97316",
-                    fontSize: "11px", color: "#FFFFFF", cursor: "pointer",
-                  }}
-                >
-                  <Settings2 size={11} /> Set URL
-                </button>
-                <button
-                  onClick={() => { setGcalOpen(false); setEditingUrl(false); }}
-                  style={{
-                    width: "28px", height: "28px", borderRadius: "7px",
-                    backgroundColor: "#EF4444", border: "none",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <X size={14} color="#FFFFFF" />
-                </button>
-              </div>
+              <button
+                onClick={() => setGcalOpen(false)}
+                style={{
+                  width: "28px", height: "28px", borderRadius: "7px",
+                  backgroundColor: "#EF4444", border: "none",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={14} color="#FFFFFF" />
+              </button>
             </div>
-
-            {/* URL input (shown when editing) */}
-            {editingUrl && (
-              <div style={{
-                padding: "10px 20px", borderBottom: "1px solid #F2EAE0",
-                display: "flex", gap: "8px", alignItems: "center", flexShrink: 0,
-                backgroundColor: "#FDFAF7",
-              }}>
-                <input
-                  ref={urlInputRef}
-                  value={urlDraft}
-                  onChange={e => setUrlDraft(e.target.value)}
-                  placeholder="Paste your Google Calendar embed URL…"
-                  onKeyDown={e => { if (e.key === "Enter") saveGcalUrl(); if (e.key === "Escape") setEditingUrl(false); }}
-                  style={{
-                    flex: 1, fontSize: "12px", color: "#1C1917",
-                    padding: "7px 10px", borderRadius: "8px",
-                    border: "1.5px solid #F97316", outline: "none",
-                    backgroundColor: "#FFFFFF", fontFamily: "inherit",
-                  }}
-                />
-                <button onClick={saveGcalUrl} style={{
-                  padding: "7px 14px", borderRadius: "8px", border: "none",
-                  background: "linear-gradient(135deg,#F97316,#EA580C)",
-                  color: "#fff", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                }}>
-                  Save
-                </button>
-              </div>
-            )}
-
-            {/* How to get URL hint */}
-            {editingUrl && (
-              <div style={{
-                padding: "8px 20px", backgroundColor: "#FFF7ED",
-                borderBottom: "1px solid #FED7AA", flexShrink: 0,
-              }}>
-                <p style={{ fontSize: "11px", color: "#1C1917", margin: 0 }}>
-                  In Google Calendar → Settings → <strong>your calendar</strong> → Integrate calendar → copy <strong>Embeddable link</strong>
-                </p>
-              </div>
-            )}
-
-            {/* Iframe or empty state */}
-            <div style={{ flex: 1, overflow: "hidden" }}>
-              {gcalUrl ? (
-                <iframe
-                  src={gcalUrl}
-                  style={{ width: "100%", height: "100%", border: "none" }}
-                  title="Google Calendar"
-                />
-              ) : (
-                <div style={{
-                  height: "100%", display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", gap: "12px",
-                }}>
-                  <CalendarDays size={40} color="#F97316" />
-                  <p style={{ fontSize: "14px", fontWeight: 600, color: "#1C1917" }}>
-                    No calendar linked yet
-                  </p>
-                  <p style={{ fontSize: "12px", color: "#1C1917", maxWidth: 360, textAlign: "center" }}>
-                    Click <strong>Set URL</strong> above and paste your Google Calendar embed link.
-                    In Google Calendar → Settings → your calendar → Integrate calendar → Embeddable link.
-                  </p>
-                  <button
-                    onClick={() => { setUrlDraft(""); setEditingUrl(true); setTimeout(() => urlInputRef.current?.focus(), 50); }}
-                    style={{
-                      padding: "8px 20px", borderRadius: "9px", border: "none",
-                      background: "linear-gradient(135deg,#F97316,#EA580C)",
-                      color: "#fff", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                    }}
-                  >
-                    Set embed URL
-                  </button>
-                </div>
-              )}
-            </div>
+            {gcalHub}
           </div>
         </>
       )}
