@@ -53,12 +53,14 @@ function fmtDate(iso: string) {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSave: (goal: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
+  onSave: (goal: GoalData, tasks?: TaskData[], habits?: HabitData[], onCreated?: (created: GoalData) => void, onError?: () => void) => void;
+  /** Update an already-persisted goal (used after the Step-1 save, and when editing). */
+  onUpdate?: (goal: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
   onDelete?: (id: string) => void;
   initialData?: GoalData;
 }
 
-export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initialData }: Props) {
+export default function GoalCreateSheet({ open, onClose, onSave, onUpdate, onDelete, initialData }: Props) {
   const isEditing = !!initialData;
   const [step, setStep] = useState(1);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -106,7 +108,22 @@ export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initi
   const [hcCue,           setHcCue]            = useState("");
   const [hcReward,        setHcReward]         = useState("");
 
+  // ── Save tracking (so Step-1 "Milestones" saves the goal, and Step-2 updates
+  //    the SAME goal instead of creating a duplicate) ──────────────────────────
+  const clientIdRef        = useRef<string | null>(null);      // client id used at create time
+  const [createdId, setCreatedId] = useState<string | null>(null); // real server id once saved
+  const [creating,   setCreating] = useState(false);           // a create POST is in flight
+  const persistedTasksRef  = useRef<Set<string>>(new Set());   // task/habit ids already sent
+  const persistedHabitsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
+    // Reset save tracking whenever the sheet opens or closes.
+    clientIdRef.current = null;
+    persistedTasksRef.current = new Set();
+    persistedHabitsRef.current = new Set();
+    setCreatedId(null);
+    setCreating(false);
+
     if (!open) {
       setStep(1);
       setConfirmDelete(false);
@@ -171,18 +188,19 @@ export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initi
     setMTitle(""); setMDeadline(""); setShowMsForm(false);
   };
 
-  const handleSave = () => {
-    if (!title.trim() || !area || deadlineError) return;
-    const now    = Date.now();
-    const goalId = initialData?.id ?? crypto.randomUUID();
-    const goal: GoalData = {
-      id:         goalId,
+  // A create POST is in flight and we don't yet have the real id back.
+  const saving = creating && !createdId;
+
+  const buildGoal = (id: string): GoalData => {
+    const now = Date.now();
+    return {
+      id,
       statement:  title.trim(),
       outcome:    why.trim() || title.trim(),
       metric:     metric.trim(),
       metricUnit: unit.trim(),
       deadline,
-      area,
+      area:       area as LifeArea,
       progress:   initialData?.progress   ?? 0,
       lastMoved:  initialData?.lastMoved  ?? now,
       velocity:   initialData?.velocity   ?? 0,
@@ -190,10 +208,56 @@ export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initi
       milestones,
       createdAt:  initialData?.createdAt  ?? now,
     };
-    const tasksArr  = Object.values(msTasks).flat().map(t => ({ ...t, linkedGoalId: goalId }));
-    const habitsArr = Object.values(msHabits).flat().map(h => ({ ...h, linkedGoalId: goalId }));
-    onSave(goal, tasksArr.length ? tasksArr : undefined, habitsArr.length ? habitsArr : undefined);
-    onClose();
+  };
+
+  // Tasks/habits not yet sent to the server (so re-saving never duplicates them).
+  const collectFresh = () => {
+    const allTasks  = Object.values(msTasks).flat();
+    const allHabits = Object.values(msHabits).flat();
+    return {
+      freshTasks:  allTasks.filter(t  => !persistedTasksRef.current.has(t.id)),
+      freshHabits: allHabits.filter(h => !persistedHabitsRef.current.has(h.id)),
+    };
+  };
+
+  /**
+   * Single save path. First save (creating) POSTs a new goal and remembers its
+   * real id; every save after that (Step-2 finish, top bar) updates the SAME
+   * goal — so no duplicate is ever created.
+   */
+  const commit = ({ advance, close }: { advance?: boolean; close?: boolean }) => {
+    if (!title.trim() || !area || deadlineError) return;
+    if (saving) return; // create in flight — wait for the id before saving again
+
+    const { freshTasks, freshHabits } = collectFresh();
+    const targetId = isEditing ? initialData!.id : createdId;
+
+    if (targetId) {
+      // Goal already exists → update it and attach any new tasks/habits.
+      const tasksArr  = freshTasks.map(t  => ({ ...t, linkedGoalId: targetId }));
+      const habitsArr = freshHabits.map(h => ({ ...h, linkedGoalId: targetId }));
+      onUpdate?.(buildGoal(targetId), tasksArr.length ? tasksArr : undefined, habitsArr.length ? habitsArr : undefined);
+    } else {
+      // First save → create the goal, remembering its real id when it comes back.
+      if (!clientIdRef.current) clientIdRef.current = crypto.randomUUID();
+      const cid = clientIdRef.current;
+      setCreating(true);
+      const tasksArr  = freshTasks.map(t  => ({ ...t, linkedGoalId: cid }));
+      const habitsArr = freshHabits.map(h => ({ ...h, linkedGoalId: cid }));
+      onSave(
+        buildGoal(cid),
+        tasksArr.length ? tasksArr : undefined,
+        habitsArr.length ? habitsArr : undefined,
+        (created) => setCreatedId(created.id),
+        () => setCreating(false), // create failed → allow a retry
+      );
+    }
+
+    freshTasks.forEach(t  => persistedTasksRef.current.add(t.id));
+    freshHabits.forEach(h => persistedHabitsRef.current.add(h.id));
+
+    if (advance) setStep(2);
+    if (close)   onClose();
   };
 
   // Derived counts for sidebar stats
@@ -223,14 +287,14 @@ export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initi
             </button>
           )}
           <button
-            onClick={handleSave}
-            disabled={!canProceed}
+            onClick={() => commit({ close: true })}
+            disabled={!canProceed || saving}
             style={{ padding: "9px 22px", borderRadius: "8px", border: "none",
-              backgroundColor: canProceed ? "#F97316" : "#E8DDD0", fontSize: "13px", fontWeight: 700,
-              color: canProceed ? "#FFFFFF" : "#A8A29E", cursor: canProceed ? "pointer" : "default",
-              boxShadow: canProceed ? "0 2px 8px rgba(249,115,22,0.3)" : "none" }}
+              backgroundColor: canProceed && !saving ? "#F97316" : "#E8DDD0", fontSize: "13px", fontWeight: 700,
+              color: canProceed && !saving ? "#FFFFFF" : "#A8A29E", cursor: canProceed && !saving ? "pointer" : "default",
+              boxShadow: canProceed && !saving ? "0 2px 8px rgba(249,115,22,0.3)" : "none" }}
           >
-            Save goal
+            {saving ? "Saving…" : "Save goal"}
           </button>
         </div>
       </div>
@@ -427,21 +491,22 @@ export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initi
                 </div>
               </div>
 
-              {/* Next */}
+              {/* Save the goal and continue to the milestones step */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
                 <button
-                  onClick={() => { if (canProceed) setStep(2); }}
-                  disabled={!canProceed}
+                  onClick={() => commit({ advance: true })}
+                  disabled={!canProceed || saving}
                   style={{
-                    display: "flex", alignItems: "center", gap: "8px",
-                    padding: "12px 36px", borderRadius: "10px", border: "none",
-                    background: canProceed ? "linear-gradient(135deg, #F97316, #EA580C)" : "#E8DDD0",
+                    width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                    padding: "13px", borderRadius: "10px", border: "none",
+                    backgroundColor: canProceed && !saving ? "#F97316" : "#E8DDD0",
                     fontSize: "14px", fontWeight: 700,
-                    color: canProceed ? "#FFFFFF" : "#A8A29E",
-                    cursor: canProceed ? "pointer" : "default",
+                    color: canProceed && !saving ? "#FFFFFF" : "#A8A29E",
+                    cursor: canProceed && !saving ? "pointer" : "default",
+                    boxShadow: canProceed && !saving ? "0 2px 10px rgba(249,115,22,0.35)" : "none",
                   }}
                 >
-                  Next <ArrowRight size={16} />
+                  {saving ? "Saving…" : <>Milestones <ArrowRight size={16} /></>}
                 </button>
                 {!area && (
                   <p style={{ fontSize: "12px", color: "#A8A29E", margin: 0 }}>Select a life area and enter a goal title to continue.</p>
@@ -683,11 +748,11 @@ export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initi
                 </div>
               )}
               <button
-                onClick={handleSave}
-                disabled={!canProceed}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "13px", borderRadius: "10px", border: "none", backgroundColor: canProceed ? "#F97316" : "#E8DDD0", fontSize: "14px", fontWeight: 700, color: canProceed ? "#FFFFFF" : "#A8A29E", cursor: canProceed ? "pointer" : "default", boxShadow: canProceed ? "0 2px 10px rgba(249,115,22,0.35)" : "none" }}
+                onClick={() => commit({ close: true })}
+                disabled={!canProceed || saving}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "13px", borderRadius: "10px", border: "none", backgroundColor: canProceed && !saving ? "#F97316" : "#E8DDD0", fontSize: "14px", fontWeight: 700, color: canProceed && !saving ? "#FFFFFF" : "#A8A29E", cursor: canProceed && !saving ? "pointer" : "default", boxShadow: canProceed && !saving ? "0 2px 10px rgba(249,115,22,0.35)" : "none" }}
               >
-                {isEditing ? "Save Changes" : "Create Goal"} <ArrowRight size={16} />
+                {saving ? "Saving…" : <>{isEditing || createdId ? "Save Changes" : "Create Goal"} <ArrowRight size={16} /></>}
               </button>
             </div>
           )}
@@ -920,7 +985,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onDelete, initi
               )}
               <div style={{ marginBottom: "8px" }}>
                 <label style={labelSt}>{tcForm.quadrant === "Q1" ? "Deadline — locked to today 🔒" : "Deadline *"}</label>
-                <CalendarPicker value={tcForm.deadline} onChange={v => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: v })); }} accentColor={areaColor} disabled={tcForm.quadrant === "Q1"} />
+                <CalendarPicker value={tcForm.deadline} onChange={v => { if (tcForm.quadrant !== "Q1") setTcForm(p => ({ ...p, deadline: v })); }} accentColor={areaColor} disabled={tcForm.quadrant === "Q1"} placement="up" />
                 {tcForm.quadrant === "Q1" && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 500, margin: "5px 0 0" }}>🔥 It&apos;s urgent — this one&apos;s happening today, no rescheduling!</p>}
                 {tcForm.quadrant !== "Q1" && dateError && <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, margin: "5px 0 0" }}>{dateError}</p>}
                 {deadlineTodayNudge && (

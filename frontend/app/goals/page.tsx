@@ -387,6 +387,11 @@ export default function GoalsPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSave={addGoal}
+        onUpdate={(g, tasks, habits) => {
+          updateGoal(g);
+          tasks?.forEach(t => addTask(t));
+          habits?.forEach(addHabit);
+        }}
       />
       <GoalCreateSheet
         open={!!editGoal}
@@ -399,9 +404,14 @@ export default function GoalsPage() {
         }}
         onSave={(g, tasks, habits) => {
           updateGoal(g);
-          tasks?.forEach(addTask);
+          tasks?.forEach(t => addTask(t));
           habits?.forEach(addHabit);
           setEditGoal(null);
+        }}
+        onUpdate={(g, tasks, habits) => {
+          updateGoal(g);
+          tasks?.forEach(t => addTask(t));
+          habits?.forEach(addHabit);
         }}
       />
       <GoalDetailSheet

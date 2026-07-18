@@ -206,7 +206,7 @@ interface AppState {
   userProfile:        UserProfile;
   visionAreas:        AreaData[];
   // Goal actions
-  addGoal:    (g: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
+  addGoal:    (g: GoalData, tasks?: TaskData[], habits?: HabitData[], onCreated?: (created: GoalData) => void, onError?: () => void) => void;
   updateGoal: (g: GoalData) => void;
   deleteGoal: (id: string)  => void;
   // Habit actions
@@ -391,14 +391,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     visionAreas, gcalSyncing, gcalLastSync,
 
     // Goals
-    addGoal: (g, tasks?, habits?) => {
+    addGoal: (g, tasks?, habits?, onCreated?, onError?) => {
       setGoals(prev => [...prev, g]);
       if (tasks?.length)  setTasks(prev  => [...prev, ...tasks]);
       if (habits?.length) setHabits(prev => [...prev, ...habits]);
       api.post<any>('/goals', goalToApi(g))
         .then(created => {
           const realId = created.id;
-          setGoals(prev => prev.map(x => x.id === g.id ? mapGoal(created) : x));
+          const mapped = mapGoal(created);
+          setGoals(prev => prev.map(x => x.id === g.id ? mapped : x));
           tasks?.forEach(t => {
             api.post<any>('/tasks', taskToApi({ ...t, linkedGoalId: realId }))
               .then(ct => setTasks(prev => prev.map(x => x.id === t.id ? mapTask(ct) : x)))
@@ -409,11 +410,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
               .then(ch => setHabits(prev => prev.map(x => x.id === h.id ? mapHabit(ch) : x)))
               .catch(() => setHabits(prev => prev.filter(x => x.id !== h.id)));
           });
+          // Hand the persisted goal (with its real server id) back so callers can
+          // keep editing the same record instead of creating a duplicate.
+          onCreated?.(mapped);
         })
         .catch(() => {
           setGoals(prev => prev.filter(x => x.id !== g.id));
           tasks?.forEach(t => setTasks(prev => prev.filter(x => x.id !== t.id)));
           habits?.forEach(h => setHabits(prev => prev.filter(x => x.id !== h.id)));
+          onError?.();
         });
     },
     updateGoal: (updated) => {
