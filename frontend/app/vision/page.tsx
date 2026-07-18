@@ -288,8 +288,7 @@ export default function VisionPage() {
                   accentBg={AREA_META[meta.id as LifeArea]?.bg ?? "#FFF7ED"}
                   cardWidth="100%"
                   variant="canvas"
-                  onImageUpload={(url) => handleSave({ ...areas[i], imageUrl: url })}
-                  onSaveText={(text) => handleSave({ ...areas[i], text })}
+                  onSaveCard={(patch) => handleSave({ ...areas[i], ...patch })}
                   onSaveScore={(score) => handleSave({ ...areas[i], score })}
                   gender={gender}
                 />
@@ -564,8 +563,7 @@ export default function VisionPage() {
                 accentBg={AREA_META[meta.id as LifeArea]?.bg ?? "#FFF7ED"}
                 cardWidth={CANVAS_CARD_W}
                 variant="canvas"
-                onImageUpload={(url) => handleSave({ ...areas[i], imageUrl: url })}
-                onSaveText={(text) => handleSave({ ...areas[i], text })}
+                onSaveCard={(patch) => handleSave({ ...areas[i], ...patch })}
                 onSaveScore={(score) => handleSave({ ...areas[i], score })}
                 gender={gender}
               />

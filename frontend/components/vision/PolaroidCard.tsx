@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ImageIcon, Plus, Camera, X, Copy, Check, Pencil, Briefcase, Globe, TrendingUp, Sparkles, BookOpen, Users, Activity, type LucideIcon } from "lucide-react";
+import { ImageIcon, Plus, Camera, X, Copy, Check, Briefcase, Globe, TrendingUp, Sparkles, BookOpen, Users, Activity, type LucideIcon } from "lucide-react";
 
 const AREA_ICONS: Record<string, LucideIcon> = {
   professional:  Briefcase,
@@ -200,8 +200,8 @@ interface PolaroidCardProps {
   accentBg?:       string;
   cardWidth?:      number | string;
   variant?:        "polaroid" | "canvas";
-  onImageUpload?:  (dataUrl: string) => void;
-  onSaveText?:     (text: string) => void;
+  /** Single save for the whole card — text + image committed together. */
+  onSaveCard?:     (patch: { text: string; imageUrl: string }) => void;
   onSaveScore?:    (score: number) => void;
   gender?:         string;
 }
@@ -214,8 +214,7 @@ export default function PolaroidCard({
   accentBg    = "#FFF7ED",
   cardWidth   = "176px",
   variant     = "polaroid",
-  onImageUpload,
-  onSaveText,
+  onSaveCard,
   onSaveScore,
   gender = "",
 }: PolaroidCardProps) {
@@ -247,9 +246,11 @@ export default function PolaroidCard({
     openDialog();
   }
 
-  function confirmUrl() {
+  // Commits the whole card in one write: the dialog's vision text plus the
+  // resolved image URL. Called by the single "Save Vision" button.
+  function saveCard(text: string) {
     const resolved = toDriveImgUrl(urlInput.trim());
-    onImageUpload?.(resolved);
+    onSaveCard?.({ text, imageUrl: resolved });
     setUrlDialog(false);
   }
 
@@ -361,9 +362,8 @@ export default function PolaroidCard({
         previewUrl={toDriveImgUrl(urlInput)}
         gender={gender}
         onChange={setUrlInput}
-        onConfirm={confirmUrl}
+        onConfirm={saveCard}
         onClose={() => setUrlDialog(false)}
-        onSaveText={onSaveText}
         onSaveScore={onSaveScore}
       />
       </>
@@ -577,9 +577,8 @@ export default function PolaroidCard({
       previewUrl={toDriveImgUrl(urlInput)}
       gender={gender}
       onChange={setUrlInput}
-      onConfirm={confirmUrl}
+      onConfirm={saveCard}
       onClose={() => setUrlDialog(false)}
-      onSaveText={onSaveText}
       onSaveScore={onSaveScore}
     />
     </>
@@ -597,20 +596,29 @@ interface UrlDialogProps {
   previewUrl:      string;
   gender:          string;
   onChange:        (v: string) => void;
-  onConfirm:       () => void;
+  onConfirm:       (text: string) => void;
   onClose:         () => void;
-  onSaveText?:     (text: string) => void;
   onSaveScore?:    (score: number) => void;
 }
 
-function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore, currentImageUrl, previewUrl, gender, onChange, onConfirm, onClose, onSaveText, onSaveScore }: UrlDialogProps) {
+function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore, currentImageUrl, previewUrl, gender, onChange, onConfirm, onClose, onSaveScore }: UrlDialogProps) {
   const [copied, setCopied]         = useState(false);
   const [localText, setLocalText]   = useState(areaText);
-  const [locked, setLocked]         = useState(false);
   const [localScore, setLocalScore] = useState(areaScore);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Grow the textarea to fit its content, up to a cap (then it scrolls).
+  const autoGrow = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+  };
 
   // Reset state each time the dialog opens
-  useEffect(() => { if (open) { setLocalText(areaText); setLocked(false); setLocalScore(areaScore); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { setLocalText(areaText); setLocalScore(areaScore); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-fit the textarea whenever the dialog opens or its text changes.
+  useEffect(() => { autoGrow(textareaRef.current); }, [open, localText]);
 
 
   const genderClause = gender?.toLowerCase() === "female"
@@ -741,48 +749,24 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
                 {copied ? "Copied!" : "Copy AI prompt"}
               </button>
             </div>
-            {/* Textarea with lock/edit toggle inside */}
-            <div style={{ position: "relative" }}>
-              <textarea
-                value={localText}
-                onChange={(e) => setLocalText(e.target.value)}
-                placeholder={`I am living my ideal ${areaName.toLowerCase()} life...`}
-                readOnly={locked}
-                rows={2}
-                style={{
-                  width: "100%", padding: "10px 44px 10px 12px",
-                  borderRadius: "10px",
-                  border: `1.5px solid ${locked ? accentColor + "90" : accentColor + "55"}`,
-                  backgroundColor: locked ? `${accentColor}12` : `${accentColor}08`,
-                  fontSize: "12px", lineHeight: 1.6, color: "#1C1917",
-                  outline: "none", resize: "none", overflowY: "auto", caretColor: accentColor,
-                  fontFamily: "inherit", boxSizing: "border-box",
-                  cursor: locked ? "default" : "text",
-                  transition: "background-color 0.2s, border-color 0.2s",
-                }}
-              />
-              {onSaveText && (
-                <button
-                  onClick={() => {
-                    if (!locked) onSaveText(localText);
-                    setLocked((v) => !v);
-                  }}
-                  title={locked ? "Edit" : "Save"}
-                  style={{
-                    position: "absolute", top: 8, right: 10,
-                    width: 24, height: 24, borderRadius: "4px",
-                    border: `1.5px solid ${locked ? accentColor + "80" : accentColor}`,
-                    backgroundColor: locked ? `${accentColor}18` : accentColor,
-                    color: locked ? accentColor : "#FFFFFF",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", flexShrink: 0,
-                    transition: "background-color 0.2s, color 0.2s",
-                  }}
-                >
-                  {locked ? <Pencil size={11} /> : <Check size={11} />}
-                </button>
-              )}
-            </div>
+            {/* Always-editable, auto-growing textarea — saved with the card below */}
+            <textarea
+              ref={textareaRef}
+              value={localText}
+              onChange={(e) => { setLocalText(e.target.value); autoGrow(e.target); }}
+              placeholder={`I am living my ideal ${areaName.toLowerCase()} life...`}
+              rows={3}
+              style={{
+                width: "100%", padding: "10px 12px",
+                borderRadius: "10px",
+                border: `1.5px solid ${accentColor}55`,
+                backgroundColor: `${accentColor}08`,
+                fontSize: "12px", lineHeight: 1.6, color: "#1C1917",
+                outline: "none", resize: "none", overflowY: "auto", caretColor: accentColor,
+                fontFamily: "inherit", boxSizing: "border-box",
+                minHeight: "72px", maxHeight: "220px",
+              }}
+            />
           </div>
 
           {/* URL input */}
@@ -863,7 +847,7 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
 
           <div style={{ display: "flex", gap: "8px" }}>
             <button
-              onClick={onConfirm}
+              onClick={() => onConfirm(localText)}
               style={{
                 flex: 1, padding: "10px", borderRadius: "10px", border: "none",
                 background: accentColor,
@@ -871,7 +855,7 @@ function UrlDialog({ open, urlInput, accentColor, areaName, areaText, areaScore,
                 cursor: "pointer", boxShadow: `0 4px 12px ${accentColor}44`,
               }}
             >
-              Set Image
+              Save Vision
             </button>
             <button
               onClick={onClose}
