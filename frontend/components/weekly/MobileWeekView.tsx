@@ -42,9 +42,11 @@ export default function MobileWeekView({
     return acc;
   }, {});
 
+  // Hide events whose group is archived (e.g. a hidden Google Calendar bucket).
+  const nonArchivedEvents = weekEvents.filter((e) => !groupMap[e.groupId]?.archived);
   const visibleEvents = selectedGroupIds.length > 0
-    ? weekEvents.filter((e) => selectedGroupIds.includes(e.groupId))
-    : weekEvents;
+    ? nonArchivedEvents.filter((e) => selectedGroupIds.includes(e.groupId))
+    : nonArchivedEvents;
 
   const toggleGroup = (id: string) =>
     setSelectedGroupIds((prev) =>
@@ -377,7 +379,7 @@ export default function MobileWeekView({
           const isPast     = date < today;
           const dayEvents  = visibleEvents
             .filter((e) => e.date === date)
-            .sort((a, b) => a.startTime.localeCompare(b.startTime));
+            .sort((a, b) => Number(!!b.allDay) - Number(!!a.allDay) || a.startTime.localeCompare(b.startTime));
           const dayTasks   = tasks.filter((t) => t.deadline === date && t.status === "open");
           const hasContent = dayEvents.length > 0 || dayTasks.length > 0;
 
@@ -441,7 +443,7 @@ export default function MobileWeekView({
                         {ev.title}
                       </p>
                       <p style={{ fontSize: "12px", fontWeight: 600, color, margin: "3px 0 0", lineHeight: 1 }}>
-                        {ev.startTime} – {ev.endTime}
+                        {ev.allDay ? "All day" : `${ev.startTime} – ${ev.endTime}`}
                       </p>
                       {ev.description && (
                         <p style={{

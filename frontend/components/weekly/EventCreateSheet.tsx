@@ -126,7 +126,11 @@ export default function EventCreateSheet({
 
   // Weekly plan allows scheduling on past days (e.g. logging what actually happened).
   const dateError = validateDate(date, { required: true, minDate: "" });
-  const canSave   = title.trim().length > 0 && !dateError && !timeInvalid && conflicts.length === 0;
+  // Overlaps are a hard block only when creating a fresh block. When editing an
+  // existing event (e.g. one synced from Google, where overlaps are legal) the
+  // overlap becomes an informational note so it stays saveable.
+  const isEditing = !!editEvent;
+  const canSave   = title.trim().length > 0 && !dateError && !timeInvalid && (isEditing || conflicts.length === 0);
 
   function handleSave() {
     if (!canSave) return;
@@ -323,7 +327,7 @@ export default function EventCreateSheet({
             </span>
           </label>
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && !g.archived).map((g) => (
+            {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && g.kind !== "google" && !g.archived).map((g) => (
               <button key={g.id} onClick={() => setGroupId(groupId === g.id ? "" : g.id)} style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 padding: "5px 12px", borderRadius: "8px",
@@ -458,7 +462,7 @@ export default function EventCreateSheet({
             )}
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            {(timeInvalid || conflicts.length > 0) && (
+            {(timeInvalid || (!isEditing && conflicts.length > 0)) && (
               <span style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600 }}>
                 {timeInvalid ? "Fix time order to continue" : "Resolve conflict to continue"}
               </span>

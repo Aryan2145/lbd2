@@ -28,6 +28,45 @@ function durationPx(start: string, end: string): number {
   return (mins / 60) * PX_PER_HOUR;
 }
 
+function toMin(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+// Assign overlapping events to side-by-side columns (interval-graph greedy).
+// Returns id -> { col, cols } so each event knows its column and how many the
+// cluster it belongs to spans. Non-overlapping events get { col:0, cols:1 }.
+function layoutColumns(events: WeekEvent[]): Record<string, { col: number; cols: number }> {
+  const sorted = [...events].sort(
+    (a, b) => toMin(a.startTime) - toMin(b.startTime) || toMin(a.endTime) - toMin(b.endTime),
+  );
+  const result: Record<string, { col: number; cols: number }> = {};
+  let cluster: WeekEvent[] = [];
+  let clusterEnd = -1;
+
+  const flush = () => {
+    const colEnds: number[] = []; // end-minute of the last event placed in each column
+    for (const ev of cluster) {
+      let placed = false;
+      for (let c = 0; c < colEnds.length; c++) {
+        if (toMin(ev.startTime) >= colEnds[c]) { result[ev.id] = { col: c, cols: 0 }; colEnds[c] = toMin(ev.endTime); placed = true; break; }
+      }
+      if (!placed) { result[ev.id] = { col: colEnds.length, cols: 0 }; colEnds.push(toMin(ev.endTime)); }
+    }
+    for (const ev of cluster) result[ev.id].cols = colEnds.length;
+    cluster = [];
+    clusterEnd = -1;
+  };
+
+  for (const ev of sorted) {
+    if (cluster.length && toMin(ev.startTime) >= clusterEnd) flush();
+    cluster.push(ev);
+    clusterEnd = Math.max(clusterEnd, toMin(ev.endTime));
+  }
+  flush();
+  return result;
+}
+
 function fmtHour(h: number): string {
   if (h === 0  || h === 24) return "12am";
   if (h === 12) return "12pm";
@@ -138,6 +177,51 @@ export default function WeeklyGrid({
           })}
         </div>
 
+        {/* ── All-day banner row (holds all-day events, e.g. from Google) ── */}
+        {days.some((date) => weekEvents.some((e) => e.date === date && e.allDay && !groupMap[e.groupId]?.archived)) && (
+          <div style={{ display: "flex", borderBottom: "1px solid #FED7AA", backgroundColor: "#FFFBF5" }}>
+            <div style={{
+              width: 56, flexShrink: 0, borderRight: "1px solid #FED7AA",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ fontSize: "8px", color: "#C2410C", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                All-day
+              </span>
+            </div>
+            {days.map((date, i) => {
+              const allDayEvents = weekEvents
+                .filter((e) => e.date === date && e.allDay && !groupMap[e.groupId]?.archived);
+              return (
+                <div key={date} style={{
+                  flex: 1, minWidth: 0, padding: "4px 4px",
+                  borderRight: i < 6 ? "1px solid #FED7AA" : "none",
+                  display: "flex", flexDirection: "column", gap: "3px",
+                }}>
+                  {allDayEvents.map((ev) => {
+                    const color = groupMap[ev.groupId]?.color ?? "#4285F4";
+                    return (
+                      <div
+                        key={ev.id}
+                        data-event="true"
+                        onClick={(e) => { e.stopPropagation(); onEditEvent(ev); }}
+                        title={ev.title}
+                        style={{
+                          backgroundColor: color + "22", borderLeft: `3px solid ${color}`,
+                          borderRadius: "5px", padding: "2px 6px", cursor: "pointer",
+                          fontSize: "9px", fontWeight: 600, color: "#1C1917",
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        }}
+                      >
+                        {ev.title}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ── Time grid ── */}
         <div style={{ display: "flex", height: TOTAL_HEIGHT }}>
 
@@ -160,8 +244,11 @@ export default function WeeklyGrid({
           {/* Day columns */}
           {days.map((date, i) => {
             const isToday   = date === today;
-            const dayEvents = weekEvents.filter((e) => e.date === date)
+            // Timed events only (all-day render in the banner above); hide events
+            // whose group is archived so hiding the Google group actually hides them.
+            const dayEvents = weekEvents.filter((e) => e.date === date && !e.allDay && !groupMap[e.groupId]?.archived)
               .sort((a, b) => a.startTime.localeCompare(b.startTime));
+            const layout = layoutColumns(dayEvents);
 
             return (
               <div
@@ -216,6 +303,9 @@ export default function WeeklyGrid({
                   const top    = timeToY(ev.startTime);
                   const height = Math.max(durationPx(ev.startTime, ev.endTime), 20);
                   const short  = height < 38;
+                  // Side-by-side placement for overlapping events.
+                  const { col, cols } = layout[ev.id] ?? { col: 0, cols: 1 };
+                  const widthPct = 100 / cols;
 
                   return (
                     <div
@@ -225,7 +315,8 @@ export default function WeeklyGrid({
                       title={`${ev.title} · ${ev.startTime}–${ev.endTime}`}
                       style={{
                         position: "absolute", top, height,
-                        left: 3, right: 3,
+                        left: `calc(${col * widthPct}% + 2px)`,
+                        width: `calc(${widthPct}% - 4px)`,
                         backgroundColor: color + "22",
                         borderLeft: `3px solid ${color}`,
                         borderRadius: "6px",

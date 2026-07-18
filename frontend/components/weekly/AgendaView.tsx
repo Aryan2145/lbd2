@@ -41,8 +41,8 @@ export default function AgendaView({
         const isPast   = date < today;
         const d        = new Date(date + "T00:00:00");
         const dayEvents = weekEvents
-          .filter((e) => e.date === date)
-          .sort((a, b) => a.startTime.localeCompare(b.startTime));
+          .filter((e) => e.date === date && !groupMap[e.groupId]?.archived)
+          .sort((a, b) => Number(!!b.allDay) - Number(!!a.allDay) || a.startTime.localeCompare(b.startTime));
         const dayTasks = tasks.filter((t) => t.deadline === date && t.status === "open");
         const empty    = dayEvents.length === 0 && dayTasks.length === 0;
 
@@ -124,7 +124,7 @@ export default function AgendaView({
                     }}
                   >
                     <p style={{ fontSize: "9px", fontWeight: 500, color: "#78716C", marginBottom: "2px", lineHeight: 1 }}>
-                      {ev.startTime} – {ev.endTime}
+                      {ev.allDay ? "All day" : `${ev.startTime} – ${ev.endTime}`}
                     </p>
                     <p style={{ fontSize: "12px", fontWeight: 500, color: "#1C1917", margin: 0, lineHeight: 1.3 }}>
                       {ev.title}

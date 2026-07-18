@@ -238,3 +238,7 @@ body {
   .hdp-history-card { min-height: 280px !important; }
   .hdp-streaks-card { height: 300px !important; }
 }
+
+/* ── Google Calendar sync — spinning refresh icon ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.9s linear infinite; }
