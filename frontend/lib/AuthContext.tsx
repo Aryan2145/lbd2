@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { api } from "./api";
+import { api, setUnauthorizedHandler, type ApiError } from "./api";
 import { clearAppCache } from "./appCache";
 
 export interface AuthUser {
@@ -67,12 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   }
 
-  async function login(email: string, password: string) {
-    const res = await api.post<{ accessToken: string; user: AuthUser }>("/auth/login", { email, password });
-    applySession(res.accessToken, res.user);
-  }
-
-  function logout() {
+  function killSession() {
     localStorage.removeItem("lbd_token");
     localStorage.removeItem("lbd_auth_user");
     clearCookie();
@@ -80,6 +75,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
   }
+
+  // Session is gone (expired / invalidated) — clear it and go to login cleanly.
+  function forceRelogin() {
+    killSession();
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+  }
+
+  async function login(email: string, password: string) {
+    const res = await api.post<{ accessToken: string; user: AuthUser }>("/auth/login", { email, password });
+    applySession(res.accessToken, res.user);
+  }
+
+  function logout() {
+    killSession();
+  }
+
+  // Register the global 401 handler once: any logged-in request that gets
+  // rejected clears the dead session and returns the user to login.
+  useEffect(() => {
+    setUnauthorizedHandler(forceRelogin);
+    return () => setUnauthorizedHandler(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sliding session — renew the 30-day token whenever the app is opened or
+  // refocused, so an actively-used account effectively never logs out. A token
+  // that has genuinely lapsed (≈30 days idle) makes /auth/refresh return 401,
+  // which forces a clean re-login.
+  useEffect(() => {
+    if (!init.token) return;
+    let lastRefresh = 0;
+    const slide = async () => {
+      if (Date.now() - lastRefresh < 5 * 60 * 1000) return; // at most once per 5 min
+      lastRefresh = Date.now();
+      try {
+        const res = await api.post<{ accessToken: string; user: AuthUser }>("/auth/refresh", {});
+        applySession(res.accessToken, res.user);
+      } catch (e) {
+        if ((e as ApiError).status === 401) forceRelogin();
+        // Network / other errors: keep the session and retry on the next focus.
+      }
+    };
+    slide();
+    const onFocus = () => { slide(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return <Ctx.Provider value={{ token, user, login, applySession, logout }}>{children}</Ctx.Provider>;
 }
