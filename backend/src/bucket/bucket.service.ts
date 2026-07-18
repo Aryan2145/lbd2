@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
+import { MediaService } from '../media/media.service';
 
 const TO_DB:   Record<string, any>    = { dreaming: 'dream', planning: 'planned', achieved: 'achieved', dream: 'dream', planned: 'planned' };
 const FROM_DB: Record<string, string> = { dream: 'dreaming', planned: 'planning', achieved: 'achieved' };
@@ -10,7 +11,15 @@ export class BucketService {
   constructor(
     private prisma: PrismaService,
     private enc:    EncryptionService,
+    private media:  MediaService,
   ) {}
+
+  /** Purge an R2 media object if the pointer is one (legacy URLs are left alone). */
+  private async cleanupPointer(userId: string, pointer: string | null) {
+    if (this.media.isMediaId(pointer)) {
+      try { await this.media.remove('dreams', userId, pointer); } catch { /* best-effort */ }
+    }
+  }
 
   private eStr(v: string | null | undefined): string | null {
     return v ? this.enc.encrypt(v) : (v ?? null);
@@ -60,6 +69,8 @@ export class BucketService {
   }
 
   async update(id: string, data: any) {
+    const existing = await this.prisma.bucketEntry.findUnique({ where: { id } });
+
     const fields: any = {};
     if (data.title            !== undefined) fields.title            = this.enc.encrypt(data.title);
     if (data.description      !== undefined) fields.description      = this.eStr(data.description) ?? '';
@@ -71,10 +82,28 @@ export class BucketService {
     if (data.memoryPhotoUrl   !== undefined) fields.memoryPhotoUrl   = data.memoryPhotoUrl ? this.enc.encrypt(data.memoryPhotoUrl) : null;
     if (data.changeReflection !== undefined) fields.changeReflection = this.eStr(data.changeReflection);
     const row = await this.prisma.bucketEntry.update({ where: { id }, data: fields });
+
+    // Purge any image that was replaced or cleared, so R2 keeps no orphans.
+    if (existing) {
+      if (data.imageUrl !== undefined) {
+        const old = this.dStr(existing.imageUrl);
+        if (old !== data.imageUrl) await this.cleanupPointer(existing.userId, old);
+      }
+      if (data.memoryPhotoUrl !== undefined) {
+        const old = this.dStr(existing.memoryPhotoUrl);
+        if (old !== data.memoryPhotoUrl) await this.cleanupPointer(existing.userId, old);
+      }
+    }
     return this.decryptRow(row);
   }
 
-  remove(id: string) {
-    return this.prisma.bucketEntry.delete({ where: { id } });
+  async remove(id: string) {
+    const existing = await this.prisma.bucketEntry.findUnique({ where: { id } });
+    const deleted  = await this.prisma.bucketEntry.delete({ where: { id } });
+    if (existing) {
+      await this.cleanupPointer(existing.userId, this.dStr(existing.imageUrl));
+      await this.cleanupPointer(existing.userId, this.dStr(existing.memoryPhotoUrl));
+    }
+    return deleted;
   }
 }
