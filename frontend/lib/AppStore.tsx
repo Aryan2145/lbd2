@@ -11,7 +11,7 @@ import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import type { EveningReflection, WeeklyReview } from "@/lib/dayTypes";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import type { SupportTicket, TicketCategory, TicketPriority } from "@/lib/ticketTypes";
-import { api, deleteMedia } from "@/lib/api";
+import { api, trackActivity, deleteMedia } from "@/lib/api";
 import { isMediaId } from "@/lib/visionImage";
 import { readAppCache, writeAppCache } from "@/lib/appCache";
 
@@ -206,7 +206,7 @@ interface AppState {
   userProfile:        UserProfile;
   visionAreas:        AreaData[];
   // Goal actions
-  addGoal:    (g: GoalData, tasks?: TaskData[], habits?: HabitData[], onCreated?: (created: GoalData) => void, onError?: () => void) => void;
+  addGoal:    (g: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
   updateGoal: (g: GoalData) => void;
   deleteGoal: (id: string)  => void;
   // Habit actions
@@ -216,8 +216,8 @@ interface AppState {
   toggleHabitDay:      (id: string, date: string) => void;
   setHabitMeasurement: (id: string, date: string, value: number) => void;
   stepHabitToday:      (id: string, delta: number) => void;
-  // Task actions
-  addTask:    (t: TaskData) => void;
+  // Task actions ("daily" origin => scores the Daily-plan head, not Tasks)
+  addTask:    (t: TaskData, origin?: "daily") => void;
   updateTask: (t: TaskData) => void;
   closeTask:  (id: string, outcome: "complete" | "incomplete") => void;
   reopenTask: (id: string)  => void;
@@ -225,8 +225,8 @@ interface AppState {
   addEventGroup:    (g: EventGroup) => void;
   updateEventGroup: (g: EventGroup) => void;
   deleteEventGroup: (id: string)    => void;
-  // Week event actions
-  addWeekEvent:    (e: WeekEvent) => void;
+  // Week event actions ("daily" origin => Daily-plan head, else Weekly-plan)
+  addWeekEvent:    (e: WeekEvent, origin?: "daily") => void;
   updateWeekEvent: (e: WeekEvent) => void;
   deleteWeekEvent: (id: string)   => void;
   // Google Calendar reverse sync (pull one week Google → app)
@@ -391,15 +391,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     visionAreas, gcalSyncing, gcalLastSync,
 
     // Goals
-    addGoal: (g, tasks?, habits?, onCreated?, onError?) => {
+    addGoal: (g, tasks?, habits?) => {
       setGoals(prev => [...prev, g]);
       if (tasks?.length)  setTasks(prev  => [...prev, ...tasks]);
       if (habits?.length) setHabits(prev => [...prev, ...habits]);
       api.post<any>('/goals', goalToApi(g))
         .then(created => {
           const realId = created.id;
-          const mapped = mapGoal(created);
-          setGoals(prev => prev.map(x => x.id === g.id ? mapped : x));
+          setGoals(prev => prev.map(x => x.id === g.id ? mapGoal(created) : x));
           tasks?.forEach(t => {
             api.post<any>('/tasks', taskToApi({ ...t, linkedGoalId: realId }))
               .then(ct => setTasks(prev => prev.map(x => x.id === t.id ? mapTask(ct) : x)))
@@ -410,15 +409,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
               .then(ch => setHabits(prev => prev.map(x => x.id === h.id ? mapHabit(ch) : x)))
               .catch(() => setHabits(prev => prev.filter(x => x.id !== h.id)));
           });
-          // Hand the persisted goal (with its real server id) back so callers can
-          // keep editing the same record instead of creating a duplicate.
-          onCreated?.(mapped);
         })
         .catch(() => {
           setGoals(prev => prev.filter(x => x.id !== g.id));
           tasks?.forEach(t => setTasks(prev => prev.filter(x => x.id !== t.id)));
           habits?.forEach(h => setHabits(prev => prev.filter(x => x.id !== h.id)));
-          onError?.();
         });
     },
     updateGoal: (updated) => {
@@ -454,19 +449,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Habits
     addHabit: (h) => {
       setHabits(prev => [...prev, h]);
+      trackActivity("habits");
       api.post<any>('/habits', habitToApi(h))
         .then(created => setHabits(prev => prev.map(x => x.id === h.id ? mapHabit(created) : x)))
         .catch(() => setHabits(prev => prev.filter(x => x.id !== h.id)));
     },
     updateHabit: (h) => {
       setHabits(prev => prev.map(x => x.id === h.id ? h : x));
+      trackActivity("habits");
       api.patch(`/habits/${h.id}`, habitToApi(h)).catch(console.error);
     },
     deleteHabit: (id) => {
       setHabits(prev => prev.filter(h => h.id !== id));
+      trackActivity("habits");
       api.del(`/habits/${id}`).catch(console.error);
     },
     toggleHabitDay: (id, date) => {
+      trackActivity("habits");
       updateHabitById(id, h => {
         const completions = h.completions.includes(date)
           ? h.completions.filter(d => d !== date)
@@ -476,6 +475,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     },
     setHabitMeasurement: (id, date, value) => {
+      trackActivity("habits");
       updateHabitById(id, h => {
         const measurements = { ...h.measurements, [date]: Math.max(0, value) };
         api.patch(`/habits/${id}`, { measurements }).catch(console.error);
@@ -484,6 +484,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     stepHabitToday: (id, delta) => {
       const today = toTaskDate();
+      trackActivity("habits");
       updateHabitById(id, h => {
         const measurements = { ...h.measurements, [today]: Math.max(0, (h.measurements[today] ?? 0) + delta) };
         api.patch(`/habits/${id}`, { measurements }).catch(console.error);
@@ -492,17 +493,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
 
     // Tasks
-    addTask: (t) => {
+    addTask: (t, origin) => {
       setTasks(prev => [...prev, t]);
+      // A task created from the daily plan scores the Daily-plan head, never Tasks
+      // (no double-count); created anywhere else scores Tasks.
+      trackActivity(origin === "daily" ? "daily_plan" : "tasks");
       api.post<any>('/tasks', taskToApi(t))
         .then(created => setTasks(prev => prev.map(x => x.id === t.id ? mapTask(created) : x)))
         .catch(() => setTasks(prev => prev.filter(x => x.id !== t.id)));
     },
     updateTask: (t) => {
       setTasks(prev => prev.map(x => x.id === t.id ? t : x));
+      trackActivity("tasks");
       api.patch(`/tasks/${t.id}`, taskToApi(t)).catch(console.error);
     },
     closeTask: (id, outcome) => {
+      trackActivity("tasks");
       setTasks(prev => prev.map(t => {
         if (t.id !== id) return t;
         const variance = Math.round((Date.now() - new Date(t.deadline + "T00:00:00").getTime()) / 86_400_000);
@@ -535,8 +541,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
 
     // Week events
-    addWeekEvent: (e) => {
+    addWeekEvent: (e, origin) => {
       setWeekEvents(prev => [...prev, e]);
+      // Event created from the daily planner => Daily-plan head; from the weekly
+      // planner => Weekly-plan head. (Edits/deletes don't score a plan head.)
+      trackActivity(origin === "daily" ? "daily_plan" : "weekly_plan");
       api.post<any>('/calendar/events', { groupId: e.groupId, title: e.title, date: e.date, startTime: e.startTime, endTime: e.endTime, description: e.description })
         .then(created => setWeekEvents(prev => prev.map(x => x.id === e.id ? mapWeekEvent(created) : x)))
         .catch(() => setWeekEvents(prev => prev.filter(x => x.id !== e.id)));
@@ -578,10 +587,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     upsertEveningReflection: (r) => {
       upsertBy(setEveningReflections, "date", r);
+      trackActivity("daily_review");
       api.put('/evening-reflections', { date: r.date, energyLevel: r.energyLevel, mood: r.mood, highlights: r.highlights, gratitude: r.gratitude, decisions: r.decisions, wins: r.wins, stuck: r.stuck }).catch(console.error);
     },
     upsertWeeklyReview: (r) => {
       upsertBy(setWeeklyReviews, "weekStart", r);
+      trackActivity("weekly_review");
       api.put('/weekly-reviews', { weekStart: r.weekStart, topWins: r.topWins, outcomeNotes: r.outcomeNotes, outcomeChecked: r.outcomeChecked, taskReflection: r.taskReflection, habitReflection: r.habitReflection, overallRating: r.overallRating, journalDate: r.journalDate, journalText: r.journalText, journalSections: r.journalSections, lifeLessons: r.lifeLessons, coreValuesLived: r.coreValuesLived }).catch(console.error);
     },
 
