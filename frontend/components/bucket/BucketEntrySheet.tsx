@@ -198,27 +198,32 @@ export default function BucketEntrySheet({
             />
           </div>
 
-          {/* Life Area */}
-          <div style={{ marginBottom: "18px" }}>
-            <label style={lbl}>Life Area</label>
-            <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-              {LIFE_AREAS.map((a) => {
-                const selected = lifeArea === a;
-                const color    = LIFE_AREA_COLORS[a];
-                return (
-                  <button key={a} onClick={() => setLifeArea(a)} style={{
-                    padding: "5px 12px", borderRadius: "8px",
-                    border: `1.5px solid ${selected ? color : "#E8DDD0"}`,
-                    backgroundColor: selected ? color + "15" : "#FAFAFA",
-                    fontSize: "11px", fontWeight: 600,
-                    color: selected ? color : "#57534E",
-                    cursor: "pointer", transition: "all 0.12s",
-                  }}>
-                    {LIFE_AREA_LABELS[a]}
-                  </button>
-                );
-              })}
+          {/* Life Area (dropdown) + Tentative Target Date, side by side */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "18px", alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+              <label style={lbl}>Life Area</label>
+              <LifeAreaDropdown value={lifeArea} onChange={setLifeArea} />
             </div>
+            <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+              <label style={lbl}>Tentative Target Date <span style={{ fontSize: "10px", fontWeight: 400, color: "#A8A29E" }}>(optional)</span></label>
+              <CalendarPicker value={targetDate} onChange={setTargetDate} onClear={() => setTargetDate("")} accentColor="#F97316" />
+              {targetDateError && (
+                <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600, marginTop: "5px", marginLeft: "2px" }}>
+                  {targetDateError}
+                </p>
+              )}
+              {!targetDateError && targetDate && (
+                <p style={{ fontSize: "12px", color: "#F97316", fontWeight: 600, marginTop: "5px", marginLeft: "2px" }}>
+                  {formatTargetDate(targetDate)}
+                </p>
+              )}
+            </div>
+            {editEntry && (
+              <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                <label style={lbl}>Status</label>
+                <StatusDropdown value={status} onChange={setStatus} />
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -234,32 +239,34 @@ export default function BucketEntrySheet({
             />
           </div>
 
-          {/* Status + Target date row */}
-          <div style={{ display: "flex", gap: "12px", marginBottom: "18px", alignItems: "flex-start" }}>
-            {/* Status (edit only) */}
-            {editEntry && (
-              <div style={{ width: "140px", flexShrink: 0 }}>
-                <label style={lbl}>Status</label>
-                <StatusDropdown value={status} onChange={setStatus} />
-              </div>
-            )}
-            {/* Target date */}
-            <div style={{ flex: 1 }}>
-              <label style={lbl}>Tentative Target Date <span style={{ fontSize: "10px", fontWeight: 400, color: "#A8A29E" }}>(optional)</span></label>
-              <CalendarPicker value={targetDate} onChange={setTargetDate} onClear={() => setTargetDate("")} accentColor="#F97316" />
-              {targetDateError && (
-                <p style={{ fontSize: "11px", color: "#DC2626", fontWeight: 600,
-                  marginTop: "5px", marginLeft: "2px" }}>
-                  {targetDateError}
+          {/* AI prompt — compact row (above the image, so you can generate then upload) */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "11px 14px", borderRadius: "10px", marginBottom: "18px",
+            backgroundColor: "#FFF7ED", border: "1px solid #FED7AA",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+              <Sparkles size={13} color="#EA580C" />
+              <div>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", margin: 0 }}>
+                  AI Dream Image Prompt
                 </p>
-            )}
-            {!targetDateError && targetDate && (
-              <p style={{ fontSize: "12px", color: "#F97316", fontWeight: 600,
-                marginTop: "5px", marginLeft: "2px" }}>
-                {formatTargetDate(targetDate)}
-              </p>
-            )}
+                <p style={{ fontSize: "10px", color: "#57534E", margin: 0 }}>
+                  Copy prompt → use in Midjourney, DALL·E, Ideogram
+                </p>
+              </div>
             </div>
+            <button onClick={handleCopyPrompt} style={{
+              display: "flex", alignItems: "center", gap: "5px",
+              padding: "6px 14px", borderRadius: "8px", flexShrink: 0,
+              border: "1.5px solid #FDDAB4",
+              backgroundColor: copied ? "#FFF7ED" : "#FFFFFF",
+              fontSize: "11px", fontWeight: 700,
+              color: copied ? "#16A34A" : "#EA580C", cursor: "pointer",
+            }}>
+              {copied ? <Check size={11} /> : <Copy size={11} />}
+              {copied ? "Copied!" : "Copy"}
+            </button>
           </div>
 
           {/* Dream Image */}
@@ -335,36 +342,6 @@ export default function BucketEntrySheet({
             {uploadError && (
               <p style={{ fontSize: "10px", color: "#EF4444", margin: "6px 2px 0" }}>{uploadError}</p>
             )}
-          </div>
-
-          {/* AI prompt — compact row */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "11px 14px", borderRadius: "10px",
-            backgroundColor: "#FFF7ED", border: "1px solid #FED7AA",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-              <Sparkles size={13} color="#EA580C" />
-              <div>
-                <p style={{ fontSize: "12px", fontWeight: 600, color: "#1C1917", margin: 0 }}>
-                  AI Dream Image Prompt
-                </p>
-                <p style={{ fontSize: "10px", color: "#57534E", margin: 0 }}>
-                  Copy prompt → use in Midjourney, DALL·E, Ideogram
-                </p>
-              </div>
-            </div>
-            <button onClick={handleCopyPrompt} style={{
-              display: "flex", alignItems: "center", gap: "5px",
-              padding: "6px 14px", borderRadius: "8px", flexShrink: 0,
-              border: "1.5px solid #FDDAB4",
-              backgroundColor: copied ? "#FFF7ED" : "#FFFFFF",
-              fontSize: "11px", fontWeight: 700,
-              color: copied ? "#16A34A" : "#EA580C", cursor: "pointer",
-            }}>
-              {copied ? <Check size={11} /> : <Copy size={11} />}
-              {copied ? "Copied!" : "Copy"}
-            </button>
           </div>
         </div>
 
@@ -448,6 +425,79 @@ const smallBtn: React.CSSProperties = {
   border: "1px solid #E8DDD0", backgroundColor: "#FFFFFF",
   fontSize: 11, fontWeight: 700, color: "#57534E", cursor: "pointer",
 };
+
+function LifeAreaDropdown({ value, onChange }: { value: LifeArea; onChange: (a: LifeArea) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const color = LIFE_AREA_COLORS[value];
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: "10px",
+          padding: "9px 12px", borderRadius: "10px",
+          border: `1.5px solid ${color}55`, backgroundColor: "#FFFFFF",
+          cursor: "pointer", outline: "none", boxSizing: "border-box",
+          boxShadow: open ? `0 0 0 3px ${color}20` : "none", fontFamily: "inherit",
+        }}
+      >
+        <span style={{ width: 12, height: 12, borderRadius: "50%", flexShrink: 0, backgroundColor: color, boxShadow: `0 0 0 3px ${color}22` }} />
+        <span style={{ flex: 1, textAlign: "left", fontSize: "13px", fontWeight: 700, color }}>
+          {LIFE_AREA_LABELS[value]}
+        </span>
+        <span style={{ flexShrink: 0, transition: "transform 0.15s", transform: open ? "rotate(180deg)" : "none", display: "inline-flex" }}>
+          <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </span>
+      </button>
+
+      {open && (
+        <div role="listbox" style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 100,
+          backgroundColor: "#FFFFFF", borderRadius: "12px", border: "1px solid #E8DDD0",
+          boxShadow: "0 12px 32px rgba(28,25,23,0.14)", padding: "6px",
+          maxHeight: 280, overflowY: "auto",
+        }}>
+          {LIFE_AREAS.map(a => {
+            const c = LIFE_AREA_COLORS[a];
+            const selected = value === a;
+            return (
+              <button
+                key={a}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => { onChange(a); setOpen(false); }}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: "11px",
+                  padding: "9px 10px", borderRadius: "8px", border: "none",
+                  backgroundColor: selected ? c + "15" : "transparent",
+                  cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                }}
+                onMouseEnter={e => { if (!selected) e.currentTarget.style.backgroundColor = "#FAFAF9"; }}
+                onMouseLeave={e => { if (!selected) e.currentTarget.style.backgroundColor = "transparent"; }}
+              >
+                <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: c, flexShrink: 0, boxShadow: selected ? `0 0 0 3px ${c}22` : "none" }} />
+                <span style={{ flex: 1, fontSize: "13px", fontWeight: selected ? 700 : 600, color: selected ? c : "#44403C" }}>{LIFE_AREA_LABELS[a]}</span>
+                {selected && <Check size={14} color={c} strokeWidth={3} style={{ flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function StatusDropdown({ value, onChange }: { value: BucketStatus; onChange: (s: BucketStatus) => void }) {
   const [open, setOpen] = useState(false);
