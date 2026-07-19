@@ -77,9 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // Session is gone (expired / invalidated) — clear it and go to login cleanly.
+  // The admin area (/admin) runs its own bearer-token auth and handles its own
+  // 401s, so a lapsed *user* session must never bounce it to the user login.
   function forceRelogin() {
     killSession();
-    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/login" &&
+      !window.location.pathname.startsWith("/admin")
+    ) {
       window.location.href = "/login";
     }
   }
