@@ -186,7 +186,7 @@ export default function DailyPage() {
             onUpdate={upsertEveningReflection}
             habits={todayHabits}
             onToggleHabit={(id) => toggleHabitDay(id, viewDate)}
-            onStepHabit={stepHabitToday}
+            onStepHabit={(id, delta) => stepHabitToday(id, delta, viewDate)}
             tasks={tasks.filter((t) => t.deadline === viewDate)}
             onCompleteTask={(id) => closeTask(id, "complete")}
             events={todayEvents}

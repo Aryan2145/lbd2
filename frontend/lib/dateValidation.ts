@@ -50,13 +50,15 @@ export function validateDate(
 
 /**
  * Validate a goal or milestone deadline.
- * Blocks past dates and dates beyond today + 9,999 days.
+ * Blocks dates beyond today + 9,999 days.
+ * By default blocks past dates; pass `minDate` (e.g. the goal's creation date,
+ * or "" for no lower bound) to allow past dates down to that floor.
  */
 export function validateGoalDate(
   value: string,
-  opts?: { required?: boolean },
+  opts?: { required?: boolean; minDate?: string },
 ): string | null {
   const max   = maxGoalDateStr();
   const label = `${maxGoalDateDisplay()} (max ${MAX_GOAL_DAYS.toLocaleString()} days from today)`;
-  return validateDate(value, { required: opts?.required, maxDate: max, maxDateLabel: label });
+  return validateDate(value, { required: opts?.required, maxDate: max, maxDateLabel: label, minDate: opts?.minDate });
 }

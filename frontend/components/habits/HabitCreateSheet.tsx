@@ -45,7 +45,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDe
   const [frequency,         setFrequency]        = useState<HabitFrequency>("daily");
   const [customDays,        setCustomDays]       = useState<number[]>([1, 2, 3, 4, 5]);
   const [type,              setType]             = useState<HabitType>("binary");
-  const [target,            setTarget]           = useState(1);
+  const [target,            setTarget]           = useState<number | "">(1);
   const [unit,              setUnit]             = useState("");
   const [cue,               setCue]              = useState("");
   const [reward,            setReward]           = useState("");
@@ -113,7 +113,7 @@ export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDe
   const canSave = (
     name.trim().length > 0 &&
     area !== "" &&
-    (type === "binary" || target >= 1) &&
+    (type === "binary" || (typeof target === "number" && target >= 1)) &&
     !goalHasNoMilestones &&
     !milestoneRequired
   );
@@ -129,14 +129,14 @@ export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDe
       onUpdate?.({ ...editHabit, name: name.trim(), description: desc.trim(),
         area: area as LifeArea, frequency, customDays: frequency === "custom" ? customDays : [],
         cue: cue.trim(), reward: reward.trim(),
-        type, target: type === "binary" ? 1 : target, unit: type === "binary" ? "" : unit.trim(),
+        type, target: type === "binary" ? 1 : (typeof target === "number" ? target : 1), unit: type === "binary" ? "" : unit.trim(),
       });
     } else {
       onSave({
         id: crypto.randomUUID(), name: name.trim(), description: desc.trim(),
         area: area as LifeArea, frequency, customDays: frequency === "custom" ? customDays : [],
         cue: cue.trim(), reward: reward.trim(),
-        type, target: type === "binary" ? 1 : target, unit: type === "binary" ? "" : unit.trim(),
+        type, target: type === "binary" ? 1 : (typeof target === "number" ? target : 1), unit: type === "binary" ? "" : unit.trim(),
         completions: [], measurements: {}, linkedGoalId, linkedMilestoneId,
         createdAt: Date.now(),
       });
@@ -200,8 +200,12 @@ export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDe
           {type === "measurable" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <Field label="Daily target">
-                <input type="number" min={1} value={target}
-                  onChange={(e) => setTarget(Math.max(1, parseInt(e.target.value) || 1))}
+                <input type="text" inputMode="numeric" value={target}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, "");
+                    setTarget(digits === "" ? "" : Math.max(1, parseInt(digits, 10) || 1));
+                  }}
+                  onBlur={() => { if (target === "") setTarget(1); }}
                   style={inStyle} />
               </Field>
               <Field label="Unit (e.g. pages, mins)">

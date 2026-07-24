@@ -214,7 +214,7 @@ interface AppState {
   deleteHabit:         (id: string)   => void;
   toggleHabitDay:      (id: string, date: string) => void;
   setHabitMeasurement: (id: string, date: string, value: number) => void;
-  stepHabitToday:      (id: string, delta: number) => void;
+  stepHabitToday:      (id: string, delta: number, date?: string) => void;
   // Task actions ("daily" origin => scores the Daily-plan head, not Tasks)
   addTask:    (t: TaskData, origin?: "daily") => void;
   updateTask: (t: TaskData) => void;
@@ -479,11 +479,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { ...h, measurements };
       });
     },
-    stepHabitToday: (id, delta) => {
-      const today = toTaskDate();
+    stepHabitToday: (id, delta, date) => {
+      const day = date ?? toTaskDate();
       trackActivity("habits");
       updateHabitById(id, h => {
-        const measurements = { ...h.measurements, [today]: Math.max(0, (h.measurements[today] ?? 0) + delta) };
+        const measurements = { ...h.measurements, [day]: Math.max(0, (h.measurements[day] ?? 0) + delta) };
         api.patch(`/habits/${id}`, { measurements }).catch(console.error);
         return { ...h, measurements };
       });

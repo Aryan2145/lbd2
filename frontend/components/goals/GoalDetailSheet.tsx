@@ -151,6 +151,7 @@ export default function GoalDetailSheet({
   const [taskEditTarget,   setTaskEditTarget]   = useState<TaskData | null>(null);
   const [habitEditTarget,  setHabitEditTarget]  = useState<HabitData | null>(null);
   const [msCreateOpen,     setMsCreateOpen]     = useState(false);
+  const [msEditId,         setMsEditId]         = useState<string | null>(null);
   const [msTitle,          setMsTitle]          = useState("");
   const [msDeadline,       setMsDeadline]       = useState("");
   const [removingIds,      setRemovingIds]      = useState<Set<string>>(new Set());
@@ -369,7 +370,7 @@ export default function GoalDetailSheet({
                       <Activity size={15} color="#374151" />
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917" }}>Milestone Roadmap</span>
                     </div>
-                    <button onClick={() => { setMsTitle(""); setMsDeadline(""); setMsCreateOpen(true); }} style={{ fontSize: "12px", fontWeight: 600, color: "#FFFFFF", background: color, border: "none", borderRadius: "20px", padding: "4px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                    <button onClick={() => { setMsEditId(null); setMsTitle(""); setMsDeadline(""); setMsCreateOpen(true); }} style={{ fontSize: "12px", fontWeight: 600, color: "#FFFFFF", background: color, border: "none", borderRadius: "20px", padding: "4px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
                       <Plus size={12} color="#FFFFFF" /> Create Milestone
                     </button>
                   </div>
@@ -507,6 +508,19 @@ export default function GoalDetailSheet({
                               </div>
                               <p style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", margin: 0, lineHeight: "1.4", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</p>
                             </div>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                setMsEditId(m.id);
+                                setMsTitle(m.title);
+                                setMsDeadline(m.deadline);
+                                setMsCreateOpen(true);
+                              }}
+                              title="Edit milestone"
+                              style={{ width: 28, height: 28, borderRadius: "7px", border: `1px solid ${color}30`, backgroundColor: "#FFFFFF", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                            >
+                              <Pencil size={13} color={color} />
+                            </button>
                             {isExpanded ? <ChevronUp size={16} color="#6B7280" style={{ flexShrink: 0 }} /> : <ChevronDown size={16} color="#6B7280" style={{ flexShrink: 0 }} />}
                           </div>
 
@@ -956,13 +970,22 @@ export default function GoalDetailSheet({
       {/* ── Milestone Create Modal ── */}
       {msCreateOpen && (() => {
         const msColor    = AREA_META[goal.area].color;
-        const msDeadlineError = validateGoalDate(msDeadline, { required: true });
+        const goalCreatedStr = goal.createdAt ? toLocalDate(new Date(goal.createdAt)) : "";
+        const msDeadlineError = validateGoalDate(msDeadline, { required: true, minDate: goalCreatedStr });
         const msCanSave  = msTitle.trim().length > 0 && !msDeadlineError;
-        function closeMsModal() { setMsCreateOpen(false); }
+        const isMsEdit = msEditId !== null;
+        function closeMsModal() { setMsCreateOpen(false); setMsEditId(null); }
         function saveMilestone() {
           if (!msCanSave) return;
-          const newMs: Milestone = { id: crypto.randomUUID(), title: msTitle.trim(), deadline: msDeadline, completed: false, createdAt: Date.now() };
-          onUpdate({ ...goal!, milestones: [...(goal!.milestones ?? []), newMs] });
+          if (isMsEdit) {
+            const updated = (goal!.milestones ?? []).map(ms =>
+              ms.id === msEditId ? { ...ms, title: msTitle.trim(), deadline: msDeadline } : ms
+            );
+            onUpdate({ ...goal!, milestones: updated });
+          } else {
+            const newMs: Milestone = { id: crypto.randomUUID(), title: msTitle.trim(), deadline: msDeadline, completed: false, createdAt: Date.now() };
+            onUpdate({ ...goal!, milestones: [...(goal!.milestones ?? []), newMs] });
+          }
           closeMsModal();
         }
         const inSt: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid #E8DDD0", fontSize: "13px", color: "#1C1917", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF" };
@@ -974,8 +997,8 @@ export default function GoalDetailSheet({
               {/* Header */}
               <div style={{ padding: "18px 24px", borderBottom: "1px solid #EDE5D8", display: "flex", alignItems: "center", justifyContent: "space-between", background: "linear-gradient(135deg, #FFF7ED, #FFFFFF)" }}>
                 <div>
-                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: msColor, margin: "0 0 3px" }}>New Milestone</p>
-                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>Create Milestone</h2>
+                  <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: msColor, margin: "0 0 3px" }}>{isMsEdit ? "Edit Milestone" : "New Milestone"}</p>
+                  <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#1C1917", margin: 0 }}>{isMsEdit ? "Edit Milestone" : "Create Milestone"}</h2>
                 </div>
                 <button onClick={closeMsModal} style={{ width: 32, height: 32, borderRadius: "8px", border: "none", backgroundColor: "#DC2626", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <X size={15} color="#FFFFFF" />
@@ -989,11 +1012,11 @@ export default function GoalDetailSheet({
                 </div>
                 <div style={{ marginBottom: "20px" }}>
                   <label style={lbSt}>Deadline *</label>
-                  <CalendarPicker value={msDeadline} onChange={setMsDeadline} accentColor={msColor} max={maxGoalDateStr()} placement="center" />
+                  <CalendarPicker value={msDeadline} onChange={setMsDeadline} accentColor={msColor} min={goalCreatedStr} max={maxGoalDateStr()} placement="center" />
                   {msDeadlineError && <p style={{ fontSize: "11px", color: "#DC2626", margin: "4px 0 0" }}>{msDeadlineError}</p>}
                 </div>
                 <button onClick={saveMilestone} disabled={!msCanSave} style={{ width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: msCanSave ? `linear-gradient(135deg, ${msColor}, ${msColor}CC)` : "#E8DDD0", fontSize: "13px", fontWeight: 700, color: msCanSave ? "#FFFFFF" : "#A8A29E", cursor: msCanSave ? "pointer" : "default" }}>
-                  Create Milestone
+                  {isMsEdit ? "Save Changes" : "Create Milestone"}
                 </button>
               </div>
             </div>
@@ -1409,7 +1432,8 @@ function MilestonePopup({
   const [confirmDelete,  setConfirmDelete]  = useState(false);
 
   const today       = toLocalDate();
-  const editMsDateError = validateGoalDate(editDeadline, { required: true });
+  const goalCreatedStr = goal.createdAt ? toLocalDate(new Date(goal.createdAt)) : "";
+  const editMsDateError = validateGoalDate(editDeadline, { required: true, minDate: goalCreatedStr });
   const deadlineOk  = editDeadline && editDeadline <= goal.deadline && !editMsDateError;
   const linkedCount = mTasks.length + mHabits.length;
 
@@ -1483,7 +1507,7 @@ function MilestonePopup({
                   <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} autoFocus style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1.5px solid #D97706", backgroundColor: "#FFFBEB", fontSize: "13px", fontWeight: 600, color: "#1C1917", outline: "none", boxSizing: "border-box", fontFamily: "inherit", marginBottom: "8px" }} />
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <div style={{ flex: 1 }}>
-                      <CalendarPicker value={editDeadline} onChange={setEditDeadline} accentColor="#D97706" max={goal.deadline} />
+                      <CalendarPicker value={editDeadline} onChange={setEditDeadline} accentColor="#D97706" min={goalCreatedStr} max={goal.deadline} />
                     </div>
                     <button onClick={() => setEditing(false)} style={{ padding: "7px 11px", borderRadius: "8px", border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF", fontSize: "12px", fontWeight: 600, color: "#78716C", cursor: "pointer" }}>Cancel</button>
                     <button onClick={saveEdit} disabled={!editTitle.trim() || !deadlineOk} style={{ padding: "7px 13px", borderRadius: "8px", border: "none", background: editTitle.trim() && deadlineOk ? "linear-gradient(135deg, #D97706, #B45309)" : "#E8DDD0", fontSize: "12px", fontWeight: 700, color: editTitle.trim() && deadlineOk ? "#FFFFFF" : "#A8A29E", cursor: editTitle.trim() && deadlineOk ? "pointer" : "default" }}>Save</button>
