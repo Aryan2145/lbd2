@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { HabitData, LifeArea } from "./HabitCard";
 import { AREA_META, FREQ_LABEL, toLocalDate, isScheduledDay, isHabitDoneOnDate } from "./HabitCard";
+import MeasureDayEditor from "./MeasureDayEditor";
 
 // ── Area icons ────────────────────────────────────────────────────────────────
 
@@ -194,12 +195,14 @@ interface Props {
   onClose: () => void;
   onEdit: () => void;
   onToggleDate: (id: string, date: string) => void;
+  onSetDate?: (id: string, date: string, value: number) => void;
 }
 
 const DOW_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DOW_JS     = [1, 2, 3, 4, 5, 6, 0];
 
-export default function HabitDetailPage({ habit, onClose, onEdit, onToggleDate }: Props) {
+export default function HabitDetailPage({ habit, onClose, onEdit, onToggleDate, onSetDate }: Props) {
+  const [calEditDs, setCalEditDs] = useState<string | null>(null);   // measurable day being logged
   const calScrollRef   = useRef<HTMLDivElement>(null);
   const histScrollRef  = useRef<HTMLDivElement>(null);
   const freqScrollRef  = useRef<HTMLDivElement>(null);
@@ -368,9 +371,10 @@ export default function HabitDetailPage({ habit, onClose, onEdit, onToggleDate }
 
   if (!habit || !data) return null;
 
-  const area     = AREA_META[habit.area];
-  const AreaIcon = AREA_ICONS[habit.area];
-  const todayStr = toLocalDate();
+  const area      = AREA_META[habit.area];
+  const AreaIcon  = AREA_ICONS[habit.area];
+  const todayStr  = toLocalDate();
+  const isMeasure = habit.type === "measurable";
 
   // Donut ring
   const R = 34, circ = 2 * Math.PI * R;
@@ -803,12 +807,22 @@ export default function HabitDetailPage({ habit, onClose, onEdit, onToggleDate }
                               : "#57534E";
                             return (
                               <div key={di} title={cell.ds}
-                                onClick={() => { if (!isFuture) onToggleDate(habit.id, cell.ds); }}
+                                onClick={() => {
+                                  if (isFuture) return;
+                                  if (isMeasure) {
+                                    if (isBeforeStart) return;
+                                    setCalEditDs((cur) => (cur === cell.ds ? null : cell.ds));
+                                  } else {
+                                    onToggleDate(habit.id, cell.ds);
+                                  }
+                                }}
                                 style={{
                                   width: 26, height: 26, flexShrink: 0,
                                   borderRadius: isToday && !isDone ? "50%" : "5px",
                                   backgroundColor: bg,
-                                  border: isToday && !isDone ? `2px solid ${area.color}` : border,
+                                  border: isToday && !isDone
+                                    ? `2px solid ${area.color}`
+                                    : calEditDs === cell.ds ? `2px solid ${area.color}` : border,
                                   cursor: !isFuture ? "pointer" : "default",
                                   display: "flex", alignItems: "center", justifyContent: "center",
                                 }}>
@@ -836,6 +850,20 @@ export default function HabitDetailPage({ habit, onClose, onEdit, onToggleDate }
                   ))}
                 </div>
               </div>
+
+              {isMeasure && calEditDs && (
+                <div style={{ marginTop: "14px", maxWidth: "320px" }}>
+                  <MeasureDayEditor
+                    date={calEditDs}
+                    initial={habit.measurements[calEditDs] ?? 0}
+                    target={habit.target}
+                    unit={habit.unit}
+                    color={area.color}
+                    onSave={(value) => { onSetDate?.(habit.id, calEditDs, value); setCalEditDs(null); }}
+                    onCancel={() => setCalEditDs(null)}
+                  />
+                </div>
+              )}
             </Card>
 
             {/* History + Best Streaks — side by side on desktop, stacked on mobile */}

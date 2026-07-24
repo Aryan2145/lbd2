@@ -91,6 +91,10 @@ export default function HabitsPage() {
     }
   };
 
+  const handleSetDate = (id: string, date: string, value: number) => {
+    setHabitMeasurement(id, date, value);
+  };
+
   const handleStep = (id: string, delta: number) => {
     stepHabitToday(id, delta);
   };
@@ -348,6 +352,7 @@ export default function HabitsPage() {
                     onToggleToday={handleToggle}
                     onStep={handleStep}
                     onToggleDate={handleToggleDate}
+                    onSetDate={handleSetDate}
                   />
                 ))}
               </div>
@@ -367,6 +372,7 @@ export default function HabitsPage() {
                 onToggleToday={handleToggle}
                 onStep={handleStep}
                 onToggleDate={handleToggleDate}
+                onSetDate={handleSetDate}
               />
             ))}
             <button
@@ -417,6 +423,7 @@ export default function HabitsPage() {
           setEditHabit(selected);
         }}
         onToggleDate={handleToggleDate}
+        onSetDate={handleSetDate}
       />
     </div>
   );

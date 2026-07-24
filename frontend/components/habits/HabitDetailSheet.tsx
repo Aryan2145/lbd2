@@ -8,6 +8,7 @@ import {
   type HabitData, type HabitFrequency, type HabitType, type LifeArea,
 } from "./HabitCard";
 import type { GoalData } from "@/components/goals/GoalCard";
+import MeasureDayEditor from "./MeasureDayEditor";
 
 const AREAS = Object.keys(AREA_META) as LifeArea[];
 const FREQS = Object.keys(FREQ_LABEL) as HabitFrequency[];
@@ -24,7 +25,6 @@ interface Props {
 export default function HabitDetailSheet({ habit, onClose, onUpdate, onDelete, goals }: Props) {
   const [mode,      setMode]      = useState<"view" | "edit">("view");
   const [selDate,   setSelDate]   = useState<string | null>(null);   // selected history dot
-  const [histInput, setHistInput] = useState<number>(0);             // measurable history input
 
   // Edit form state
   const [eName,      setEName]      = useState("");
@@ -65,22 +65,23 @@ export default function HabitDetailSheet({ habit, onClose, onUpdate, onDelete, g
     if (!sch) return;
     if (selDate === ds) { setSelDate(null); return; }
     setSelDate(ds);
-    setHistInput(isMeasure ? (habit.measurements[ds] ?? 0) : 0);
   };
 
-  const commitHistory = () => {
+  const saveMeasure = (value: number) => {
     if (!selDate) return;
-    if (isMeasure) {
-      onUpdate({ ...habit, measurements: { ...habit.measurements, [selDate]: histInput } });
-    } else {
-      const has = habit.completions.includes(selDate);
-      onUpdate({
-        ...habit,
-        completions: has
-          ? habit.completions.filter((d) => d !== selDate)
-          : [...habit.completions, selDate],
-      });
-    }
+    onUpdate({ ...habit, measurements: { ...habit.measurements, [selDate]: value } });
+    setSelDate(null);
+  };
+
+  const toggleBinary = () => {
+    if (!selDate) return;
+    const has = habit.completions.includes(selDate);
+    onUpdate({
+      ...habit,
+      completions: has
+        ? habit.completions.filter((d) => d !== selDate)
+        : [...habit.completions, selDate],
+    });
     setSelDate(null);
   };
 
@@ -360,32 +361,30 @@ export default function HabitDetailSheet({ habit, onClose, onUpdate, onDelete, g
 
               {/* History inline editor */}
               {selDate && (
-                <div style={{
-                  padding: "14px 16px", borderRadius: "10px",
-                  backgroundColor: "#FFFFFF", border: `1.5px solid ${area.color}`,
-                  marginTop: "-12px", marginBottom: "20px",
-                }}>
-                  <p style={{ fontSize: "11px", fontWeight: 700, color: "#1C1917", marginBottom: "10px" }}>
-                    {fmtHistDate(selDate)}
-                  </p>
-                  {isMeasure ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <button onClick={() => setHistInput((v) => Math.max(0, v - 1))} style={stepBtn}>−</button>
-                      <div style={{ textAlign: "center", flex: 1 }}>
-                        <span style={{ fontSize: "24px", fontWeight: 800, color: area.color }}>{histInput}</span>
-                        <span style={{ fontSize: "13px", color: "#78716C" }}> / {habit.target} {habit.unit}</span>
-                      </div>
-                      <button onClick={() => setHistInput((v) => v + 1)} style={{ ...stepBtn, backgroundColor: area.color, color: "#FFFFFF", border: "none" }}>+</button>
-                      <button onClick={commitHistory} style={{
-                        padding: "8px 14px", borderRadius: "8px", border: "none",
-                        background: "linear-gradient(135deg, #F97316, #EA580C)",
-                        fontSize: "12px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
-                      }}>Save</button>
-                    </div>
-                  ) : (
+                isMeasure ? (
+                  <div style={{ marginTop: "-12px", marginBottom: "20px" }}>
+                    <MeasureDayEditor
+                      date={selDate}
+                      initial={habit.measurements[selDate] ?? 0}
+                      target={habit.target}
+                      unit={habit.unit}
+                      color={area.color}
+                      onSave={saveMeasure}
+                      onCancel={() => setSelDate(null)}
+                    />
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: "14px 16px", borderRadius: "10px",
+                    backgroundColor: "#FFFFFF", border: `1.5px solid ${area.color}`,
+                    marginTop: "-12px", marginBottom: "20px",
+                  }}>
+                    <p style={{ fontSize: "11px", fontWeight: 700, color: "#1C1917", marginBottom: "10px" }}>
+                      {fmtHistDate(selDate)}
+                    </p>
                     <div style={{ display: "flex", gap: "8px" }}>
                       <button
-                        onClick={commitHistory}
+                        onClick={toggleBinary}
                         style={{
                           flex: 1, padding: "9px", borderRadius: "8px", fontSize: "12px", fontWeight: 600,
                           border: `1.5px solid ${habit.completions.includes(selDate) ? "#FCA5A5" : "#86EFAC"}`,
@@ -404,8 +403,8 @@ export default function HabitDetailSheet({ habit, onClose, onUpdate, onDelete, g
                         fontSize: "12px", color: "#78716C", cursor: "pointer",
                       }}>Cancel</button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )
               )}
 
               {/* Habit loop */}
@@ -545,10 +544,4 @@ const sheetStyle: React.CSSProperties = {
   backgroundColor: "#FAF5EE", borderLeft: "1px solid #EDE5D8",
   zIndex: 50, display: "flex", flexDirection: "column",
   boxShadow: "-8px 0 32px rgba(28,25,23,0.12)",
-};
-const stepBtn: React.CSSProperties = {
-  width: "36px", height: "36px", borderRadius: "8px",
-  border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
-  fontSize: "18px", fontWeight: 700, color: "#78716C",
-  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
 };

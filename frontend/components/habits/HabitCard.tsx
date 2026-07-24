@@ -6,6 +6,7 @@ import {
   Briefcase, Globe, DollarSign, Sparkles, BookOpen, Heart, Activity,
   type LucideIcon,
 } from "lucide-react";
+import MeasureDayEditor from "./MeasureDayEditor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type LifeArea =
@@ -130,9 +131,10 @@ interface Props {
   onToggleToday:   (id: string) => void;
   onStep?:         (id: string, delta: number) => void;
   onToggleDate?:   (id: string, date: string) => void;
+  onSetDate?:      (id: string, date: string, value: number) => void;
 }
 
-export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onStep, onToggleDate }: Props) {
+export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onStep, onToggleDate, onSetDate }: Props) {
   const today      = toLocalDate();
   const area       = AREA_META[habit.area];
   const AreaIcon   = AREA_ICONS[habit.area];
@@ -143,6 +145,7 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
   const cardRef    = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [editDs,   setEditDs]   = useState<string | null>(null);   // measurable day being logged
 
   useEffect(() => {
     const check = () => {
@@ -236,9 +239,13 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
               key={idx}
               title={dot.ds}
               onClick={(e) => {
-                if (dot.isFuture) return;
+                if (dot.isFuture || !dot.scheduled) return;
                 e.stopPropagation();
-                onToggleDate?.(habit.id, dot.ds);
+                if (isMeasure) {
+                  setEditDs((cur) => (cur === dot.ds ? null : dot.ds));
+                } else {
+                  onToggleDate?.(habit.id, dot.ds);
+                }
               }}
               style={{
                 width: "100%", aspectRatio: "1", borderRadius: "3px",
@@ -274,6 +281,20 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
           );
         })}
       </div>
+
+      {isMeasure && editDs && (
+        <div style={{ marginBottom: "10px" }}>
+          <MeasureDayEditor
+            date={editDs}
+            initial={habit.measurements[editDs] ?? 0}
+            target={habit.target}
+            unit={habit.unit}
+            color={area.color}
+            onSave={(value) => { onSetDate?.(habit.id, editDs, value); setEditDs(null); }}
+            onCancel={() => setEditDs(null)}
+          />
+        </div>
+      )}
     </>
   );
 
