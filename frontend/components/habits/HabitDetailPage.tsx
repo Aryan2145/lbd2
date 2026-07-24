@@ -852,17 +852,15 @@ export default function HabitDetailPage({ habit, onClose, onEdit, onToggleDate, 
               </div>
 
               {isMeasure && calEditDs && (
-                <div style={{ marginTop: "14px", maxWidth: "320px" }}>
-                  <MeasureDayEditor
-                    date={calEditDs}
-                    initial={habit.measurements[calEditDs] ?? 0}
-                    target={habit.target}
-                    unit={habit.unit}
-                    color={area.color}
-                    onSave={(value) => { onSetDate?.(habit.id, calEditDs, value); setCalEditDs(null); }}
-                    onCancel={() => setCalEditDs(null)}
-                  />
-                </div>
+                <MeasureDayEditor
+                  date={calEditDs}
+                  initial={habit.measurements[calEditDs] ?? 0}
+                  target={habit.target}
+                  unit={habit.unit}
+                  color={area.color}
+                  onSave={(value) => { onSetDate?.(habit.id, calEditDs, value); setCalEditDs(null); }}
+                  onCancel={() => setCalEditDs(null)}
+                />
               )}
             </Card>
 

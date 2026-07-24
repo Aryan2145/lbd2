@@ -283,17 +283,15 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
       </div>
 
       {isMeasure && editDs && (
-        <div style={{ marginBottom: "10px" }}>
-          <MeasureDayEditor
-            date={editDs}
-            initial={habit.measurements[editDs] ?? 0}
-            target={habit.target}
-            unit={habit.unit}
-            color={area.color}
-            onSave={(value) => { onSetDate?.(habit.id, editDs, value); setEditDs(null); }}
-            onCancel={() => setEditDs(null)}
-          />
-        </div>
+        <MeasureDayEditor
+          date={editDs}
+          initial={habit.measurements[editDs] ?? 0}
+          target={habit.target}
+          unit={habit.unit}
+          color={area.color}
+          onSave={(value) => { onSetDate?.(habit.id, editDs, value); setEditDs(null); }}
+          onCancel={() => setEditDs(null)}
+        />
       )}
     </>
   );
@@ -338,7 +336,7 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
                 <button onClick={() => onStep?.(habit.id, -1)} style={stepperBtnSm("#E8DDD0", "#78716C")} disabled={todayVal <= 0}>−</button>
                 <div style={{ textAlign: "center", minWidth: "30px" }}>
                   <span style={{ fontSize: "13px", fontWeight: 800, color: doneToday ? "#16A34A" : area.color }}>{todayVal}</span>
-                  <span style={{ fontSize: "9px", color: "#A8A29E" }}>/{habit.target}</span>
+                  <span style={{ fontSize: "9px", fontWeight: 700, color: "#57534E" }}>/{habit.target}</span>
                 </div>
                 <button onClick={() => onStep?.(habit.id, +1)} style={stepperBtnSm(area.color, "#FFFFFF")} disabled={todayVal >= habit.target * 2}>+</button>
               </div>
@@ -445,7 +443,7 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
                   <button onClick={() => onStep?.(habit.id, -1)} style={stepperBtn("#E8DDD0", "#78716C")} disabled={todayVal <= 0}>−</button>
                   <div style={{ textAlign: "center", minWidth: "28px" }}>
                     <span style={{ fontSize: "17px", fontWeight: 800, color: doneToday ? "#16A34A" : area.color }}>{todayVal}</span>
-                    <span style={{ fontSize: "10px", color: "#A8A29E" }}>/{habit.target}</span>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: "#57534E" }}>/{habit.target}</span>
                   </div>
                   <button onClick={() => onStep?.(habit.id, +1)} style={stepperBtn(area.color, "#FFFFFF")} disabled={todayVal >= habit.target * 2}>+</button>
                 </div>

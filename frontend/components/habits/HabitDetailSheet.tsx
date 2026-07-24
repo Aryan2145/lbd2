@@ -362,17 +362,15 @@ export default function HabitDetailSheet({ habit, onClose, onUpdate, onDelete, g
               {/* History inline editor */}
               {selDate && (
                 isMeasure ? (
-                  <div style={{ marginTop: "-12px", marginBottom: "20px" }}>
-                    <MeasureDayEditor
-                      date={selDate}
-                      initial={habit.measurements[selDate] ?? 0}
-                      target={habit.target}
-                      unit={habit.unit}
-                      color={area.color}
-                      onSave={saveMeasure}
-                      onCancel={() => setSelDate(null)}
-                    />
-                  </div>
+                  <MeasureDayEditor
+                    date={selDate}
+                    initial={habit.measurements[selDate] ?? 0}
+                    target={habit.target}
+                    unit={habit.unit}
+                    color={area.color}
+                    onSave={saveMeasure}
+                    onCancel={() => setSelDate(null)}
+                  />
                 ) : (
                   <div style={{
                     padding: "14px 16px", borderRadius: "10px",
