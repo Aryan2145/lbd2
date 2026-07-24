@@ -25,10 +25,12 @@ const fmtDate = (ds: string) =>
  * Portaled to <body> and centered on screen so it never gets clipped.
  * Shared by the habit card, detail-page calendar, and detail sheet.
  */
+const MAX_VALUE = 99999;   // upper cap so long numbers can't blow out the popup
+
 export default function MeasureDayEditor({ name, date, initial, target, unit, color, onSave, onCancel }: Props) {
-  const [val, setVal]         = useState<number>(initial);
+  const clamp = (n: number) => Math.max(0, Math.min(MAX_VALUE, n));
+  const [val, setVal]         = useState<number>(clamp(initial));
   const [mounted, setMounted] = useState(false);
-  const clamp = (n: number) => Math.max(0, n);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
