@@ -48,17 +48,16 @@ export default function MeasureDayEditor({ date, initial, target, unit, color, o
           <button onClick={() => setVal((v) => clamp(v - 1))} disabled={val <= 0} style={stepBtn("#F1ECE5", "#78716C")}>−</button>
           <div style={{ display: "flex", alignItems: "baseline", gap: "2px" }}>
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min={0}
               value={val}
-              onChange={(e) => setVal(clamp(parseInt(e.target.value, 10) || 0))}
+              onChange={(e) => setVal(clamp(parseInt(e.target.value.replace(/[^0-9]/g, ""), 10) || 0))}
               onFocus={(e) => e.currentTarget.select()}
               style={{
                 width: "32px", textAlign: "center", padding: 0, height: "22px",
                 fontSize: "15px", fontWeight: 800, color,
                 border: "none", background: "transparent", outline: "none",
-                fontFamily: "inherit", MozAppearance: "textfield",
+                fontFamily: "inherit",
               }}
             />
             <span style={{ fontSize: "11px", fontWeight: 600, color: "#A8A29E", whiteSpace: "nowrap" }}>
