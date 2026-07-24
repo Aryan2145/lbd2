@@ -91,12 +91,12 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
           </button>
         </div>
 
-        {/* Stepper */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", maxWidth: "100%" }}>
+        {/* Stepper + inline save tick */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", maxWidth: "100%" }}>
           <button onClick={() => setVal((v) => clamp(v - 1))} disabled={val <= 0}
             aria-label="Decrease" style={stepBtn("#F1ECE5", "#57534E", val <= 0)}>−</button>
 
-          <div style={{ display: "flex", alignItems: "baseline", gap: "3px", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "3px", minWidth: 0, margin: "0 2px" }}>
             <input
               type="text"
               inputMode="numeric"
@@ -108,13 +108,13 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
               autoFocus
               style={{
                 width: `calc(${Math.max(2, String(val).length)}ch + 6px)`,
-                textAlign: "center", padding: 0, height: "34px",
-                fontSize: "30px", fontWeight: 800, color,
+                textAlign: "center", padding: 0, height: "26px",
+                fontSize: "22px", fontWeight: 800, color,
                 border: "none", background: "transparent", outline: "none",
                 fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
               }}
             />
-            <span style={{ fontSize: "13px", fontWeight: 700, color: "#57534E",
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "#57534E",
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
               /{target}{unit ? ` ${unit}` : ""}
             </span>
@@ -122,17 +122,15 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
 
           <button onClick={() => setVal((v) => clamp(v + 1))}
             aria-label="Increase" style={stepBtn(color, "#FFFFFF", false)}>+</button>
-        </div>
 
-        {/* Full-width save */}
-        <button onClick={() => onSave(val)} style={{
-          width: "100%", height: "46px", borderRadius: "12px", border: "none",
-          background: "linear-gradient(135deg, #F97316, #EA580C)", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-          color: "#FFFFFF", fontSize: "14px", fontWeight: 700,
-        }}>
-          <Check size={16} strokeWidth={3} /> Save
-        </button>
+          <button onClick={() => onSave(val)} title="Save" aria-label="Save" style={{
+            width: "32px", height: "32px", borderRadius: "9px", flexShrink: 0, marginLeft: "4px",
+            border: "none", backgroundColor: "#16A34A", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF",
+          }}>
+            <Check size={17} strokeWidth={3} />
+          </button>
+        </div>
       </div>
     </div>,
     document.body,
@@ -141,8 +139,8 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
 
 function stepBtn(bg: string, color: string, disabled: boolean): React.CSSProperties {
   return {
-    width: "44px", height: "44px", borderRadius: "12px", border: "none",
-    backgroundColor: bg, color, fontSize: "24px", fontWeight: 700,
+    width: "32px", height: "32px", borderRadius: "9px", border: "none",
+    backgroundColor: bg, color, fontSize: "19px", fontWeight: 700,
     cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1,
     display: "flex", alignItems: "center", justifyContent: "center",
     lineHeight: 1, padding: 0, flexShrink: 0,
