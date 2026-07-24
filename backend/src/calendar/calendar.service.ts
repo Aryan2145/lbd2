@@ -34,37 +34,71 @@ export class CalendarService {
     };
   }
 
+  // The per-user "General" bucket — the default home for events created without
+  // an explicit group. Found by `kind` (never by a shared id), so it is strictly
+  // per-user and can never collide across accounts. Mirrors ensureGoogleGroup.
+  private async ensureGeneralGroup(userId: string) {
+    const existing = await this.prisma.eventGroup.findFirst({ where: { userId, kind: 'general' } });
+    if (existing) return existing;
+    return this.prisma.eventGroup.create({
+      data: { userId, kind: 'general', name: this.enc.encrypt('General'), color: '#9CA3AF' },
+    });
+  }
+
+  // Resolve the group an event should belong to: the requested group only if the
+  // caller owns it, otherwise the caller's own General bucket. This is what stops
+  // an event from ever being attached to another user's group (the root cause of
+  // the cross-user leak — a client that sent a shared/foreign groupId).
+  private async resolveGroupId(userId: string, groupId?: string): Promise<string> {
+    if (groupId) {
+      const g = await this.prisma.eventGroup.findFirst({ where: { id: groupId, userId } });
+      if (g) return g.id;
+    }
+    return (await this.ensureGeneralGroup(userId)).id;
+  }
+
   async findGroups(userId: string) {
+    await this.ensureGeneralGroup(userId); // guarantee a per-user General bucket exists
     const rows = await this.prisma.eventGroup.findMany({
       where: { userId },
-      include: { events: true },
+      // Scope nested events to the same user as a defence in depth: even if a
+      // stray cross-user row exists, the join can never surface it under another
+      // account. `include: { events: true }` alone joins by groupId only.
+      include: { events: { where: { userId } } },
     });
     return rows.map(g => this.decryptGroup(g));
   }
 
   async createGroup(userId: string, data: any) {
-    const { id, name, color } = data;
+    // Ignore any client-supplied `id` — ids are always server-generated so two
+    // users can never end up owning/sharing the same group id.
+    const { name, color } = data;
     const row = await this.prisma.eventGroup.create({
-      data: { ...(id ? { id } : {}), userId, name: this.enc.encrypt(name), color },
-      include: { events: true },
+      data: { userId, name: this.enc.encrypt(name), color },
+      include: { events: { where: { userId } } },
     });
     return this.decryptGroup(row);
   }
 
-  async updateGroup(id: string, data: any) {
+  async updateGroup(userId: string, id: string, data: any) {
     const fields: any = {};
     if (data.name     !== undefined) fields.name     = this.enc.encrypt(data.name);
     if (data.color    !== undefined) fields.color    = data.color;
     if (data.archived !== undefined) fields.archived = data.archived;
-    return this.prisma.eventGroup.update({ where: { id }, data: fields });
+    // Scoped by userId: a non-owner's update matches zero rows (no-op).
+    await this.prisma.eventGroup.updateMany({ where: { id, userId }, data: fields });
+    const row = await this.prisma.eventGroup.findFirst({ where: { id, userId } });
+    return row ? this.decryptGroup(row) : null;
   }
 
-  removeGroup(id: string) {
-    return this.prisma.eventGroup.delete({ where: { id } });
+  removeGroup(userId: string, id: string) {
+    // Scoped by userId so a user can only ever delete their own groups.
+    return this.prisma.eventGroup.deleteMany({ where: { id, userId } });
   }
 
   async createEvent(userId: string, data: any) {
-    const { groupId, title, date, startTime, endTime, description } = data;
+    const { title, date, startTime, endTime, description } = data;
+    const groupId = await this.resolveGroupId(userId, data.groupId);
     const dbEvent = await this.prisma.weekEvent.create({
       data: {
         userId, groupId, date, startTime, endTime,
@@ -95,8 +129,13 @@ export class CalendarService {
   }
 
   async updateEvent(userId: string, id: string, data: any) {
+    // Ownership gate: only touch the event if it belongs to the caller.
+    const owned = await this.prisma.weekEvent.findFirst({ where: { id, userId } });
+    if (!owned) return null;
+
     const fields: any = {};
-    if (data.groupId     !== undefined) fields.groupId     = data.groupId;
+    // Re-target only to a group the caller owns (else fall back to their General).
+    if (data.groupId     !== undefined) fields.groupId     = await this.resolveGroupId(userId, data.groupId);
     if (data.title       !== undefined) fields.title       = this.enc.encrypt(data.title);
     if (data.date        !== undefined) fields.date        = data.date;
     if (data.startTime   !== undefined) fields.startTime   = data.startTime;
@@ -127,7 +166,9 @@ export class CalendarService {
   }
 
   async removeEvent(userId: string, id: string) {
-    const event = await this.prisma.weekEvent.findUnique({ where: { id } });
+    // Ownership gate: never delete an event that isn't the caller's.
+    const event = await this.prisma.weekEvent.findFirst({ where: { id, userId } });
+    if (!event) return { count: 0 };
     try {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (user?.googleRefreshToken && event?.googleEventId) {

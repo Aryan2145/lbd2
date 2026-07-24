@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Clock, Calendar, Layers, AlignLeft, Trash2, AlertTriangle, Lightbulb, Plus, Check } from "lucide-react";
 import type { WeekEvent, EventGroup } from "@/lib/weeklyTypes";
-import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
+import { isGeneralGroup, generalGroupId } from "@/lib/weeklyTypes";
 import { textOnBg } from "@/lib/colorUtils";
 import ClockTimePicker from "@/components/weekly/ClockTimePicker";
 import { validateDate } from "@/lib/dateValidation";
@@ -136,7 +136,7 @@ export default function EventCreateSheet({
     if (!canSave) return;
     onSave({
       id:          editEvent?.id ?? `we_${Date.now()}`,
-      groupId:     groupId || GENERAL_GROUP_ID,
+      groupId:     groupId || generalGroupId(eventGroups),
       title:       title.trim(),
       description: description.trim(),
       date,
@@ -327,7 +327,7 @@ export default function EventCreateSheet({
             </span>
           </label>
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && g.kind !== "google" && !g.archived).map((g) => (
+            {eventGroups.filter((g) => !isGeneralGroup(g) && g.kind !== "google" && !g.archived).map((g) => (
               <button key={g.id} onClick={() => setGroupId(groupId === g.id ? "" : g.id)} style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 padding: "5px 12px", borderRadius: "8px",

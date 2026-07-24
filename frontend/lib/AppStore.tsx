@@ -7,7 +7,6 @@ import type { HabitData } from "@/components/habits/HabitCard";
 import type { TaskData, RecurringTemplate } from "@/components/tasks/TaskCard";
 import { toTaskDate } from "@/components/tasks/TaskCard";
 import type { EventGroup, WeekEvent, WeekPlan } from "@/lib/weeklyTypes";
-import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
 import type { EveningReflection, WeeklyReview } from "@/lib/dayTypes";
 import type { BucketEntry, BucketStatus } from "@/lib/bucketTypes";
 import type { SupportTicket, TicketCategory, TicketPriority } from "@/lib/ticketTypes";
@@ -326,10 +325,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const freshEvents = apiGroups.flatMap((g: any) =>
         (g.events ?? []).map((e: any) => mapWeekEvent({ ...e, groupId: g.id }))
       );
-      if (!freshGroups.find(g => g.id === GENERAL_GROUP_ID)) {
-        const created = await api.post<any>('/calendar/groups', { id: GENERAL_GROUP_ID, name: "General", color: "#9CA3AF" }).catch(() => null);
-        if (created) freshGroups.unshift(mapEventGroup(created));
-      }
+      // The per-user "General" bucket is created and returned by the backend
+      // (identified by kind, never a shared id) — no client-side creation.
 
       const freshWeekPlans          = apiWeekPlans.map(mapWeekPlan);
       const freshEveningReflections = apiEveningReflections.map(mapEveningReflection);

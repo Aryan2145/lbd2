@@ -6,7 +6,7 @@ import ClockTimePicker from "@/components/weekly/ClockTimePicker";
 import type { LifeArea } from "@/lib/dayTypes";
 import { LIFE_AREAS, LIFE_AREA_COLORS, LIFE_AREA_LABELS } from "@/lib/dayTypes";
 import type { WeekPlan, WeekEvent, EventGroup } from "@/lib/weeklyTypes";
-import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
+import { isGeneralGroup, generalGroupId } from "@/lib/weeklyTypes";
 import type { TaskData, EisenhowerQ } from "@/components/tasks/TaskCard";
 import { Q_META } from "@/components/tasks/TaskCard";
 
@@ -162,7 +162,7 @@ export default function MorningPlan({
     if (!newEvTitle.trim() || !newEvStart || !newEvEnd || !onAddEvent) return;
     onAddEvent({
       id: `ev_${Date.now()}`,
-      groupId: newEvGroupId || GENERAL_GROUP_ID,
+      groupId: newEvGroupId || generalGroupId(eventGroups),
       title: newEvTitle.trim(),
       description: newEvDescription.trim(),
       date,
@@ -182,7 +182,7 @@ export default function MorningPlan({
     setEditEvDescription(ev.description ?? "");
     setEditEvStart(ev.startTime);
     setEditEvEnd(ev.endTime);
-    setEditEvGroupId(ev.groupId === GENERAL_GROUP_ID ? "" : ev.groupId);
+    setEditEvGroupId(isGeneralGroup(groupMap[ev.groupId] ?? { id: ev.groupId }) ? "" : ev.groupId);
     setEditEvDate(ev.date);
   }
 
@@ -195,7 +195,7 @@ export default function MorningPlan({
     if (!editEvTitle.trim() || !editEvStart || !editEvEnd || !onUpdateEvent) return;
     onUpdateEvent({
       id: editingEventId!,
-      groupId: editEvGroupId || GENERAL_GROUP_ID,
+      groupId: editEvGroupId || generalGroupId(eventGroups),
       title: editEvTitle.trim(),
       description: editEvDescription.trim(),
       date: editEvDate,
@@ -459,7 +459,7 @@ export default function MorningPlan({
                       style={{ flex: "0 1 112px", width: "112px", maxWidth: "112px", fontSize: "11px", border: "1px solid #E8DDD0", borderRadius: "6px",
                         padding: "3px 6px", outline: "none", backgroundColor: "#FFFFFF", color: "#78716C", cursor: "pointer" }}>
                       <option value="">No group</option>
-                      {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID).map((g) => (
+                      {eventGroups.filter((g) => !isGeneralGroup(g)).map((g) => (
                         <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
                     </select>
@@ -544,7 +544,7 @@ export default function MorningPlan({
                       style={{ flex: "0 1 112px", width: "112px", maxWidth: "112px", fontSize: "11px", border: "1px solid #E8DDD0", borderRadius: "6px",
                         padding: "3px 6px", outline: "none", backgroundColor: "#FFFFFF", color: "#78716C", cursor: "pointer" }}>
                       <option value="">No group</option>
-                      {eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID).map((g) => (
+                      {eventGroups.filter((g) => !isGeneralGroup(g)).map((g) => (
                         <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
                     </select>

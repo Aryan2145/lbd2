@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, X, Check, Pencil, Trash2, AlertTriangle, Archive, ChevronDown, RotateCcw, CalendarDays } from "lucide-react";
 import type { WeekPlan, EventGroup, WeekEvent } from "@/lib/weeklyTypes";
-import { GENERAL_GROUP_ID } from "@/lib/weeklyTypes";
+import { isGeneralGroup } from "@/lib/weeklyTypes";
 import type { TaskData } from "@/components/tasks/TaskCard";
 import { fmtDeadline } from "@/components/tasks/TaskCard";
 
@@ -213,8 +213,8 @@ export default function WeekSidebar({
 
         {/* Event Groups */}
         {(() => {
-          const activeGroups   = eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && !g.archived);
-          const archivedGroups = eventGroups.filter((g) => g.id !== GENERAL_GROUP_ID && g.archived);
+          const activeGroups   = eventGroups.filter((g) => !isGeneralGroup(g) && !g.archived);
+          const archivedGroups = eventGroups.filter((g) => !isGeneralGroup(g) && g.archived);
           return (
             <section>
               {/* Header row */}

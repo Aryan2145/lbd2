@@ -9,8 +9,8 @@ export class CalendarController {
 
   @Get('groups') findGroups(@Request() req) { return this.cal.findGroups(req.user.userId); }
   @Post('groups') createGroup(@Request() req, @Body() body: any) { return this.cal.createGroup(req.user.userId, body); }
-  @Patch('groups/:id') updateGroup(@Param('id') id: string, @Body() body: any) { return this.cal.updateGroup(id, body); }
-  @Delete('groups/:id') removeGroup(@Param('id') id: string) { return this.cal.removeGroup(id); }
+  @Patch('groups/:id') updateGroup(@Request() req, @Param('id') id: string, @Body() body: any) { return this.cal.updateGroup(req.user.userId, id, body); }
+  @Delete('groups/:id') removeGroup(@Request() req, @Param('id') id: string) { return this.cal.removeGroup(req.user.userId, id); }
 
   @Post('events') createEvent(@Request() req, @Body() body: any) { return this.cal.createEvent(req.user.userId, body); }
   @Patch('events/:id') updateEvent(@Request() req, @Param('id') id: string, @Body() body: any) { return this.cal.updateEvent(req.user.userId, id, body); }
