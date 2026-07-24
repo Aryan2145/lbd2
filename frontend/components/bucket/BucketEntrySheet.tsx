@@ -190,12 +190,15 @@ export default function BucketEntrySheet({
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              maxLength={50}
               placeholder="What do you dream of experiencing or achieving?"
               autoFocus
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleSave(); }}
               className="weekly-input"
               style={inp}
             />
+            <p style={{ fontSize: "10px", fontWeight: 600, textAlign: "right", margin: "4px 2px 0",
+              color: title.length >= 50 ? "#DC2626" : "#A8A29E" }}>{title.length}/50</p>
           </div>
 
           {/* Life Area (dropdown) + Tentative Target Date, side by side */}

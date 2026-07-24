@@ -196,12 +196,15 @@ export default function EventCreateSheet({
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            maxLength={50}
             placeholder="What are you doing?"
             autoFocus
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
             className="weekly-input"
             style={inp}
           />
+          <p style={{ fontSize: "10px", fontWeight: 600, textAlign: "right", margin: "4px 2px 0",
+            color: title.length >= 50 ? "#DC2626" : "#A8A29E" }}>{title.length}/50</p>
         </div>
 
         {/* Date + Time */}

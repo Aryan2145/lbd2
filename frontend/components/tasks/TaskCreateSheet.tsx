@@ -204,7 +204,10 @@ export default function TaskCreateSheet({
           <div style={{ marginBottom: "14px" }}>
             <Label>Title *</Label>
             <input value={f.title} onChange={(e) => set("title", e.target.value)}
+              maxLength={50}
               placeholder="What needs to be done?" style={inputStyle} />
+            <p style={{ fontSize: "10px", fontWeight: 600, textAlign: "right", margin: "4px 2px 0",
+              color: f.title.length >= 50 ? "#DC2626" : "#A8A29E" }}>{f.title.length}/50</p>
           </div>
 
           <div style={{ marginBottom: "14px" }}>

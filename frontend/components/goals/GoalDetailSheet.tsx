@@ -1108,7 +1108,7 @@ export default function GoalDetailSheet({
                 {/* Title */}
                 <div style={{ marginBottom: "14px" }}>
                   <label style={labelSt}>Title *</label>
-                  <input autoFocus value={tcForm.title} onChange={e => setTcForm(p => ({ ...p, title: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") handleTaskSave(); }} placeholder="What needs to be done?" style={inputSt} onFocus={e => { e.currentTarget.style.borderColor = tcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                  <input autoFocus value={tcForm.title} maxLength={50} onChange={e => setTcForm(p => ({ ...p, title: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") handleTaskSave(); }} placeholder="What needs to be done?" style={inputSt} onFocus={e => { e.currentTarget.style.borderColor = tcColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
                 </div>
 
                 {/* Description */}

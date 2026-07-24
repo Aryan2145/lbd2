@@ -79,9 +79,12 @@ export default function TaskDetailSheet({ task, goals, onClose, onComplete, onMi
                 <textarea
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
+                  maxLength={50}
                   rows={2}
                   style={{ ...inp, resize: "none", fontFamily: "inherit" }}
                 />
+                <p style={{ fontSize: "10px", fontWeight: 600, textAlign: "right", margin: "4px 2px 0",
+                  color: editTitle.length >= 50 ? "#DC2626" : "#A8A29E" }}>{editTitle.length}/50</p>
               </div>
               <div>
                 <label style={lbl}>Description</label>

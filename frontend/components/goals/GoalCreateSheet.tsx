@@ -412,11 +412,14 @@ export default function GoalCreateSheet({ open, onClose, onSave, onUpdate, onDel
                     type="text"
                     value={title}
                     onChange={e => setTitle(e.target.value)}
+                    maxLength={50}
                     placeholder="e.g. Build a profitable second income stream"
                     style={inputStyle}
                     onFocus={e => { e.currentTarget.style.borderColor = areaColor; e.currentTarget.style.boxShadow = `0 0 0 3px ${areaColor}20`; }}
                     onBlur={e  => { e.currentTarget.style.borderColor = `${areaColor}55`; e.currentTarget.style.boxShadow = "none"; }}
                   />
+                  <p style={{ fontSize: "10px", fontWeight: 600, textAlign: "right", margin: "4px 2px 0",
+                    color: title.length >= 50 ? "#DC2626" : "#A8A29E" }}>{title.length}/50</p>
                 </div>
               </div>
 
@@ -956,7 +959,7 @@ export default function GoalCreateSheet({ open, onClose, onSave, onUpdate, onDel
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
               <div style={{ marginBottom: "14px" }}>
                 <label style={labelSt}>Title *</label>
-                <input autoFocus value={tcForm.title} onChange={e => setTcForm(p => ({ ...p, title: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") handleTaskSave(); }} placeholder="What needs to be done?" style={inputSt} onFocus={e => { e.currentTarget.style.borderColor = areaColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
+                <input autoFocus value={tcForm.title} maxLength={50} onChange={e => setTcForm(p => ({ ...p, title: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") handleTaskSave(); }} placeholder="What needs to be done?" style={inputSt} onFocus={e => { e.currentTarget.style.borderColor = areaColor; }} onBlur={e => { e.currentTarget.style.borderColor = "#E8DDD0"; }} />
               </div>
               <div style={{ marginBottom: "14px" }}>
                 <label style={labelSt}>Description</label>

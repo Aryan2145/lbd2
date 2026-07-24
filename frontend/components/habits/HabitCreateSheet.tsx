@@ -166,8 +166,13 @@ export default function HabitCreateSheet({ open, onClose, onSave, onUpdate, onDe
 
           <Field label="Habit name">
             <input ref={nameRef} type="text" value={name} onChange={(e) => setName(e.target.value)}
+              maxLength={50}
               placeholder="e.g. Morning meditation" style={inStyle}
               onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave(); }} />
+            <p style={{ fontSize: "10px", fontWeight: 600, textAlign: "right", margin: "4px 2px 0",
+              color: name.length >= 50 ? "#DC2626" : "#A8A29E" }}>
+              {name.length}/50
+            </p>
           </Field>
 
           <Field label="Description (optional)">
