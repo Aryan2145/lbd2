@@ -853,6 +853,7 @@ export default function HabitDetailPage({ habit, onClose, onEdit, onToggleDate, 
 
               {isMeasure && calEditDs && (
                 <MeasureDayEditor
+                  name={habit.name}
                   date={calEditDs}
                   initial={habit.measurements[calEditDs] ?? 0}
                   target={habit.target}

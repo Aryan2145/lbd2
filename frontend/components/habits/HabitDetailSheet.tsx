@@ -363,6 +363,7 @@ export default function HabitDetailSheet({ habit, onClose, onUpdate, onDelete, g
               {selDate && (
                 isMeasure ? (
                   <MeasureDayEditor
+                    name={habit.name}
                     date={selDate}
                     initial={habit.measurements[selDate] ?? 0}
                     target={habit.target}

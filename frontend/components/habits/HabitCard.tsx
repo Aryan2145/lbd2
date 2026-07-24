@@ -284,6 +284,7 @@ export default function HabitCard({ habit, onClick, onEdit, onToggleToday, onSte
 
       {isMeasure && editDs && (
         <MeasureDayEditor
+          name={habit.name}
           date={editDs}
           initial={habit.measurements[editDs] ?? 0}
           target={habit.target}
