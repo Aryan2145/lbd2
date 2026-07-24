@@ -91,44 +91,46 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
           </button>
         </div>
 
-        {/* Stepper + inline save tick */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", maxWidth: "100%" }}>
-          <button onClick={() => setVal((v) => clamp(v - 1))} disabled={val <= 0}
-            aria-label="Decrease" style={stepBtn("#F1ECE5", "#57534E", val <= 0)}>−</button>
+        {/* Stepper (left) + inline save (right) — edge to edge, no dead side space */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", maxWidth: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+            <button onClick={() => setVal((v) => clamp(v - 1))} disabled={val <= 0}
+              aria-label="Decrease" style={stepBtn("#F1ECE5", "#57534E", val <= 0)}>−</button>
 
-          <div style={{ display: "flex", alignItems: "baseline", gap: "3px", minWidth: 0, margin: "0 2px" }}>
-            <input
-              type="text"
-              inputMode="numeric"
-              aria-label={`${name} value`}
-              value={val}
-              onChange={(e) => setVal(clamp(parseInt(e.target.value.replace(/[^0-9]/g, ""), 10) || 0))}
-              onKeyDown={(e) => { if (e.key === "Enter") onSave(val); }}
-              onFocus={(e) => e.currentTarget.select()}
-              autoFocus
-              style={{
-                width: `calc(${Math.max(2, String(val).length)}ch + 6px)`,
-                textAlign: "center", padding: 0, height: "26px",
-                fontSize: "22px", fontWeight: 800, color,
-                border: "none", background: "transparent", outline: "none",
-                fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
-              }}
-            />
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "#57534E",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-              /{target}{unit ? ` ${unit}` : ""}
-            </span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "3px", minWidth: 0 }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                aria-label={`${name} value`}
+                value={val}
+                onChange={(e) => setVal(clamp(parseInt(e.target.value.replace(/[^0-9]/g, ""), 10) || 0))}
+                onKeyDown={(e) => { if (e.key === "Enter") onSave(val); }}
+                onFocus={(e) => e.currentTarget.select()}
+                autoFocus
+                style={{
+                  width: `calc(${Math.max(2, String(val).length)}ch + 6px)`,
+                  textAlign: "center", padding: 0, height: "26px",
+                  fontSize: "22px", fontWeight: 800, color,
+                  border: "none", background: "transparent", outline: "none",
+                  fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
+                }}
+              />
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "#57534E",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                /{target}{unit ? ` ${unit}` : ""}
+              </span>
+            </div>
+
+            <button onClick={() => setVal((v) => clamp(v + 1))}
+              aria-label="Increase" style={stepBtn(color, "#FFFFFF", false)}>+</button>
           </div>
 
-          <button onClick={() => setVal((v) => clamp(v + 1))}
-            aria-label="Increase" style={stepBtn(color, "#FFFFFF", false)}>+</button>
-
           <button onClick={() => onSave(val)} title="Save" aria-label="Save" style={{
-            width: "32px", height: "32px", borderRadius: "9px", flexShrink: 0, marginLeft: "4px",
-            border: "none", backgroundColor: "#16A34A", cursor: "pointer",
+            width: "34px", height: "34px", borderRadius: "9px", flexShrink: 0,
+            border: "none", background: "linear-gradient(135deg, #F97316, #EA580C)", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF",
           }}>
-            <Check size={17} strokeWidth={3} />
+            <Check size={18} strokeWidth={3} />
           </button>
         </div>
       </div>
