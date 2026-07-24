@@ -95,10 +95,11 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
               onFocus={(e) => e.currentTarget.select()}
               autoFocus
               style={{
-                width: "48px", textAlign: "center", padding: 0, height: "32px",
+                width: `calc(${Math.max(2, String(val).length)}ch + 6px)`,
+                textAlign: "center", padding: 0, height: "32px",
                 fontSize: "28px", fontWeight: 800, color,
                 border: "none", background: "transparent", outline: "none",
-                fontFamily: "inherit",
+                fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
               }}
             />
             <span style={{ fontSize: "13px", fontWeight: 700, color: "#57534E", whiteSpace: "nowrap" }}>
