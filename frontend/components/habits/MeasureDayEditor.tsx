@@ -15,6 +15,8 @@ interface Props {
   onCancel: () => void;
 }
 
+const MAX_VALUE = 99999;   // upper cap so long numbers can't blow out the popup
+
 const fmtDate = (ds: string) =>
   new Date(ds + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "short", month: "short", day: "numeric",
@@ -22,43 +24,48 @@ const fmtDate = (ds: string) =>
 
 /**
  * Compact centered popup for logging a measurable habit's value on a day.
- * Portaled to <body> and centered on screen so it never gets clipped.
+ * Portaled to <body>, top-aligned so the mobile keyboard never covers it.
  * Shared by the habit card, detail-page calendar, and detail sheet.
  */
-const MAX_VALUE = 99999;   // upper cap so long numbers can't blow out the popup
-
 export default function MeasureDayEditor({ name, date, initial, target, unit, color, onSave, onCancel }: Props) {
   const clamp = (n: number) => Math.max(0, Math.min(MAX_VALUE, n));
   const [val, setVal]         = useState<number>(clamp(initial));
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Close on Escape + lock background scroll while open
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-      if (e.key === "Enter")  onSave(val);
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [val, onSave, onCancel]);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onCancel]);
 
   if (!mounted) return null;
 
   return createPortal(
     <div
       onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Log ${name}`}
       style={{
         position: "fixed", inset: 0, zIndex: 1000,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "16px", backgroundColor: "rgba(28,25,23,0.30)",
-        backdropFilter: "blur(2px)",
+        display: "flex", alignItems: "flex-start", justifyContent: "center",
+        paddingTop: "18vh", paddingLeft: "16px", paddingRight: "16px", paddingBottom: "16px",
+        backgroundColor: "rgba(28,25,23,0.30)", backdropFilter: "blur(2px)",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "min(300px, 100%)",
-          display: "flex", flexDirection: "column", gap: "14px",
+          width: "min(320px, 100%)",
+          display: "flex", flexDirection: "column", gap: "16px",
           padding: "14px 16px 16px", borderRadius: "16px",
           backgroundColor: "#FFFFFF", border: `1.5px solid ${color}`,
           boxShadow: "0 16px 40px rgba(28,25,23,0.22)",
@@ -75,51 +82,56 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
               {fmtDate(date)}
             </p>
           </div>
-          <button onClick={onCancel} title="Close" style={{
-            width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
-            border: "none", backgroundColor: "#F1ECE5", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", color: "#57534E",
+          <button onClick={onCancel} title="Close" aria-label="Close" style={{
+            width: "34px", height: "34px", borderRadius: "9px", flexShrink: 0,
+            border: "1px solid #FECACA", backgroundColor: "#FEF2F2", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", color: "#DC2626",
           }}>
-            <X size={15} strokeWidth={2.5} />
+            <X size={17} strokeWidth={2.75} />
           </button>
         </div>
 
         {/* Stepper */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "14px" }}>
-          <button onClick={() => setVal((v) => clamp(v - 1))} disabled={val <= 0} style={stepBtn("#F1ECE5", "#57534E")}>−</button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", maxWidth: "100%" }}>
+          <button onClick={() => setVal((v) => clamp(v - 1))} disabled={val <= 0}
+            aria-label="Decrease" style={stepBtn("#F1ECE5", "#57534E", val <= 0)}>−</button>
 
-          <div style={{ display: "flex", alignItems: "baseline", gap: "3px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "3px", minWidth: 0 }}>
             <input
               type="text"
               inputMode="numeric"
+              aria-label={`${name} value`}
               value={val}
               onChange={(e) => setVal(clamp(parseInt(e.target.value.replace(/[^0-9]/g, ""), 10) || 0))}
+              onKeyDown={(e) => { if (e.key === "Enter") onSave(val); }}
               onFocus={(e) => e.currentTarget.select()}
               autoFocus
               style={{
                 width: `calc(${Math.max(2, String(val).length)}ch + 6px)`,
-                textAlign: "center", padding: 0, height: "32px",
-                fontSize: "28px", fontWeight: 800, color,
+                textAlign: "center", padding: 0, height: "34px",
+                fontSize: "30px", fontWeight: 800, color,
                 border: "none", background: "transparent", outline: "none",
                 fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
               }}
             />
-            <span style={{ fontSize: "13px", fontWeight: 700, color: "#57534E", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "13px", fontWeight: 700, color: "#57534E",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
               /{target}{unit ? ` ${unit}` : ""}
             </span>
           </div>
 
-          <button onClick={() => setVal((v) => v + 1)} style={stepBtn(color, "#FFFFFF")}>+</button>
+          <button onClick={() => setVal((v) => clamp(v + 1))}
+            aria-label="Increase" style={stepBtn(color, "#FFFFFF", false)}>+</button>
         </div>
 
         {/* Full-width save */}
         <button onClick={() => onSave(val)} style={{
-          width: "100%", height: "38px", borderRadius: "10px", border: "none",
+          width: "100%", height: "46px", borderRadius: "12px", border: "none",
           background: "linear-gradient(135deg, #F97316, #EA580C)", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-          color: "#FFFFFF", fontSize: "13px", fontWeight: 700,
+          color: "#FFFFFF", fontSize: "14px", fontWeight: 700,
         }}>
-          <Check size={15} strokeWidth={3} /> Save
+          <Check size={16} strokeWidth={3} /> Save
         </button>
       </div>
     </div>,
@@ -127,11 +139,12 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
   );
 }
 
-function stepBtn(bg: string, color: string): React.CSSProperties {
+function stepBtn(bg: string, color: string, disabled: boolean): React.CSSProperties {
   return {
-    width: "34px", height: "34px", borderRadius: "9px", border: "none",
-    backgroundColor: bg, color, fontSize: "20px", fontWeight: 700,
-    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+    width: "44px", height: "44px", borderRadius: "12px", border: "none",
+    backgroundColor: bg, color, fontSize: "24px", fontWeight: 700,
+    cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1,
+    display: "flex", alignItems: "center", justifyContent: "center",
     lineHeight: 1, padding: 0, flexShrink: 0,
   };
 }
