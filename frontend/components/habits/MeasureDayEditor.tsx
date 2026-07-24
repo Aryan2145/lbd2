@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, X } from "lucide-react";
 
 interface Props {
   date:     string;                 // YYYY-MM-DD being edited
@@ -18,82 +19,86 @@ const fmtDate = (ds: string) =>
   });
 
 /**
- * Inline editor for logging a measurable habit's value on a specific day.
- * Shared by the habit card, the detail-page calendar, and the detail sheet so
- * that clicking any day gives the same +/- stepper AND typed-number entry.
+ * Compact inline popup for logging a measurable habit's value on a day.
+ * Mirrors the card's +/- stepper; icon Save / close keep it minimal.
+ * Shared by the habit card, detail-page calendar, and detail sheet.
  */
 export default function MeasureDayEditor({ date, initial, target, unit, color, onSave, onCancel }: Props) {
   const [val, setVal] = useState<number>(initial);
-
   const clamp = (n: number) => Math.max(0, n);
 
   return (
     <div
       onClick={(e) => e.stopPropagation()}
       style={{
-        padding: "12px 14px", borderRadius: "10px",
+        display: "inline-flex", flexDirection: "column", gap: "5px",
+        padding: "8px 10px", borderRadius: "12px",
         backgroundColor: "#FFFFFF", border: `1.5px solid ${color}`,
-        boxShadow: "0 4px 16px rgba(28,25,23,0.10)",
+        boxShadow: "0 6px 20px rgba(28,25,23,0.12)",
       }}
     >
-      <p style={{ fontSize: "11px", fontWeight: 700, color: "#1C1917", marginBottom: "10px" }}>
+      <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.03em",
+        color: "#A8A29E", textTransform: "uppercase" }}>
         {fmtDate(date)}
-      </p>
+      </span>
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <button onClick={() => setVal((v) => clamp(v - 1))} style={stepBtn} disabled={val <= 0}>−</button>
-
-        <div style={{ display: "flex", alignItems: "baseline", gap: "5px", flex: 1, justifyContent: "center" }}>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={val}
-            onChange={(e) => setVal(clamp(parseInt(e.target.value, 10) || 0))}
-            onFocus={(e) => e.currentTarget.select()}
-            style={{
-              width: "56px", textAlign: "center", padding: "5px 4px",
-              fontSize: "20px", fontWeight: 800, color,
-              border: `1.5px solid ${color}55`, borderRadius: "8px",
-              outline: "none", fontFamily: "inherit", MozAppearance: "textfield",
-            }}
-          />
-          <span style={{ fontSize: "12px", color: "#78716C", whiteSpace: "nowrap" }}>
-            / {target}{unit ? ` ${unit}` : ""}
-          </span>
+        {/* stepper */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <button onClick={() => setVal((v) => clamp(v - 1))} disabled={val <= 0} style={stepBtn("#F1ECE5", "#78716C")}>−</button>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "2px" }}>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={val}
+              onChange={(e) => setVal(clamp(parseInt(e.target.value, 10) || 0))}
+              onFocus={(e) => e.currentTarget.select()}
+              style={{
+                width: "32px", textAlign: "center", padding: 0, height: "22px",
+                fontSize: "15px", fontWeight: 800, color,
+                border: "none", background: "transparent", outline: "none",
+                fontFamily: "inherit", MozAppearance: "textfield",
+              }}
+            />
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "#A8A29E", whiteSpace: "nowrap" }}>
+              /{target}{unit ? ` ${unit}` : ""}
+            </span>
+          </div>
+          <button onClick={() => setVal((v) => v + 1)} style={stepBtn(color, "#FFFFFF")}>+</button>
         </div>
 
-        <button
-          onClick={() => setVal((v) => v + 1)}
-          style={{ ...stepBtn, backgroundColor: color, color: "#FFFFFF", border: "none" }}
-        >
-          +
-        </button>
-      </div>
+        {/* divider */}
+        <div style={{ width: "1px", height: "20px", backgroundColor: "#EDE5D8" }} />
 
-      <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-        <button onClick={onCancel} style={{
-          flex: 1, padding: "8px", borderRadius: "8px",
-          border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
-          fontSize: "12px", fontWeight: 600, color: "#78716C", cursor: "pointer",
-        }}>
-          Cancel
-        </button>
-        <button onClick={() => onSave(val)} style={{
-          flex: 2, padding: "8px", borderRadius: "8px", border: "none",
-          background: "linear-gradient(135deg, #F97316, #EA580C)",
-          fontSize: "12px", fontWeight: 700, color: "#FFFFFF", cursor: "pointer",
-        }}>
-          Save
-        </button>
+        {/* actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          <button onClick={() => onSave(val)} title="Save" style={iconBtn(color, "#FFFFFF")}>
+            <Check size={14} strokeWidth={3} />
+          </button>
+          <button onClick={onCancel} title="Cancel" style={iconBtn("#F1ECE5", "#78716C")}>
+            <X size={14} strokeWidth={2.5} />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-const stepBtn: React.CSSProperties = {
-  width: "36px", height: "36px", borderRadius: "8px", flexShrink: 0,
-  border: "1.5px solid #E8DDD0", backgroundColor: "#FFFFFF",
-  fontSize: "18px", fontWeight: 700, color: "#78716C",
-  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-};
+function stepBtn(bg: string, color: string): React.CSSProperties {
+  return {
+    width: "24px", height: "24px", borderRadius: "6px", border: "none",
+    backgroundColor: bg, color, fontSize: "15px", fontWeight: 700,
+    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+    lineHeight: 1, padding: 0, flexShrink: 0,
+  };
+}
+
+function iconBtn(bg: string, color: string): React.CSSProperties {
+  return {
+    width: "24px", height: "24px", borderRadius: "6px", border: "none",
+    backgroundColor: bg, color,
+    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+    padding: 0, flexShrink: 0,
+  };
+}
