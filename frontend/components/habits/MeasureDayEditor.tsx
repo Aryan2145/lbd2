@@ -64,9 +64,9 @@ export default function MeasureDayEditor({ name, date, initial, target, unit, co
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "min(320px, 100%)",
+          width: "min(240px, 100%)",
           display: "flex", flexDirection: "column", gap: "16px",
-          padding: "14px 16px 16px", borderRadius: "16px",
+          padding: "14px 14px 15px", borderRadius: "16px",
           backgroundColor: "#FFFFFF", border: `1.5px solid ${color}`,
           boxShadow: "0 16px 40px rgba(28,25,23,0.22)",
         }}
