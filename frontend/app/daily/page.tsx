@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
 import { toTaskDate } from "@/components/tasks/TaskCard";
@@ -40,6 +40,15 @@ export default function DailyPage() {
   const today = toTaskDate();
 
   const [tab,          setTab]          = useState<"plan" | "reflection">("plan");
+
+  // Honour ?tab=reflection (e.g. Back from /decisions). Read after mount so SSR
+  // and the first client render agree.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "reflection") {
+      setTab("reflection");
+    }
+  }, []);
+
   const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
   const [viewDate,     setViewDate]     = useState(today);
 

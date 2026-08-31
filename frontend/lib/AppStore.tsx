@@ -234,7 +234,9 @@ interface AppState {
   gcalLastSync:    Record<string, number>; // weekStart -> epoch ms of last sync
   // Planning
   upsertWeekPlan:          (p: WeekPlan)          => void;
-  upsertEveningReflection: (r: EveningReflection) => void;
+  /** `skipActivity` suppresses the "daily_review" consistency ping — used when
+   *  back-dating decisions from /decisions, which must not earn today's point. */
+  upsertEveningReflection: (r: EveningReflection, opts?: { skipActivity?: boolean }) => void;
   upsertWeeklyReview:      (r: WeeklyReview)      => void;
   // Bucket
   addBucketEntry:      (e: BucketEntry) => void;
@@ -582,9 +584,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       upsertBy(setWeekPlans, "weekStart", plan);
       api.put('/week-plans', { weekStart: plan.weekStart, outcomes: plan.outcomes, doneOutcomes: plan.doneOutcomes, dayNotes: plan.dayNotes }).catch(console.error);
     },
-    upsertEveningReflection: (r) => {
+    upsertEveningReflection: (r, opts) => {
       upsertBy(setEveningReflections, "date", r);
-      trackActivity("daily_review");
+      if (!opts?.skipActivity) trackActivity("daily_review");
       api.put('/evening-reflections', { date: r.date, energyLevel: r.energyLevel, mood: r.mood, highlights: r.highlights, gratitude: r.gratitude, decisions: r.decisions, wins: r.wins, stuck: r.stuck }).catch(console.error);
     },
     upsertWeeklyReview: (r) => {

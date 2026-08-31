@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Zap, Smile, Minus, CloudRain, Flame, X, CheckCircle2, Circle, Save, Lock } from "lucide-react";
+import Link from "next/link";
+import { Zap, Smile, Minus, CloudRain, Flame, X, CheckCircle2, Circle, Save, Lock, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { EveningReflection, MoodEmoji, DecisionEntry, StuckEntry } from "@/lib/dayTypes";
 import type { HabitData } from "@/components/habits/HabitCard";
@@ -408,7 +409,25 @@ export default function EveningReflectionComponent({
 
             {/* Decision Log */}
             <div className="lg:h-[260px]" style={card(A.decisions)}>
-              <CardHeader color={A.decisions} label="Decision Log" />
+              <CardHeader
+                color={A.decisions}
+                label="Decision Log"
+                right={
+                  <Link
+                    href="/decisions"
+                    style={{
+                      display: "flex", alignItems: "center", gap: "4px",
+                      padding: "3px 8px", borderRadius: "6px",
+                      border: `1px solid ${A.decisions}`,
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em",
+                      color: "#1F2933", textDecoration: "none", whiteSpace: "nowrap",
+                    }}
+                  >
+                    View all <ArrowRight size={11} color="#1F2933" />
+                  </Link>
+                }
+              />
               <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexShrink: 0 }}>
                 <input
                   value={newDecision}
@@ -539,13 +558,14 @@ export default function EveningReflectionComponent({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function CardHeader({ color, label }: { color: string; label: string }) {
+function CardHeader({ color, label, right }: { color: string; label: string; right?: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", flexShrink: 0 }}>
       <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
       <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#1F2933" }}>
         {label}
       </span>
+      {right && <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>{right}</div>}
     </div>
   );
 }
