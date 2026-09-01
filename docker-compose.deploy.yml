@@ -1,0 +1,26 @@
+# Runs the PRE-BUILT images from GHCR. This is the file you use ON THE EC2 BOX.
+# It does NOT build anything — it pulls the images GitHub Actions already built.
+#
+# Usage on EC2 (checkout lives at /home/ec2-user/lbd):
+#   ./deploy.sh
+#
+# Ports, env files and the encryption-key mount are identical to the old
+# build-on-the-box docker-compose.yml, so Caddy and the RDS/security-group
+# setup need no changes.
+#
+# Requires .env.production next to this file — see .env.example.
+services:
+  lbd_production:
+    image: ghcr.io/aryan2145/lbd2:production
+    container_name: lbd_production
+    env_file: .env.production
+    volumes:
+      - /etc/secrets/encryption.key:/etc/secrets/encryption.key:ro
+    ports:
+      - "3100:3000"
+      - "4100:4000"
+    restart: unless-stopped
+
+# No lbd_staging service: staging has never run on this box, and CI doesn't build
+# a staging image. To bring it back, add the staging entry to the workflow matrix
+# and re-add the service here on ports 3101/4101 with env_file .env.staging.

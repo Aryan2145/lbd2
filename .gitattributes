@@ -1,0 +1,9 @@
+# Shell scripts run on Linux (EC2). CRLF would break the shebang with a
+# "bad interpreter: /usr/bin/env bash^M" error, so force LF regardless of the
+# committer's core.autocrlf setting.
+*.sh text eol=lf
+
+# Same reasoning for files consumed by Docker/CI on Linux.
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

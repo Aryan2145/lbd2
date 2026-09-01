@@ -1,3 +1,8 @@
+# BUILDS FROM SOURCE — for local use, or as a fallback if GHCR is unavailable.
+#
+# On EC2 use docker-compose.deploy.yml (via ./deploy.sh) instead: it pulls the
+# images GitHub Actions already built, rather than building on the box. See
+# DEPLOYMENT.md.
 services:
   lbd_production:
     build:
