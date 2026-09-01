@@ -59,7 +59,7 @@ Private GHCR images need a login. On EC2 you log in **once** with a GitHub token
    `Login Succeeded` is saved to `~/.docker/config.json`, so this is a one-time
    step (until the token expires).
 
-> **Already done on 13.233.247.39.** V2E logged in on this box, and the login is
+> **Already done on the current EC2 box.** V2E logged in there, and the login is
 > per-registry rather than per-repo, so LBD is covered. You only need this again
 > on a new box, or when the token expires.
 
