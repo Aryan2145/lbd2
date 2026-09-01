@@ -115,11 +115,21 @@ so run the prune *after* the first successful deploy.
 
 ### Rolling back
 
+Every run also pushes a commit-pinned tag. **It uses the full 40-character SHA**
+(`github.sha`), not the 7-character short form — `:production-b680c35` does not
+exist, `:production-b680c357f19cb1878d0333a0514cb767fb90a121` does. Grab it with
+`git rev-parse <short-sha>`, or copy it from the Actions run.
+
 ```bash
-docker compose -f docker-compose.deploy.yml pull
-docker tag ghcr.io/aryan2145/lbd2:production-<good-sha> ghcr.io/aryan2145/lbd2:production
+SHA=$(git rev-parse <good-short-sha>)          # full 40 chars
+docker pull  ghcr.io/aryan2145/lbd2:production-$SHA
+docker tag   ghcr.io/aryan2145/lbd2:production-$SHA ghcr.io/aryan2145/lbd2:production
 docker compose -f docker-compose.deploy.yml up -d --force-recreate lbd_production
 ```
+
+Retagging locally is enough — `deploy.sh` would pull `:production` again and undo
+it, so for a lasting rollback either revert the commit on `master` or keep
+deploying by explicit tag.
 
 ---
 
