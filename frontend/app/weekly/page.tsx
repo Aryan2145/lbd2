@@ -63,7 +63,7 @@ export default function WeeklyPage() {
   const {
     goals, tasks, habits,
     eventGroups, weekEvents, weekPlans,
-    weeklyReviews, eveningReflections,
+    weeklyReviews, eveningReflections, coreValues,
     addEventGroup, updateEventGroup, deleteEventGroup,
     addWeekEvent, updateWeekEvent, deleteWeekEvent,
     upsertWeekPlan, upsertWeeklyReview, upsertEveningReflection,
@@ -308,6 +308,7 @@ export default function WeeklyPage() {
         habits={habits}
         eveningReflections={eveningReflections}
         weekPlanOutcomes={plan.outcomes ?? []}
+        coreValues={coreValues}
         onCompleteTask={(id) => closeTask(id, "complete")}
         onReopenTask={reopenTask}
         onToggleHabit={toggleHabitDay}

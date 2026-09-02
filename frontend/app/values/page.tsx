@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, X } from "lucide-react";
 import { AREA_META, type LifeArea } from "@/components/goals/GoalCard";
 import { api } from "@/lib/api";
+import { useAppStore } from "@/lib/AppStore";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MAX_VALUES   = 5;
@@ -275,6 +276,7 @@ export default function ValuesPage() {
   const [CX, setCX]             = useState(0);
   const containerRef            = useRef<HTMLDivElement>(null);
   const [hydrated, setHydrated] = useState(false);
+  const { syncCoreValues } = useAppStore();
 
   // Load from the backend; migrate any legacy localStorage data on first run.
   useEffect(() => {
@@ -322,7 +324,10 @@ export default function ValuesPage() {
   useEffect(() => {
     if (!hydrated) return;
     api.put("/values", { selected, custom }).catch(() => {});
-  }, [selected, custom, hydrated]);
+    // Mirror into the shared store so screens that read core values (e.g. the
+    // weekly review) update on client-side navigation, without a page refresh.
+    syncCoreValues(selected.map((s) => s.value).filter(Boolean));
+  }, [selected, custom, hydrated, syncCoreValues]);
 
   function toggleValue(area: LifeArea, value: string) {
     setSelected((prev) => {

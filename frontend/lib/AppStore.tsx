@@ -204,6 +204,11 @@ interface AppState {
   tickets:            SupportTicket[];
   userProfile:        UserProfile;
   visionAreas:        AreaData[];
+  /** Core value names the user picked on /values (max 5). Empty = not set up yet. */
+  coreValues:         string[];
+  /** Mirrors a just-saved /values selection into shared state. The Values page
+   *  owns the PUT; this only keeps other screens correct without a page refresh. */
+  syncCoreValues:     (names: string[]) => void;
   // Goal actions
   addGoal:    (g: GoalData, tasks?: TaskData[], habits?: HabitData[]) => void;
   updateGoal: (g: GoalData) => void;
@@ -271,6 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tickets,            setTickets]            = useState<SupportTicket[]>([]);
   const [userProfile,        setUserProfile]        = useState<UserProfile>({ name: "", email: "", phone: "", role: "", password: "", gender: "" });
   const [visionAreas,        setVisionAreas]        = useState<AreaData[]>([]);
+  const [coreValues,         setCoreValues]         = useState<string[]>([]);
 
   // Ref so async callbacks always see latest goals (for note diffing)
   const goalsRef = useRef<GoalData[]>([]);
@@ -303,7 +309,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const [
         apiGoals, apiHabits, apiTasks, apiGroups,
         apiWeekPlans, apiEveningReflections,
-        apiWeeklyReviews, apiBucket, apiTickets, apiUser, apiVision,
+        apiWeeklyReviews, apiBucket, apiTickets, apiUser, apiVision, apiValues,
       ] = await Promise.all([
         fetchSafe<any[]>('/goals', []),
         fetchSafe<any[]>('/habits', []),
@@ -316,6 +322,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fetchSafe<any[]>('/support', []),
         fetchSafe<any>('/users/me', null),
         fetchSafe<{ areas: AreaData[] }>('/vision', { areas: [] }),
+        fetchSafe<{ selected: { area: string; value: string }[] }>('/values', { selected: [] }),
       ]);
 
       const freshGoals    = apiGoals.map(mapGoal);
@@ -351,6 +358,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTickets(freshTickets);
       if (apiUser) setUserProfile(freshProfile);
       setVisionAreas(apiVision?.areas ?? []);
+      // Only the value names are needed downstream; the life-area pairing stays on /values.
+      setCoreValues((apiValues?.selected ?? []).map((v) => v.value).filter(Boolean));
 
       setLoaded(true);
 
@@ -387,7 +396,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loaded,
     goals, habits, tasks, eventGroups, weekEvents, weekPlans,
     eveningReflections, weeklyReviews, bucketEntries, tickets,
-    visionAreas, gcalSyncing, gcalLastSync,
+    visionAreas, coreValues, gcalSyncing, gcalLastSync,
+    syncCoreValues: setCoreValues,
 
     // Goals
     addGoal: (g, tasks?, habits?) => {

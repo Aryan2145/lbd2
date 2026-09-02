@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   X, Trophy, Target, CheckSquare, TrendingUp,
   BookOpen, Lightbulb, Star, Plus, Trash2, Check,
@@ -17,13 +18,8 @@ import { toTaskDate } from "@/components/tasks/TaskCard";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CORE_VALUES = [
-  "Integrity","Courage","Discipline","Gratitude","Growth",
-  "Service","Excellence","Compassion","Focus","Humility",
-  "Consistency","Love","Resilience","Learning","Family",
-  "Leadership","Creativity","Health","Balance","Joy",
-  "Honesty","Patience","Wisdom","Purpose","Kindness",
-];
+// Core values are not a fixed list here — they come from the up-to-5 the user
+// picked on /values, so this card only ever offers their own values.
 
 const DAY_SHORTS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
@@ -51,6 +47,8 @@ interface Props {
   habits:             HabitData[];
   eveningReflections: EveningReflection[];
   weekPlanOutcomes:   string[];
+  /** The up-to-5 core values chosen on /values. Empty = the user hasn't set them. */
+  coreValues:         string[];
   onCompleteTask:     (id: string) => void;
   onReopenTask:       (id: string) => void;
   onToggleHabit:      (habitId: string, date: string) => void;
@@ -230,11 +228,10 @@ function ReviewCard({
 
 export default function WeeklyReviewSheet({
   open, onClose, weekStart, review, onSave,
-  tasks, habits, eveningReflections, weekPlanOutcomes,
+  tasks, habits, eveningReflections, weekPlanOutcomes, coreValues,
   onCompleteTask, onReopenTask, onToggleHabit, onAddWin,
 }: Props) {
   const [draft,  setDraft]  = useState<WeeklyReview>(emptyReview(weekStart));
-  const [tab, setTab] = useState<"success" | "reflections">("success");
   const [winPage, setWinPage] = useState(0); // 0=Mon-Wed, 1=Thu-Sat, 2=Sun
   // Wins section: inline "add win" form
   const [addWin, setAddWin] = useState<{ date: string; text: string } | null>(null);
@@ -244,7 +241,6 @@ export default function WeeklyReviewSheet({
   useEffect(() => {
     if (!open) return;
     setDraft(review ? { ...emptyReview(weekStart), ...review } : emptyReview(weekStart));
-    setTab("success");
     setAddWin(null);
     setOpenDateFor(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -846,6 +842,10 @@ export default function WeeklyReviewSheet({
         borderRadius:"12px", overflow:"hidden",
         border:"1px solid #E8DDD0",
         boxShadow:"0 2px 8px rgba(0,0,0,0.06)",
+        // The card body is a flex column; without this the diary page shrinks to
+        // fit instead of overflowing, and its own overflow:hidden then silently
+        // clips the entry with no scrollbar. Keep natural height so the card scrolls.
+        flexShrink: 0,
       }}>
         <div style={{ display:"flex", background:"#FDFAF6" }}>
           {/* Red margin */}
@@ -1010,13 +1010,38 @@ export default function WeeklyReviewSheet({
       }
     }
 
+    // No values chosen yet — send the user to set them rather than showing an
+    // empty chip row with no way forward.
+    if (coreValues.length === 0) {
+      return (
+        <div style={{
+          flex:1, display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center",
+          textAlign:"center", gap:"14px", padding:"28px 16px",
+        }}>
+          <p style={{ fontSize:"13px", color:"#57534E", margin:0, maxWidth:"300px", lineHeight:1.55 }}>
+            You haven&apos;t chosen your core values yet. Pick up to 5 on the Values
+            page, then come back to mark which ones you lived this week.
+          </p>
+          <Link href="/values" style={{
+            display:"inline-flex", alignItems:"center", gap:"6px",
+            padding:"9px 18px", borderRadius:"10px", border:"none",
+            backgroundColor:"#7C3AED", color:"#FFFFFF",
+            fontSize:"12px", fontWeight:700, textDecoration:"none",
+          }}>
+            Set values first
+          </Link>
+        </div>
+      );
+    }
+
     return (
       <div>
         <p style={{ fontSize:"13px", color:"#78716C", marginBottom:"16px" }}>
-          Which core values did you live this week? Select all that apply.
+          Which of your core values did you live this week? Select all that apply.
         </p>
         <div style={{ display:"flex", flexWrap:"wrap", gap:"8px", marginBottom:"24px" }}>
-          {CORE_VALUES.map((val) => {
+          {coreValues.map((val) => {
             const on = livedValues.includes(val);
             return (
               <button key={val} onClick={() => toggle(val)} style={{
@@ -1091,7 +1116,7 @@ export default function WeeklyReviewSheet({
       {/* ── Header ── */}
       <div style={{ borderBottom:"1px solid #EDE5D8", flexShrink:0, backgroundColor:"#FFFFFF" }}>
 
-        {/* Mobile header — two rows */}
+        {/* Mobile header — single row (the tab bar that sat below it is gone) */}
         <div className="lg:hidden">
           <div style={{ padding:"12px 16px 8px", display:"flex", alignItems:"center", gap:"10px" }}>
             <button onClick={onClose} style={{
@@ -1119,29 +1144,6 @@ export default function WeeklyReviewSheet({
               Save ✓
             </button>
           </div>
-          <div style={{ padding:"0 16px 12px", display:"flex",
-            borderRadius:"10px", overflow:"hidden", gap:0 }}>
-            <div style={{ display:"flex", borderRadius:"10px", border:"1.5px solid #C8BFB5",
-              overflow:"hidden", backgroundColor:"#FFFFFF", width:"100%" }}>
-              {([
-                ["success",     "Success Story", "#F97316", "#FFFFFF"],
-                ["reflections", "Reflections",   "#7C3AED", "#FFFFFF"],
-              ] as const).map(([id, label, activeColor, activeBg]) => {
-                const on = tab === id;
-                return (
-                  <button key={id} onClick={() => setTab(id)} style={{
-                    flex:1, padding:"8px", border:"none",
-                    backgroundColor: on ? activeBg : "#FFFFFF",
-                    color: on ? activeColor : "#57534E",
-                    fontSize:"12px", fontWeight:700, cursor:"pointer",
-                    borderLeft: id === "reflections" ? "1.5px solid #C8BFB5" : "none",
-                  }}>
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         {/* Desktop header — single row */}
@@ -1165,26 +1167,6 @@ export default function WeeklyReviewSheet({
             </h2>
           </div>
           <div style={{ flex:1 }} />
-          <div style={{ display:"flex", borderRadius:"10px",
-            border:"1.5px solid #C8BFB5", overflow:"hidden", backgroundColor:"#FFFFFF" }}>
-            {([
-              ["success",     "My Success Story", "#F97316", "#FFFFFF"],
-              ["reflections", "Reflections",      "#7C3AED", "#FFFFFF"],
-            ] as const).map(([id, label, activeColor, activeBg]) => {
-              const on = tab === id;
-              return (
-                <button key={id} onClick={() => setTab(id)} style={{
-                  padding:"7px 18px", border:"none",
-                  backgroundColor: on ? activeBg : "#FFFFFF",
-                  color: on ? activeColor : "#57534E",
-                  fontSize:"12px", fontWeight:700, cursor:"pointer",
-                  borderLeft: id === "reflections" ? "1.5px solid #C8BFB5" : "none",
-                }}>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
           <button onClick={handleSave} style={{
             padding:"8px 20px", borderRadius:"10px", border:"none",
             background:"linear-gradient(135deg, #F97316, #EA580C)",
@@ -1199,87 +1181,83 @@ export default function WeeklyReviewSheet({
       {/* ── Scrollable content ── */}
       <div className="px-4 lg:px-6 py-5" style={{ flex:1, overflowY:"auto" }}>
 
-        {tab === "success" ? (
-          <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+        {/* Success Story and Reflections are one continuous section — the
+            reflection cards simply follow the success cards. */}
+        <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
 
-            {/* Top Wins — auto-sizes to content */}
-            <ReviewCard title="Top Wins" color="#F97316"
-              icon={<Trophy size={13} color="#F97316" />}>
-              {renderWins()}
+          {/* Top Wins — auto-sizes to content */}
+          <ReviewCard title="Top Wins" color="#F97316"
+            icon={<Trophy size={13} color="#F97316" />}>
+            {renderWins()}
+          </ReviewCard>
+
+          {/* Outcome · Task · Habits — 3 columns */}
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+            <ReviewCard title="Outcome Review" color="#F97316" maxH={400}
+              icon={<Target size={13} color="#F97316" />}>
+              {renderOutcomes()}
             </ReviewCard>
+            <ReviewCard title="Task Review" color="#F97316" maxH={400}
+              icon={<CheckSquare size={13} color="#F97316" />}>
+              {renderTasks()}
+            </ReviewCard>
+            <ReviewCard title="Habits Review" color="#F97316" maxH={400}
+              icon={<TrendingUp size={13} color="#F97316" />}>
+              {renderHabits()}
+            </ReviewCard>
+          </div>
 
-            {/* Outcome · Task · Habits — 3 columns */}
-            <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-              <ReviewCard title="Outcome Review" color="#F97316" maxH={400}
-                icon={<Target size={13} color="#F97316" />}>
-                {renderOutcomes()}
-              </ReviewCard>
-              <ReviewCard title="Task Review" color="#F97316" maxH={400}
-                icon={<CheckSquare size={13} color="#F97316" />}>
-                {renderTasks()}
-              </ReviewCard>
-              <ReviewCard title="Habits Review" color="#F97316" maxH={400}
-                icon={<TrendingUp size={13} color="#F97316" />}>
-                {renderHabits()}
-              </ReviewCard>
-            </div>
-
-            {/* Overall week rating — standalone */}
-            <ReviewCard title="Overall Week Rating" color="#F97316"
-              icon={<Star size={13} color="#F97316" />}>
-              <div style={{ display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
-                <div style={{ display:"flex", gap:"5px", flexWrap:"wrap" }}>
-                  {Array.from({ length:10 }, (_, i) => i + 1).map((n) => {
-                    const sel = draft.overallRating === n;
-                    const col = ratingColor(n);
-                    return (
-                      <button key={n} onClick={() => ud("overallRating", n)} style={{
-                        width:36, height:36, borderRadius:"8px",
-                        border:`2px solid ${sel ? col : "#C8BFB5"}`,
-                        backgroundColor: sel ? col : "#FFFFFF",
-                        fontSize:"13px", fontWeight:700,
-                        color: sel ? "#FFFFFF" : "#44403C", cursor:"pointer",
-                      }}>
-                        {n}
-                      </button>
-                    );
-                  })}
-                </div>
-                {draft.overallRating > 0 && (
-                  <span style={{
-                    fontSize:"13px", fontWeight:700,
-                    color: ratingColor(draft.overallRating),
-                  }}>
-                    {draft.overallRating}/10
-                  </span>
-                )}
+          {/* Overall week rating — standalone */}
+          <ReviewCard title="Overall Week Rating" color="#F97316"
+            icon={<Star size={13} color="#F97316" />}>
+            <div style={{ display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
+              <div style={{ display:"flex", gap:"5px", flexWrap:"wrap" }}>
+                {Array.from({ length:10 }, (_, i) => i + 1).map((n) => {
+                  const sel = draft.overallRating === n;
+                  const col = ratingColor(n);
+                  return (
+                    <button key={n} onClick={() => ud("overallRating", n)} style={{
+                      width:36, height:36, borderRadius:"8px",
+                      border:`2px solid ${sel ? col : "#C8BFB5"}`,
+                      backgroundColor: sel ? col : "#FFFFFF",
+                      fontSize:"13px", fontWeight:700,
+                      color: sel ? "#FFFFFF" : "#44403C", cursor:"pointer",
+                    }}>
+                      {n}
+                    </button>
+                  );
+                })}
               </div>
-            </ReviewCard>
-
-          </div>
-        ) : (
-          <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
-
-            {/* Weekly Journal — full width */}
-            <ReviewCard title="Weekly Journal" color="#7C3AED" maxH={460}
-              icon={<BookOpen size={13} color="#7C3AED" />}>
-              {renderJournal()}
-            </ReviewCard>
-
-            {/* Life Lessons · Core Values — 2 columns */}
-            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-              <ReviewCard title="Life Lessons" color="#7C3AED" maxH={400}
-                icon={<Lightbulb size={13} color="#7C3AED" />}>
-                {renderLessons()}
-              </ReviewCard>
-              <ReviewCard title="Core Values Lived" color="#7C3AED" maxH={400}
-                icon={<Star size={13} color="#7C3AED" />}>
-                {renderValues()}
-              </ReviewCard>
+              {draft.overallRating > 0 && (
+                <span style={{
+                  fontSize:"13px", fontWeight:700,
+                  color: ratingColor(draft.overallRating),
+                }}>
+                  {draft.overallRating}/10
+                </span>
+              )}
             </div>
+          </ReviewCard>
 
+          {/* Weekly Journal — full width */}
+          <ReviewCard title="Weekly Journal" color="#7C3AED" maxH={460}
+            icon={<BookOpen size={13} color="#7C3AED" />}>
+            {renderJournal()}
+          </ReviewCard>
+
+          {/* Life Lessons · Core Values — 2 columns */}
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            <ReviewCard title="Life Lessons" color="#7C3AED" maxH={400}
+              icon={<Lightbulb size={13} color="#7C3AED" />}>
+              {renderLessons()}
+            </ReviewCard>
+            <ReviewCard title="Core Values Lived" color="#7C3AED" maxH={400}
+              icon={<Star size={13} color="#7C3AED" />}>
+              {renderValues()}
+            </ReviewCard>
           </div>
-        )}
+
+        </div>
 
       </div>
     </div>
